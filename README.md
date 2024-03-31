@@ -3,7 +3,7 @@
 </p>
 
 # Winlator
-
+此为winlator-mod发布处，请支持原作者！
 Winlator is an Android application that lets you to run Windows (x86_64) applications with Wine and Box86/Box64.
 
 # Installation
