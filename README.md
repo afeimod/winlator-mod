@@ -4,12 +4,12 @@
 
 # Winlator
 此为winlator-mod发布处，请支持原作者！
-Winlator is an Android application that lets you to run Windows (x86_64) applications with Wine and Box86/Box64.
+Winlator是通过wine和box86.box64模拟windows软件的安卓应用！
 
-# Installation
+# 安装和下载
 
-1. Download and install the APK (Winlator_6.0.apk) from [GitHub Releases](https://github.com/afeimod/winlator-mod/releases)
-2. Launch the app and wait for the installation process to finish
+1. 下载6.0apk [GitHub Releases](https://github.com/afeimod/winlator-mod/releases)
+2. apk安装后即可启动
 
 ----
 
