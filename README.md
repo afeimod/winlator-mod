@@ -20,14 +20,15 @@ Winlator是通过wine和box86.box64模拟windows软件的安卓应用！
 
 ----
 
-# Useful Tips
+# 一些提示
 
-- If you are experiencing performance issues, try changing the preset for Box86/Box64 in Container Settings -> Advanced Tab.
-- For applications that use .NET Framework, try installing Wine Mono found in Start Menu -> System Tools.
-- If some older games don't open, try adding the environment variable MESA_EXTENSION_MAX_YEAR=2003 in Container Settings -> Environment Variables.
-- Try running the games using the shortcut on the Winlator home screen, there you can define individual settings for each game.
+-如果您遇到性能问题，请尝试在“容器设置”->“高级”选项卡中更改 Box86/Box64 的预设。
+-对于使用 .NET Framework 的应用程序，请尝试安装“开始”菜单 ->“系统工具”中的 Wine Mono。
+-如果某些较旧的游戏无法打开，请尝试在“容器设置”->“环境变量”中添加环境变量 MESA_EXTENSION_MAX_YEAR=2003。
+-尝试使用 Winlator 主屏幕上的快捷方式运行游戏，您可以在其中为每个游戏定义单独的设置
 
-# Credits and Third-party apps
+# 积分和第三方应用程序
+
 - Ubuntu RootFs ([Focal Fossa](https://releases.ubuntu.com/focal))
 - Wine ([winehq.org](https://www.winehq.org/))
 - Box86/Box64 by [ptitseb](https://github.com/ptitSeb)
@@ -38,4 +39,4 @@ Winlator是通过wine和box86.box64模拟windows软件的安卓应用！
 - CNC DDraw ([github.com/FunkyFr3sh/cnc-ddraw](https://github.com/FunkyFr3sh/cnc-ddraw))
 
 Many thanks to [ptitSeb](https://github.com/ptitSeb), [alexvorxx](https://github.com/alexvorxx) and others.
-Thank you to all the people who believe in this project.
+非常感谢ptitSeb、alexvorxx和其他人。感谢所有相信这个项目的人。
