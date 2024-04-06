@@ -5,6 +5,7 @@
 # Winlator
 
 Winlator is an Android application that lets you to run Windows (x86_64) applications with Wine and Box86/Box64.
+
 Winlator是一个Android应用程序，它允许你使用Wine和Box86/Box64来运行Windows（x86_64）应用程序。
 
 # Installation（安装）
