@@ -54,6 +54,7 @@ Winlator是一个Android应用程序，它允许你使用Wine和Box86/Box64来�
 Many thanks to [ptitSeb](https://github.com/ptitSeb) (Box86/Box64), [Danylo](https://blogs.igalia.com/dpiliaiev/tags/mesa/) (Turnip), [alexvorxx](https://github.com/alexvorxx) (Mods/Tips) and others.
 
 非常感谢 [ptitSeb](https://github.com/ptitSeb) (Box86/Box64), [Danylo](https://blogs.igalia.com/dpiliaiev/tags/mesa/) (Turnip), [alexvorxx](https://github.com/alexvorxx) (Mods/Tips) 以及其他人的贡献
+
 Thank you to all the people who believe in this project.
 
 感谢所有相信这个项目的人们。
