@@ -14,6 +14,7 @@ jobs:
     - name: 2 克隆仓库
       uses: actions/checkout@v4
       with:
+        ref: main
         submodules: recursive
     - name: 3 gradle验证
       uses: gradle/wrapper-validation-action@v2
