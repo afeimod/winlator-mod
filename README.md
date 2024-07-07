@@ -2,14 +2,14 @@
 	<img src="logo.png" width="376" height="128" alt="Winlator Logo" />  
 </p>
 
-# Winlator
+# 介绍
 
-Winlator is an Android application that lets you to run Windows (x86_64) applications with Wine and Box86/Box64.
+Winlator 是一个 Android 应用程序，它允许您通过 Wine 和 Box86/Box64 运行 Windows（x86_64）应用程序。
 
-# Installation
+# 安装
 
-1. Download and install the APK (Winlator_7.1.apk) from [GitHub Releases](https://github.com/brunodev85/winlator/releases)
-2. Launch the app and wait for the installation process to finish
+1. 从 [GitHub 发布页面](https://github.com/brunodev85/winlator/releases) 下载并安装 APK（Winlator_7.1.apk）
+2. 启动应用程序并等待安装过程完成
 
 ----
 
@@ -20,15 +20,16 @@ Winlator is an Android application that lets you to run Windows (x86_64) applica
 
 ----
 
-# Useful Tips
+# 使用建议
 
-- If you are experiencing performance issues, try changing the Box86/Box64 preset in Container Settings -> Advanced Tab.
-- For applications that use .NET Framework, try installing Wine Mono found in Start Menu -> System Tools.
-- If some older games don't open, try adding the environment variable MESA_EXTENSION_MAX_YEAR=2003 in Container Settings -> Environment Variables.
-- Try running the games using the shortcut on the Winlator home screen, there you can define individual settings for each game.
-- To speed up the installers, try changing the Box86/Box64 preset to Intermediate in Container Settings -> Advanced Tab.
+- 如果你遇到性能问题，请尝试在“容器设置”->“高级”选项卡中更改 Box86/Box64 的预设。
+- 对于使用 .NET Framework 的应用程序，请尝试在开始菜单 -> 系统工具中找到并安装 Wine Mono。
+- 如果一些较旧的游戏无法打开，请尝试在“容器设置”->“环境变量”中添加环境变量 MESA_EXTENSION_MAX_YEAR=2003。
+- 尝试使用 Winlator 主屏幕上的快捷方式运行游戏，您可以在那里为每个游戏定义单独的设置。
+- 为了加快安装程序的速度，请尝试在“容器设置”->“高级”选项卡中将 Box86/Box64 预设更改为“中等”。
 
-# Credits and Third-party apps
+# 鸣谢和第三方应用程序
+
 - Ubuntu RootFs ([Focal Fossa](https://releases.ubuntu.com/focal))
 - Wine ([winehq.org](https://www.winehq.org/))
 - Box86/Box64 by [ptitseb](https://github.com/ptitSeb)
@@ -39,5 +40,6 @@ Winlator is an Android application that lets you to run Windows (x86_64) applica
 - D8VK ([github.com/AlpyneDreams/d8vk](https://github.com/AlpyneDreams/d8vk))
 - CNC DDraw ([github.com/FunkyFr3sh/cnc-ddraw](https://github.com/FunkyFr3sh/cnc-ddraw))
 
-Many thanks to [ptitSeb](https://github.com/ptitSeb) (Box86/Box64), [Danylo](https://blogs.igalia.com/dpiliaiev/tags/mesa/) (Turnip), [alexvorxx](https://github.com/alexvorxx) (Mods/Tips) and others.
-Thank you to all the people who believe in this project.
+感谢 [ptitSeb](https://github.com/ptitSeb) (Box86/Box64), [Danylo](https://blogs.igalia.com/dpiliaiev/tags/mesa/) (Turnip), [alexvorxx](https://github.com/alexvorxx) (Mods/Tips) 和其他贡献者。
+
+感谢所有相信这个项目的人。
