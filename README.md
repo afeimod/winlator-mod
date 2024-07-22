@@ -4,7 +4,7 @@
 
 # 介绍
 
-Winlator 是一个 Android 应用程序，它允许您通过 Wine 和 Box86/Box64 运行 Windows（x86_64）应用程序。
+Winlator-Amod是一个 Winlaor的mod版。
 
 # 安装
 
