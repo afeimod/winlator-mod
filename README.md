@@ -8,9 +8,9 @@ Winlator 是一个 Android 应用程序，它允许您通过 Wine 和 Box86/Box6
 
 # 安装
 
-1. 从 [GitHub 发布页面](https://github.com/brunodev85/winlator/releases) 下载并安装 APK（Winlator_7.1.apk）
+1. 官方版请从 [GitHub 发布页面](https://github.com/brunodev85/winlator/releases) 下载并安装 APK（Winlator_7.1.apk）
 2. 启动应用程序并等待安装过程完成
-
+3. Amod为afei改版，发布页为 [GitHub 发布页面](https://github.com/afeimod/winlator-mod/releases) 下载mod版！
 ----
 
 [![Play on Youtube](https://img.youtube.com/vi/8PKhmT7B3Xo/1.jpg)](https://www.youtube.com/watch?v=8PKhmT7B3Xo)
@@ -22,7 +22,7 @@ Winlator 是一个 Android 应用程序，它允许您通过 Wine 和 Box86/Box6
 
 # 使用建议
 
-- 如果你遇到性能问题，请尝试在“容器设置”->“高级”选项卡中更改 Box86/Box64 的预设。
+- Amod理论上在“容器设置”->“高级”选项卡中新建 Box86/Box64 的预设会比较快！
 - 对于使用 .NET Framework 的应用程序，请尝试在开始菜单 -> 系统工具中找到并安装 Wine Mono。
 - 如果一些较旧的游戏无法打开，请尝试在“容器设置”->“环境变量”中添加环境变量 MESA_EXTENSION_MAX_YEAR=2003。
 - 尝试使用 Winlator 主屏幕上的快捷方式运行游戏，您可以在那里为每个游戏定义单独的设置。
