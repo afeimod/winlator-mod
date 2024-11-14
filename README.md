@@ -5,6 +5,8 @@
 # 介绍
 
 Winlator-Amod是一个 Winlaor的mod版。
+ [**百度网盘更新地址**](https://pan.baidu.com/s/18HZiF4W4iwpoD7wXEk4YDQ?pwd=48ds) 
+
 
 # 安装
 
