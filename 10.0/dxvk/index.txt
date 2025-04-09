@@ -26,5 +26,5 @@ dxvk-2.5.3.0.tzst
 dxvk-2.5.3.1.tzst
 dxvk-2.6.0.tzst
 dxvk-2.6.0.2.tzst
-dxvk-78to9.tzst
-dxvk-78to11.tzst
+dxvk-78.9.tzst
+dxvk-78.11.tzst
