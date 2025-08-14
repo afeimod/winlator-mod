@@ -5,5 +5,3 @@
 It's been a few months since the lead developer `longjunyu2` has been online. He originally mentioned studying and planned to return in 2025, but after October 15, 2024, the level of communication with him went to zero.
 
 Development of this project is on hold and will not resume until `longjunyu2` returns.
-
-This repository was also home to WinlatorXR. The XR version is planned to be rebased on the original Winlator.
