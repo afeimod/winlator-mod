@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:orientation="vertical">
+
+    <LinearLayout
+        android:layout_width="300dp"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/performance_mode" />
+
+        <Spinner
+            style="@style/ComboBox"
+            android:id="@+id/SPerformanceMode"
+            android:layout_width="match_parent"
+            android:entries="@array/audio_performance_mode_entries" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/volume" />
+
+        <com.winlator.widget.SeekBar
+            android:id="@+id/SBVolume"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:suffix="%"
+            app:minValue="0"
+            app:maxValue="100" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/average_latency" />
+
+        <com.winlator.widget.SeekBar
+            android:id="@+id/SBLatencyMillis"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:suffix=" ms"
+            app:step="2"
+            app:minValue="12"
+            app:maxValue="120" />
+    </LinearLayout>
+</LinearLayout>

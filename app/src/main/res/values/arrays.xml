@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="screen_size_entries">
+        <item>Custom</item>
+        <item>640x360 (16:9)</item>
+        <item>640x480 (4:3)</item>
+        <item>800x600 (4:3)</item>
+        <item>854x480 (16:9)</item>
+        <item>960x544 (16:9)</item>
+        <item>1024x768 (4:3)</item>
+        <item>1280x720 (16:9)</item>
+        <item>1280x800 (16:10)</item>
+        <item>1280x1024 (5:4)</item>
+        <item>1366x768 (16:9)</item>
+        <item>1440x900 (16:10)</item>
+        <item>1600x900 (16:9)</item>
+        <item>1920x1080 (16:9)</item>
+    </string-array>
+    <string-array name="graphics_driver_entries" translatable="false">
+        <item>Turnip (Adreno)</item>
+        <item>Vortek (Universal)</item>
+        <item>VirGL (Universal)</item>
+    </string-array>
+    <string-array name="audio_driver_entries" translatable="false">
+        <item>ALSA</item>
+        <item>PulseAudio</item>
+    </string-array>
+    <string-array name="binding_type_entries" translatable="false">
+        <item>Keyboard</item>
+        <item>Mouse</item>
+        <item>Gamepad</item>
+    </string-array>
+    <string-array name="dxwrapper_entries" translatable="false">
+        <item>WineD3D</item>
+        <item>DXVK</item>
+        <item>VKD3D</item>
+        <item>CNC DDraw</item>
+    </string-array>
+    <string-array name="max_device_memory_entries">
+        <item>0 (No limit)</item>
+        <item>512 MB</item>
+        <item>1024 MB</item>
+        <item>2048 MB</item>
+        <item>4096 MB</item>
+    </string-array>
+    <string-array name="video_memory_size_entries" translatable="false">
+        <item>32 MB</item>
+        <item>64 MB</item>
+        <item>128 MB</item>
+        <item>256 MB</item>
+        <item>512 MB</item>
+        <item>1024 MB</item>
+        <item>2048 MB</item>
+        <item>4096 MB</item>
+    </string-array>
+    <string-array name="image_cache_size_entries" translatable="false">
+        <item>64 MB</item>
+        <item>128 MB</item>
+        <item>256 MB</item>
+        <item>512 MB</item>
+        <item>1024 MB</item>
+    </string-array>
+    <string-array name="dxvk_framerate_entries">
+        <item>0 (Uncapped)</item>
+        <item>30</item>
+        <item>60</item>
+        <item>120</item>
+    </string-array>
+    <string-array name="wincomponent_entries">
+        <item>Builtin (Wine)</item>
+        <item>Native (Windows)</item>
+    </string-array>
+    <string-array name="dinput_mapper_type_entries">
+        <item>Standard</item>
+        <item>XInput</item>
+    </string-array>
+    <string-array name="desktop_theme_entries">
+        <item>Light</item>
+        <item>Dark</item>
+    </string-array>
+    <string-array name="desktop_background_type_entries">
+        <item>Image</item>
+        <item>Solid Color</item>
+    </string-array>
+    <string-array name="startup_selection_entries">
+        <item>Normal (Load all services)</item>
+        <item>Essential (Load only essential services)</item>
+        <item>Aggressive (Stop services on startup)</item>
+    </string-array>
+    <string-array name="preferred_input_api_entries">
+        <item>Auto</item>
+        <item>DirectInput</item>
+        <item>XInput</item>
+        <item>Both</item>
+    </string-array>
+    <string-array name="audio_performance_mode_entries">
+        <item>None</item>
+        <item>Low Latency</item>
+        <item>Power Saving</item>
+    </string-array>
+    <string-array name="opengl_version_entries" translatable="false">
+        <item>2.0</item>
+        <item>2.1</item>
+        <item>3.0</item>
+        <item>3.1</item>
+        <item>3.2</item>
+        <item>3.3</item>
+        <item>4.0</item>
+    </string-array>
+    <string-array name="d3d_feature_level_entries" translatable="false">
+        <item>11.0</item>
+        <item>11.1</item>
+        <item>12.0</item>
+        <item>12.1</item>
+        <item>12.2</item>
+    </string-array>
+    <string-array name="system_font_entries" translatable="false">
+        <item>Arial</item>
+        <item>Andale Mono</item>
+        <item>Comic Sans MS</item>
+        <item>Courier New</item>
+        <item>Georgia</item>
+        <item>Impact</item>
+        <item>Tahoma</item>
+        <item>Times New Roman</item>
+        <item>Trebuchet MS</item>
+        <item>Verdana</item>
+    </string-array>
+    <string-array name="box64_logs">
+        <item>Disable</item>
+        <item>Minimal</item>
+        <item>Trace</item>
+    </string-array>
+    <string-array name="vk_version_entries" translatable="false">
+        <item>1.0</item>
+        <item>1.1</item>
+        <item>1.2</item>
+        <item>1.3</item>
+    </string-array>
+    <string-array name="midi_channel_entries" translatable="false">
+        <item>Ch1</item>
+        <item>Drum (Ch10)</item>
+    </string-array>
+    <string-array name="language_entries" translatable="false">
+        <item>English</item>
+        <item>Português</item>
+        <item>Русский</item>
+    </string-array>
+    <string-array name="resource_memory_type_entries">
+        <item>Auto</item>
+        <item>Opaque FD</item>
+        <item>DMA Buffer</item>
+        <item>Native Hardware Buffer</item>
+    </string-array>
+</resources>

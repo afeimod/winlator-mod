@@ -1,0 +1,37 @@
+cc_defaults {
+  name: "shim_defaults",
+
+  srcs: [
+    "shim.cpp",
+    "ext/gr_utils.cpp",
+    "ext/gr_adreno_info.cpp",
+  ],
+
+  shared_libs: [
+    "liblog",
+    "libcutils",
+    "libhidlbase",
+    "libhardware",
+    "libutils",
+  ],
+
+  cflags: [
+    "-Wno-error",
+    "-Wno-unused-parameter",
+  ],
+}
+
+cc_library_shared {
+  name: "vendor.qti.hardware.display.mappershim",
+  defaults: ["shim_defaults"],
+}
+
+cc_library_shared {
+  name: "vendor.qti.hardware.display.mapperextensionsshim",
+  defaults: ["shim_defaults"],
+}
+
+cc_library_shared {
+  name: "android.hardware.graphics.mappershim",
+  defaults: ["shim_defaults"],
+}

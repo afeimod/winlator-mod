@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu
+  xmlns:android="http://schemas.android.com/apk/res/android">
+    <group android:checkableBehavior="single">
+        <item android:icon="@drawable/icon_shortcut" android:id="@+id/menu_item_shortcuts" android:title="@string/shortcuts" />
+        <item android:icon="@drawable/icon_container" android:id="@+id/menu_item_containers" android:title="@string/containers" />
+        <item android:icon="@drawable/icon_input_controls" android:id="@+id/menu_item_input_controls" android:title="@string/input_controls" />
+        <item android:icon="@drawable/icon_settings" android:id="@+id/menu_item_settings" android:title="@string/settings" />
+        <item android:icon="@drawable/icon_about" android:id="@+id/menu_item_about" android:title="@string/about" />
+    </group>
+</menu>

@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="200dp">
+
+    <LinearLayout
+        android:layout_width="300dp"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/adrenotools_driver" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <Spinner
+                style="@style/ComboBox"
+                android:id="@+id/SAdrenotoolsDriver"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1" />
+
+            <LinearLayout
+                style="@style/Toolbox"
+                android:id="@+id/AdrenotoolsDriverToolbox">
+
+                <ImageButton
+                    style="@style/ListMenuButton"
+                    android:src="@drawable/icon_install"
+                    android:tag="install" />
+
+                <ImageButton
+                    style="@style/ListMenuButton"
+                    android:layout_marginRight="0dp"
+                    android:src="@drawable/icon_remove"
+                    android:tag="remove" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/vulkan_version" />
+
+        <Spinner
+            style="@style/ComboBox"
+            android:layout_width="match_parent"
+            android:id="@+id/SVkMaxVersion"
+            android:entries="@array/vk_version_entries" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/max_device_memory" />
+
+        <Spinner
+            style="@style/ComboBox"
+            android:layout_width="match_parent"
+            android:id="@+id/SMaxDeviceMemory"
+            android:entries="@array/max_device_memory_entries" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/resource_memory_type" />
+
+        <Spinner
+            style="@style/ComboBox"
+            android:layout_width="match_parent"
+            android:id="@+id/SResourceMemoryType"
+            android:entries="@array/resource_memory_type_entries" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/exposed_extensions" />
+
+        <com.winlator.widget.MultiSelectionComboBox
+            style="@style/ComboBox"
+            android:layout_width="match_parent"
+            android:id="@+id/MSCBExposedExtensions" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/image_cache_size" />
+
+        <Spinner
+            style="@style/ComboBox"
+            android:layout_width="match_parent"
+            android:id="@+id/SImageCacheSize"
+            android:entries="@array/image_cache_size_entries" />
+    </LinearLayout>
+</ScrollView>

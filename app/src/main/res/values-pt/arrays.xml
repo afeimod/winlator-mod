@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="screen_size_entries">
+        <item>Personalizado</item>
+        <item>640x360 (16:9)</item>
+        <item>640x480 (4:3)</item>
+        <item>800x600 (4:3)</item>
+        <item>854x480 (16:9)</item>
+        <item>960x544 (16:9)</item>
+        <item>1024x768 (4:3)</item>
+        <item>1280x720 (16:9)</item>
+        <item>1280x800 (16:10)</item>
+        <item>1280x1024 (5:4)</item>
+        <item>1366x768 (16:9)</item>
+        <item>1440x900 (16:10)</item>
+        <item>1600x900 (16:9)</item>
+        <item>1920x1080 (16:9)</item>
+    </string-array>
+    <string-array name="binding_type_entries">
+        <item>Teclado</item>
+        <item>Mouse</item>
+        <item>Controle de Jogo</item>
+    </string-array>
+    <string-array name="max_device_memory_entries">
+        <item>0 (Sem limite)</item>
+        <item>512 MB</item>
+        <item>1024 MB</item>
+        <item>2048 MB</item>
+        <item>4096 MB</item>
+    </string-array>
+    <string-array name="dxvk_framerate_entries">
+        <item>0 (Sem limite)</item>
+        <item>30</item>
+        <item>60</item>
+        <item>120</item>
+    </string-array>
+    <string-array name="wincomponent_entries">
+        <item>Embutido (Wine)</item>
+        <item>Nativo (Windows)</item>
+    </string-array>
+    <string-array name="dinput_mapper_type_entries">
+        <item>Padrão</item>
+        <item>XInput</item>
+    </string-array>
+    <string-array name="desktop_theme_entries">
+        <item>Claro</item>
+        <item>Escuro</item>
+    </string-array>
+    <string-array name="desktop_background_type_entries">
+        <item>Imagem</item>
+        <item>Cor Sólida</item>
+    </string-array>
+    <string-array name="startup_selection_entries">
+        <item>Normal (Carregar todos os serviços)</item>
+        <item>Essencial (Carregar apenas serviços essenciais)</item>
+        <item>Agressivo (Parar serviços na inicialização)</item>
+    </string-array>
+    <string-array name="preferred_input_api_entries">
+        <item>Auto</item>
+        <item>DirectInput</item>
+        <item>XInput</item>
+        <item>Ambos</item>
+    </string-array>
+    <string-array name="audio_performance_mode_entries">
+        <item>Nenhum</item>
+        <item>Baixa Latência</item>
+        <item>Economia de Energia</item>
+    </string-array>
+    <string-array name="box64_logs">
+        <item>Desabilitar</item>
+        <item>Mínimo</item>
+        <item>Trace</item>
+    </string-array>
+    <string-array name="resource_memory_type_entries">
+        <item>Auto</item>
+        <item>Opaque FD</item>
+        <item>DMA Buffer</item>
+        <item>Native Hardware Buffer</item>
+    </string-array>
+</resources>

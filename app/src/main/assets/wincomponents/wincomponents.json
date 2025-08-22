@@ -1,0 +1,38 @@
+{
+    "direct3d" : {
+        "dlnames": ["d3dcompiler_33", "d3dcompiler_34", "d3dcompiler_35", "d3dcompiler_36", "d3dcompiler_37", "d3dcompiler_38", "d3dcompiler_39", "d3dcompiler_40", "d3dcompiler_41", "d3dcompiler_42", "d3dcompiler_43", "d3dcompiler_46", "d3dcompiler_47", "d3dcsx_42", "d3dcsx_43", "d3dx10", "d3dx10_33", "d3dx10_34", "d3dx10_35", "d3dx10_36", "d3dx10_37", "d3dx10_38", "d3dx10_39", "d3dx10_40", "d3dx10_41", "d3dx10_42", "d3dx10_43", "d3dx11_42", "d3dx11_43", "d3dx9_24", "d3dx9_25", "d3dx9_26", "d3dx9_27", "d3dx9_28", "d3dx9_29", "d3dx9_30", "d3dx9_31", "d3dx9_32", "d3dx9_33", "d3dx9_34", "d3dx9_35", "d3dx9_36", "d3dx9_37", "d3dx9_38", "d3dx9_39", "d3dx9_40", "d3dx9_41", "d3dx9_42", "d3dx9_43"],
+        "restoreBuiltinDlls": true
+    },
+    "directsound" : {
+        "dlnames": ["dsound"],
+        "restoreBuiltinDlls": true
+    },
+    "directmusic" : {
+        "dlnames": ["dmband", "dmcompos", "dmime", "dmloader", "dmscript", "dmstyle", "dmsynth", "dmusic", "dmusic32", "dswave"],
+        "restoreBuiltinDlls": true
+    },
+    "directshow" : {
+        "dlnames": ["amstream", "qasf", "qcap", "qdvd", "qedit", "quartz"],
+        "restoreBuiltinDlls": true
+    },
+    "directplay" : {
+        "dlnames": ["dplaysvr.exe", "dplayx", "dpmodemx", "dpnet", "dpnhpast", "dpnhupnp", "dpnsvr.exe", "dpwsockx"],
+        "restoreBuiltinDlls": true
+    },
+    "xaudio" : {
+        "dlnames": ["x3daudio1_0", "x3daudio1_1", "x3daudio1_2", "x3daudio1_3", "x3daudio1_4", "x3daudio1_5", "x3daudio1_6", "x3daudio1_7", "xactengine2_0", "xactengine2_1", "xactengine2_10", "xactengine2_2", "xactengine2_3", "xactengine2_4", "xactengine2_5", "xactengine2_6", "xactengine2_7", "xactengine2_8", "xactengine2_9", "xactengine3_0", "xactengine3_1", "xactengine3_2", "xactengine3_3", "xactengine3_4", "xactengine3_5", "xactengine3_6", "xactengine3_7", "xapofx1_0", "xapofx1_1", "xapofx1_2", "xapofx1_3", "xapofx1_4", "xapofx1_5", "xaudio2_0", "xaudio2_1", "xaudio2_2", "xaudio2_3", "xaudio2_4", "xaudio2_5", "xaudio2_6", "xaudio2_7"],
+        "restoreBuiltinDlls": true
+    },
+    "vcrun2005" : {
+        "dlnames": ["atl80", "msvcm80", "msvcp80", "msvcr80", "vcomp"],
+        "restoreBuiltinDlls": false
+    },
+    "vcrun2010" : {
+        "dlnames": ["msvcp100", "msvcr100", "vcomp100", "atl100"],
+        "restoreBuiltinDlls": true
+    },
+    "wmdecoder" : {
+        "dlnames": ["wmvcore", "wmasf", "wmadmod", "wmvdecod"],
+        "restoreBuiltinDlls": true
+    }
+}

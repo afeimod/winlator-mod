@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="200dp">
+
+    <LinearLayout
+        android:layout_width="300dp"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/version" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <Spinner
+                style="@style/ComboBox"
+                android:id="@+id/SVersion"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1" />
+
+            <LinearLayout
+                style="@style/Toolbox"
+                android:id="@+id/WineD3DToolbox">
+
+                <ImageButton
+                    style="@style/ListMenuButton"
+                    android:src="@drawable/icon_install"
+                    android:tag="install" />
+
+                <ImageButton
+                    style="@style/ListMenuButton"
+                    android:layout_marginRight="0dp"
+                    android:src="@drawable/icon_remove"
+                    android:tag="remove" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/gpu_name" />
+
+        <Spinner
+            style="@style/ComboBox"
+            android:id="@+id/SGPUName"
+            android:layout_width="match_parent" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/offscreen_rendering_mode" />
+
+        <Spinner
+            style="@style/ComboBox"
+            android:id="@+id/SOffscreenRenderingMode"
+            android:layout_width="match_parent" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/video_memory_size" />
+
+        <Spinner
+            style="@style/ComboBox"
+            android:id="@+id/SVideoMemorySize"
+            android:layout_width="match_parent"
+            android:entries="@array/video_memory_size_entries" />
+
+        <CheckBox
+            android:id="@+id/CBCSMT"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/enable_csmt"
+            android:layout_marginTop="8dp" />
+
+        <CheckBox
+            android:id="@+id/CBStrictShaderMath"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/enable_strict_shader_math" />
+    </LinearLayout>
+</ScrollView>

@@ -1,0 +1,13 @@
+prefix="@CMAKE_INSTALL_PREFIX@"
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: adrenotools
+Description:
+URL:
+Version: 1.0.0
+Libs: -L${libdir} -ladrenotools
+Libs.private:          
+Requires.private:
+Cflags: -I${includedir}

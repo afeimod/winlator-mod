@@ -1,0 +1,424 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <LinearLayout style="@style/FieldSet">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/cursor_speed"/>
+
+                    <com.winlator.widget.SeekBar
+                        android:id="@+id/SBCursorSpeed"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        app:suffix="%"
+                        app:minValue="10"
+                        app:maxValue="200" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginTop="8dp">
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/cursor_size"/>
+
+                            <com.winlator.widget.SeekBar
+                                android:id="@+id/SBCursorSize"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                app:suffix="%"
+                                app:step="5"
+                                app:minValue="100"
+                                app:maxValue="200" />
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:layout_marginLeft="8dp">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/color" />
+
+                            <com.winlator.widget.ColorPickerView
+                                android:id="@+id/CPVCursorColor"
+                                android:layout_width="84dp"
+                                android:layout_height="wrap_content" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <View style="@style/FieldSeparator" />
+
+                    <CheckBox
+                        android:id="@+id/CBMoveCursorToTouchpoint"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/move_cursor_to_touchpoint" />
+
+                    <CheckBox
+                        android:id="@+id/CBCapturePointerOnExternalMouse"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/capture_pointer_on_external_mouse"
+                        android:layout_marginTop="8dp" />
+                </LinearLayout>
+
+                <TextView
+                    style="@style/FieldSetLabel"
+                    android:text="@string/mouse" />
+            </FrameLayout>
+
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <LinearLayout style="@style/FieldSet">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/preferred_input_api" />
+
+                    <Spinner
+                        style="@style/ComboBox"
+                        android:id="@+id/SPreferredInputApi"
+                        android:layout_width="match_parent"
+                        android:entries="@array/preferred_input_api_entries" />
+                </LinearLayout>
+
+                <TextView
+                    style="@style/FieldSetLabel"
+                    android:text="@string/game_controllers" />
+            </FrameLayout>
+
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <LinearLayout style="@style/FieldSet">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/midi_input_device" />
+
+                    <Spinner
+                        style="@style/ComboBox"
+                        android:id="@+id/SMIDIInputDevice"
+                        android:layout_width="match_parent" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/midi_soundfont" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <Spinner
+                            style="@style/ComboBox"
+                            android:id="@+id/SSoundFont"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1" />
+
+                        <LinearLayout
+                            style="@style/Toolbox"
+                            android:id="@+id/SoundFontToolbox">
+
+                            <ImageButton
+                                android:id="@+id/BTSoundFontTest"
+                                style="@style/ListMenuButton"
+                                android:src="@drawable/icon_piano" />
+
+                            <ImageButton
+                                style="@style/ListMenuButton"
+                                android:src="@drawable/icon_install"
+                                android:tag="install" />
+
+                            <ImageButton
+                                style="@style/ListMenuButton"
+                                android:layout_marginRight="0dp"
+                                android:src="@drawable/icon_remove"
+                                android:tag="remove" />
+                        </LinearLayout>
+                    </LinearLayout>
+                </LinearLayout>
+
+                <TextView
+                    style="@style/FieldSetLabel"
+                    android:text="@string/sound" />
+            </FrameLayout>
+
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <LinearLayout style="@style/FieldSet">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/language" />
+
+                    <Spinner
+                        style="@style/ComboBox"
+                        android:id="@+id/SLanguage"
+                        android:layout_width="match_parent"
+                        android:entries="@array/language_entries" />
+
+                    <CheckBox
+                        android:id="@+id/CBOpenAndroidBrowserFromWine"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/open_android_browser_from_wine"
+                        android:layout_marginTop="8dp" />
+
+                    <CheckBox
+                        android:id="@+id/CBUseAndroidClipboardOnWine"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/use_android_clipboard_on_Wine"
+                        android:layout_marginTop="8dp" />
+                </LinearLayout>
+
+                <TextView
+                    style="@style/FieldSetLabel"
+                    android:text="@string/system" />
+            </FrameLayout>
+
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <LinearLayout style="@style/FieldSet">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/box64_version" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <Spinner
+                            style="@style/ComboBox"
+                            android:id="@+id/SBox64Version"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1" />
+
+                        <LinearLayout
+                            style="@style/Toolbox"
+                            android:id="@+id/Box64Toolbox">
+
+                            <ImageButton
+                                style="@style/ListMenuButton"
+                                android:src="@drawable/icon_install"
+                                android:tag="install" />
+
+                            <ImageButton
+                                style="@style/ListMenuButton"
+                                android:layout_marginRight="0dp"
+                                android:src="@drawable/icon_remove"
+                                android:tag="remove" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/box64_preset" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <Spinner
+                            style="@style/ComboBox"
+                            android:id="@+id/SBox64Preset"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1" />
+
+                        <LinearLayout style="@style/Toolbox">
+                            <ImageButton
+                                style="@style/ListMenuButton"
+                                android:id="@+id/BTAddBox64Preset"
+                                android:src="@drawable/icon_add" />
+
+                            <ImageButton
+                                style="@style/ListMenuButton"
+                                android:id="@+id/BTEditBox64Preset"
+                                android:src="@drawable/icon_edit" />
+
+                            <ImageButton
+                                style="@style/ListMenuButton"
+                                android:id="@+id/BTDuplicateBox64Preset"
+                                android:src="@drawable/icon_duplicate" />
+
+                            <ImageButton
+                                style="@style/ListMenuButton"
+                                android:id="@+id/BTRemoveBox64Preset"
+                                android:layout_marginRight="0dp"
+                                android:src="@drawable/icon_remove" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <View style="@style/FieldSeparator" />
+
+                    <CheckBox
+                        android:id="@+id/CBEnableWineDebug"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/enable_wine_debug" />
+
+                    <HorizontalScrollView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content">
+
+                        <LinearLayout
+                            android:id="@+id/LLWineDebugChannels"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:padding="4dp" />
+                    </HorizontalScrollView>
+
+                    <View style="@style/FieldSeparator" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/box64_logs" />
+
+                    <Spinner
+                        style="@style/ComboBox"
+                        android:id="@+id/SBox64Logs"
+                        android:layout_width="match_parent"
+                        android:entries="@array/box64_logs" />
+
+                    <CheckBox
+                        android:id="@+id/CBSaveLogsToFile"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:text="@string/save_logs_to_file"
+                        android:layout_marginTop="8dp" />
+
+                    <EditText
+                        android:id="@+id/ETLogFile"
+                        style="@style/EditText"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:visibility="gone" />
+
+                    <LinearLayout
+                        android:id="@+id/LLWineInstallation"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:visibility="gone">
+
+                        <View style="@style/FieldSeparator" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/wine_version" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical">
+
+                            <Spinner
+                                style="@style/ComboBox"
+                                android:id="@+id/SWineVersion"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1" />
+
+                            <LinearLayout style="@style/Toolbox">
+                                <ImageButton
+                                    style="@style/ListMenuButton"
+                                    android:id="@+id/BTInstallWine"
+                                    android:src="@drawable/icon_install" />
+
+                                <ImageButton
+                                    style="@style/ListMenuButton"
+                                    android:id="@+id/BTRemoveWine"
+                                    android:layout_marginRight="0dp"
+                                    android:src="@drawable/icon_remove" />
+                            </LinearLayout>
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <View style="@style/FieldSeparator" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_horizontal">
+
+                        <Button
+                            style="@style/ButtonNeutral"
+                            android:id="@+id/BTReinstallSystemFiles"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="center_horizontal"
+                            android:text="@string/reinstall_system_files" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <TextView
+                    style="@style/FieldSetLabel"
+                    android:text="@string/advanced" />
+            </FrameLayout>
+        </LinearLayout>
+    </ScrollView>
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/BTConfirm"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="right|bottom"
+        android:tint="#ffffff"
+        android:src="@drawable/icon_confirm"
+        android:layout_margin="16dp" />
+</FrameLayout>
