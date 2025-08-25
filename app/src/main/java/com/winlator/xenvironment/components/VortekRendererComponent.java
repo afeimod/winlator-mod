@@ -22,12 +22,10 @@ import com.winlator.xserver.Window;
 import com.winlator.xserver.XServer;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 
 public class VortekRendererComponent extends EnvironmentComponent implements ConnectionHandler, RequestHandler {
     private static final byte REQUEST_CODE_CREATE_CONTEXT = 1;
     private static final byte REQUEST_CODE_SEND_EXTRA_DATA = 2;
-    public static final short MAX_DEVICE_MEMORY = 4096;
     public static final short IMAGE_CACHE_SIZE = 256;
     public static final int VK_MAX_VERSION = GPUHelper.vkMakeVersion(1, 3, 128);
     private final XServer xServer;
@@ -41,7 +39,7 @@ public class VortekRendererComponent extends EnvironmentComponent implements Con
 
     public static class Options {
         public int vkMaxVersion = VK_MAX_VERSION;
-        public short maxDeviceMemory = MAX_DEVICE_MEMORY;
+        public short maxDeviceMemory = 0;
         public short imageCacheSize = IMAGE_CACHE_SIZE;
         public byte resourceMemoryType = 0;
         public String[] exposedDeviceExtensions = null;
@@ -62,7 +60,7 @@ public class VortekRendererComponent extends EnvironmentComponent implements Con
                 options.vkMaxVersion = GPUHelper.vkMakeVersion(Integer.parseInt(parts[0]), Integer.parseInt(parts[1]), 128);
             }
 
-            options.maxDeviceMemory = (short)config.getInt("maxDeviceMemory", VortekRendererComponent.MAX_DEVICE_MEMORY);
+            options.maxDeviceMemory = (short)config.getInt("maxDeviceMemory");
             options.imageCacheSize = (short)config.getInt("imageCacheSize", VortekRendererComponent.IMAGE_CACHE_SIZE);
             options.resourceMemoryType = (byte)config.getInt("resourceMemoryType");
 
