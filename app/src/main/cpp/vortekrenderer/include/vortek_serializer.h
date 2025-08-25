@@ -6323,6 +6323,37 @@ static inline void vt_unserialize_VkPhysicalDeviceMemoryProperties(VkPhysicalDev
     bufferOffset += val->memoryHeapCount * vt_sizeof_VkMemoryHeap(&val->memoryHeaps[0]);
 }
 
+static inline int vt_sizeof_VkPhysicalDeviceMemoryBudgetPropertiesEXT(VkPhysicalDeviceMemoryBudgetPropertiesEXT* val) {
+    int bufferSize = 0;
+    bufferSize += 4; // sType
+    bufferSize += VK_MAX_MEMORY_HEAPS;
+    bufferSize += VK_MAX_MEMORY_HEAPS;
+    return bufferSize;
+}
+
+static inline void vt_serialize_VkPhysicalDeviceMemoryBudgetPropertiesEXT(VkPhysicalDeviceMemoryBudgetPropertiesEXT* val, char* outputBuffer) {
+    int bufferOffset = 0;
+    *(VkStructureType*)(outputBuffer + bufferOffset) = val->sType;
+    bufferOffset += 4;
+    memcpy(outputBuffer + bufferOffset, val->heapBudget, VK_MAX_MEMORY_HEAPS);
+    bufferOffset += VK_MAX_MEMORY_HEAPS;
+    memcpy(outputBuffer + bufferOffset, val->heapUsage, VK_MAX_MEMORY_HEAPS);
+    bufferOffset += VK_MAX_MEMORY_HEAPS;
+}
+
+static inline void vt_unserialize_VkPhysicalDeviceMemoryBudgetPropertiesEXT(VkPhysicalDeviceMemoryBudgetPropertiesEXT* val, char* inputBuffer, MemoryPool* memoryPool) {
+    int bufferOffset = 0;
+    val->sType = *(VkStructureType*)(inputBuffer + bufferOffset);
+    bufferOffset += 4;
+#ifdef VT_SERVER
+    val->pNext = NULL;
+#endif
+    memcpy(val->heapBudget, inputBuffer + bufferOffset, VK_MAX_MEMORY_HEAPS);
+    bufferOffset += VK_MAX_MEMORY_HEAPS;
+    memcpy(val->heapUsage, inputBuffer + bufferOffset, VK_MAX_MEMORY_HEAPS);
+    bufferOffset += VK_MAX_MEMORY_HEAPS;
+}
+
 static inline int vt_sizeof_VkQueueFamilyProperties(VkQueueFamilyProperties* val) {
     int bufferSize = 0;
     bufferSize += 4; // queueFlags
@@ -15823,6 +15854,29 @@ static inline void vt_unserialize_VkQueueFamilyProperties2(VkQueueFamilyProperti
 static inline int vt_sizeof_VkPhysicalDeviceMemoryProperties2(VkPhysicalDeviceMemoryProperties2* val) {
     int bufferSize = 0;
     bufferSize += 4; // sType
+    void* pNext = val->pNext;
+    while (pNext) {
+        bufferSize += 4;
+        VkBaseOutStructure* sBase = pNext;
+        void* oldPNext = sBase->pNext;
+        sBase->pNext = NULL;
+
+        switch (sBase->sType) {
+            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_BUDGET_PROPERTIES_EXT: {
+                bufferSize += 4;
+                bufferSize += vt_sizeof_VkPhysicalDeviceMemoryBudgetPropertiesEXT((VkPhysicalDeviceMemoryBudgetPropertiesEXT*)pNext);
+                break;
+            }
+            default: {
+                bufferSize += 4;
+                break;
+            }
+        }
+
+        sBase->pNext = oldPNext;
+        pNext = sBase->pNext;
+    }
+    bufferSize += 4;
     bufferSize += vt_sizeof_VkPhysicalDeviceMemoryProperties(&val->memoryProperties);
     return bufferSize;
 }
@@ -15830,6 +15884,38 @@ static inline int vt_sizeof_VkPhysicalDeviceMemoryProperties2(VkPhysicalDeviceMe
 static inline void vt_serialize_VkPhysicalDeviceMemoryProperties2(VkPhysicalDeviceMemoryProperties2* val, char* outputBuffer) {
     int bufferOffset = 0;
     *(VkStructureType*)(outputBuffer + bufferOffset) = val->sType;
+    bufferOffset += 4;
+    if (val->pNext) {
+        void* pNext = val->pNext;
+        while (pNext) {
+            VkBaseOutStructure* sBase = pNext;
+            *(int*)(outputBuffer + bufferOffset) = sBase->sType;
+            bufferOffset += 4;
+            void* oldPNext = sBase->pNext;
+            sBase->pNext = NULL;
+
+            switch (sBase->sType) {
+                case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_BUDGET_PROPERTIES_EXT: {
+                    int itemSize = vt_sizeof_VkPhysicalDeviceMemoryBudgetPropertiesEXT((VkPhysicalDeviceMemoryBudgetPropertiesEXT*)pNext);
+                    *(int*)(outputBuffer + bufferOffset) = itemSize;
+                    bufferOffset += 4;
+                    vt_serialize_VkPhysicalDeviceMemoryBudgetPropertiesEXT((VkPhysicalDeviceMemoryBudgetPropertiesEXT*)pNext, outputBuffer + bufferOffset);
+                    bufferOffset += itemSize;
+                    break;
+                }
+                default: {
+                    *(int*)(outputBuffer + bufferOffset) = 0;
+                    bufferOffset += 4;
+                    break;
+                }
+            }
+
+            sBase->pNext = oldPNext;
+            pNext = sBase->pNext;
+        }
+    }
+
+    *(int*)(outputBuffer + bufferOffset) = -1;
     bufferOffset += 4;
     vt_serialize_VkPhysicalDeviceMemoryProperties(&val->memoryProperties, outputBuffer + bufferOffset);
     bufferOffset += vt_sizeof_VkPhysicalDeviceMemoryProperties(&val->memoryProperties);
@@ -15839,9 +15925,44 @@ static inline void vt_unserialize_VkPhysicalDeviceMemoryProperties2(VkPhysicalDe
     int bufferOffset = 0;
     val->sType = *(VkStructureType*)(inputBuffer + bufferOffset);
     bufferOffset += 4;
+
+    int pNextType = *(int*)(inputBuffer + bufferOffset);
+    bufferOffset += 4;
 #ifdef VT_SERVER
-    val->pNext = NULL;
+    bool pNextIsNULL = true;
+#else
+    bool pNextIsNULL = val->pNext == NULL;
 #endif
+    void* pNext = NULL;
+
+    while (pNextType != -1) {
+        switch (pNextType) {
+            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_BUDGET_PROPERTIES_EXT: {
+                int itemSize = *(int*)(inputBuffer + bufferOffset);
+                bufferOffset += 4;
+                if (itemSize > 0) {
+                    VkPhysicalDeviceMemoryBudgetPropertiesEXT* item = !pNextIsNULL ? findNextVkStructure(val->pNext, VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_BUDGET_PROPERTIES_EXT) : NULL;
+                    if (!item) item = vt_alloc(memoryPool, sizeof(VkPhysicalDeviceMemoryBudgetPropertiesEXT));
+                    vt_unserialize_VkPhysicalDeviceMemoryBudgetPropertiesEXT(item, inputBuffer + bufferOffset, memoryPool);
+                    bufferOffset += itemSize;
+
+                    if (pNextIsNULL) {
+                        item->pNext = pNext;
+                        pNext = item;
+                    }
+                }
+                break;
+            }
+            default: {
+                bufferOffset += 4;
+                break;
+            }
+        }
+        pNextType = *(int*)(inputBuffer + bufferOffset);
+        bufferOffset += 4;
+    }
+
+    if (pNextIsNULL) val->pNext = invertVkStructuresChain(pNext);
     vt_unserialize_VkPhysicalDeviceMemoryProperties(&val->memoryProperties, inputBuffer + bufferOffset, memoryPool);
     bufferOffset += vt_sizeof_VkPhysicalDeviceMemoryProperties(&val->memoryProperties);
 }
