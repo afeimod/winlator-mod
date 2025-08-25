@@ -324,6 +324,8 @@ VkExtensionProperties* getExposedDeviceExtensionProperties(VkContext* context, V
         }
     }
 
+    injectExtensions2(context, &dstProperties, propertyCount,
+                      globalImplementedDeviceExtensions, ARRAY_SIZE(globalImplementedDeviceExtensions), NULL, 0);
     return dstProperties;
 }
 
