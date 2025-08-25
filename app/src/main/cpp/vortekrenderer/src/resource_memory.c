@@ -28,14 +28,12 @@ static AHardwareBuffer* allocateHardwareBuffer(int size) {
 }
 
 ResourceMemory* ResourceMemory_allocate(VkContext* context, VkDevice device, VkMemoryAllocateInfo* memoryInfo) {
+    uint64_t maxAllocationSize = (VkDeviceSize)context->maxDeviceMemory << 20;
+    if (maxAllocationSize == 0) maxAllocationSize = getAvailableSystemMemory();
+    if (maxAllocationSize > 0 && (context->totalAllocationSize + memoryInfo->allocationSize) >= maxAllocationSize) return NULL;
+
     VkResult result;
     ResourceMemory* resourceMemory = internalAllocate();
-
-    VkDeviceSize maxHeapSize = (VkDeviceSize)context->maxDeviceMemory << 20;
-    if ((context->totalAllocationSize + memoryInfo->allocationSize) > maxHeapSize) {
-        return resourceMemory;
-    }
-
     if (isHostVisibleMemory(memoryInfo->memoryTypeIndex)) {
         bool hasExternalMemoryFd = context->hasExternalMemoryFd;
         bool hasExternalMemoryDMABuf = context->hasExternalMemoryDMABuf;
@@ -165,7 +163,7 @@ ResourceMemory* ResourceMemory_allocate(VkContext* context, VkDevice device, VkM
 
 error:
     ResourceMemory_free(context, device, resourceMemory);
-    return internalAllocate();
+    return NULL;
 }
 
 void ResourceMemory_free(VkContext* context, VkDevice device, ResourceMemory* resourceMemory) {
