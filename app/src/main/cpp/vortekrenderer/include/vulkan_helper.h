@@ -21,7 +21,7 @@ extern uint32_t getMemoryPropertyFlags(uint32_t memoryTypeIndex);
 extern bool isHostVisibleMemory(uint32_t memoryTypeIndex);
 extern void injectExtensions(VkContext* context, char*** extensions, uint32_t* extensionCount, const char* const* extraExtensions, uint32_t extraExtensionCount, const char* const* skipExtensions, uint32_t skipExtensionCount);
 extern void injectExtensions2(VkContext* context, VkExtensionProperties** extensions, uint32_t* extensionCount, const char* const* extraExtensions, uint32_t extraExtensionCount, const char* const* skipExtensions, uint32_t skipExtensionCount);
-extern void overrideMemoryHeapSize(VkContext* context, VkPhysicalDeviceMemoryProperties* memoryProperties);
+extern void checkDeviceMemoryProperties(VkContext* context, VkPhysicalDeviceMemoryProperties* memoryProperties, void* pNext);
 extern void disableUnsupportedDeviceFeatures(VkPhysicalDevice physicalDevice, VkDeviceCreateInfo* createInfo);
 extern VkExtensionProperties* getExposedDeviceExtensionProperties(VkContext* context, VkPhysicalDevice physicalDevice, uint32_t* propertyCount);
 extern void checkFormatProperties(VkPhysicalDevice physicalDevice, VkFormat format, VkFormatProperties* formatProperties);

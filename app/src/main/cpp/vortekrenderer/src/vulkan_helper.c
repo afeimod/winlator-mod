@@ -1,6 +1,7 @@
 #include <string.h>
 
 #include "vulkan_helper.h"
+#include "dma_utils.h"
 
 #define VK_MAKE_VERSION_STR(s, v) sprintf(s, "%d.%d.%d", VK_VERSION_MAJOR(v), VK_VERSION_MINOR(v), VK_VERSION_PATCH(v))
 
@@ -241,10 +242,18 @@ void injectExtensions2(VkContext* context, VkExtensionProperties** extensions, u
     *extensionCount = newExtensionCount;
 }
 
-void overrideMemoryHeapSize(VkContext* context, VkPhysicalDeviceMemoryProperties* memoryProperties) {
+void checkDeviceMemoryProperties(VkContext* context, VkPhysicalDeviceMemoryProperties* memoryProperties, void* pNext) {
     VkDeviceSize maxHeapSize = (VkDeviceSize)context->maxDeviceMemory << 20;
-    for (int i = 0; i < memoryProperties->memoryHeapCount; i++) {
-        memoryProperties->memoryHeaps[i].size = MIN(memoryProperties->memoryHeaps[i].size, maxHeapSize);
+    if (maxHeapSize > 0) {
+        for (int i = 0; i < memoryProperties->memoryHeapCount; i++) {
+            memoryProperties->memoryHeaps[i].size = MIN(memoryProperties->memoryHeaps[i].size, maxHeapSize);
+        }
+    }
+
+    VkPhysicalDeviceMemoryBudgetPropertiesEXT* memoryBudgetProperties = findNextVkStructure(pNext, VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_BUDGET_PROPERTIES_EXT);
+    if (memoryBudgetProperties) {
+        memoryBudgetProperties->heapUsage[0] = context->totalAllocationSize;
+        memoryBudgetProperties->heapBudget[0] = maxHeapSize > 0 ? maxHeapSize : getTotalSystemMemory();
     }
 }
 

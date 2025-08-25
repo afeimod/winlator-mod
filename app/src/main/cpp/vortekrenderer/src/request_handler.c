@@ -98,7 +98,7 @@ void vt_handle_vkGetPhysicalDeviceMemoryProperties(VkContext* context) {
 
     VkPhysicalDeviceMemoryProperties memoryProperties = {0};
     vulkanWrapper.vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memoryProperties);
-    overrideMemoryHeapSize(context, &memoryProperties);
+    checkDeviceMemoryProperties(context, &memoryProperties, NULL);
 
     VT_SERIALIZE_CMD(VkPhysicalDeviceMemoryProperties, &memoryProperties);
     vt_send(context->clientRing, VK_SUCCESS, outputBuffer, bufferSize);
@@ -2181,7 +2181,7 @@ void vt_handle_vkGetPhysicalDeviceMemoryProperties2(VkContext* context) {
     VkPhysicalDevice physicalDevice = VkObject_fromId(physicalDeviceId);
 
     vulkanWrapper.vkGetPhysicalDeviceMemoryProperties2(physicalDevice, &memoryProperties);
-    overrideMemoryHeapSize(context, &memoryProperties.memoryProperties);
+    checkDeviceMemoryProperties(context, &memoryProperties.memoryProperties, memoryProperties.pNext);
 
     VT_SERIALIZE_CMD(VkPhysicalDeviceMemoryProperties2, &memoryProperties);
     vt_send(context->clientRing, VK_SUCCESS, outputBuffer, bufferSize);
