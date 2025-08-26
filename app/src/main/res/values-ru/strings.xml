@@ -74,7 +74,7 @@
     <string name="video_memory_size">Объем видеопамяти</string>
     <string name="show_fps">Показывать FPS</string>
     <string name="none">Ничего</string>
-    <string name="custom_text">Произвольный текст</string>
+    <string name="custom_text">Пользовательский текст</string>
     <string name="icon">Иконка</string>
     <string name="import_profile">Импорт профиля</string>
     <string name="export_profile">Экспорт профиля</string>
@@ -261,4 +261,20 @@
     <string name="image_cache_size">Размер кэша изображения</string>
     <string name="pip_mode">Режим PiP</string>
     <string name="resource_memory_type">Тип памяти ресурса</string>
+    <string name="zero_no_limit">0 (Нет ограничений)</string>
+    <string name="custom">Пользовательский</string>
+    <string name="minimal">Минимальный</string>
+    <string name="trace">Трассировку</string>
+    <string name="builtin_wine">Встроенная (Wine)</string>
+    <string name="native_windows">Сторонняя (Windows)</string>
+    <string name="light">Свет</string>
+    <string name="dark">Темный</string>
+    <string name="image">Изображение</string>
+    <string name="solid_color">Сплошной цвет</string>
+    <string name="startup_selection_normal">Нормальный (Загрузить все службы)</string>
+    <string name="startup_selection_essential">Основной (Загрузить только основные службы)</string>
+    <string name="startup_selection_aggressive">Агрессивный (Остановить службы при запуске)</string>
+    <string name="both">Оба</string>
+    <string name="low_latency">Низкая задержка</string>
+    <string name="power_saving">Энергосбережение</string>
 </resources>

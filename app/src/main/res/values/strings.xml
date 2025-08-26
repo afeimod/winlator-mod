@@ -318,4 +318,20 @@
     <string name="pip_mode">PiP Mode</string>
     <string name="adrenotools_driver" translatable="false">Adrenotools Driver</string>
     <string name="resource_memory_type">Resource Memory Type</string>
+    <string name="zero_no_limit">0 (No limit)</string>
+    <string name="custom">Personalizado</string>
+    <string name="minimal">Minimal</string>
+    <string name="trace">Trace</string>
+    <string name="builtin_wine">Builtin (Wine)</string>
+    <string name="native_windows">Native (Windows)</string>
+    <string name="light">Light</string>
+    <string name="dark">Dark</string>
+    <string name="image">Image</string>
+    <string name="solid_color">Solid Color</string>
+    <string name="startup_selection_normal">Normal (Load all services)</string>
+    <string name="startup_selection_essential">Essential (Load only essential services)</string>
+    <string name="startup_selection_aggressive">Aggressive (Stop services on startup)</string>
+    <string name="both">Both</string>
+    <string name="low_latency">Low Latency</string>
+    <string name="power_saving">Power Saving</string>
 </resources>
