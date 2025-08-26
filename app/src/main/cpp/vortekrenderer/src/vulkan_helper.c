@@ -5,8 +5,7 @@
 
 #define VK_MAKE_VERSION_STR(s, v) sprintf(s, "%d.%d.%d", VK_VERSION_MAJOR(v), VK_VERSION_MINOR(v), VK_VERSION_PATCH(v))
 
-static VkMemoryType* memoryTypes = {0};
-static int memoryTypeCount = 0;
+DeviceMemoryInfo deviceMemoryInfo = {0};
 
 #if ENABLE_VALIDATION_LAYER
 static VkBool32 debugReportCallback(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT type, uint64_t object, size_t location, int32_t messageCode, const char *pLayerPrefix, const char *pMessage, void *pUserData) {
@@ -58,13 +57,17 @@ void initVulkanInstance(VkContext* context, VkInstance instance, const VkApplica
     result = vulkanWrapper.vkEnumeratePhysicalDevices(instance, &physicalDeviceCount, physicalDevices);
     if (result != VK_SUCCESS || physicalDeviceCount == 0) return;
 
-    if (memoryTypeCount == 0) {
+    if (deviceMemoryInfo.memoryTypeCount == 0) {
         VkPhysicalDeviceMemoryProperties memoryProperties;
         vulkanWrapper.vkGetPhysicalDeviceMemoryProperties(physicalDevices[0], &memoryProperties);
 
-        memoryTypes = malloc(memoryProperties.memoryTypeCount * sizeof(VkMemoryType));
-        memcpy(memoryTypes, memoryProperties.memoryTypes, memoryProperties.memoryTypeCount * sizeof(VkMemoryType));
-        memoryTypeCount = memoryProperties.memoryTypeCount;
+        deviceMemoryInfo.memoryTypes = malloc(memoryProperties.memoryTypeCount * sizeof(VkMemoryType));
+        memcpy(deviceMemoryInfo.memoryTypes, memoryProperties.memoryTypes, memoryProperties.memoryTypeCount * sizeof(VkMemoryType));
+        deviceMemoryInfo.memoryTypeCount = memoryProperties.memoryTypeCount;
+
+        VkDeviceSize maxHeapSize = 0;
+        for (int i = 0; i < memoryProperties.memoryHeapCount; i++) maxHeapSize = MAX(maxHeapSize, memoryProperties.memoryHeaps[i].size);
+        deviceMemoryInfo.maxAllocationSize = maxHeapSize * 2 / 3;
     }
 
     context->hasExternalMemoryFd = isExternalMemoryHandleTypeSupported(physicalDevices[0], VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT);
@@ -108,21 +111,21 @@ void initVulkanDevice(VkContext* context, VkPhysicalDevice physicalDevice, VkDev
 }
 
 uint32_t getMemoryTypeIndex(uint32_t typeBits, VkFlags properties) {
-    for (uint32_t i = 0; i < memoryTypeCount; i++) {
-        if ((typeBits & 1) && (memoryTypes[i].propertyFlags & properties)) return i;
+    for (uint32_t i = 0; i < deviceMemoryInfo.memoryTypeCount; i++) {
+        if ((typeBits & 1) && (deviceMemoryInfo.memoryTypes[i].propertyFlags & properties)) return i;
         typeBits >>= 1;
     }
     return 0;
 }
 
 uint32_t getMemoryPropertyFlags(uint32_t memoryTypeIndex) {
-    if (memoryTypeCount == 0 || memoryTypeIndex >= memoryTypeCount) return 0;
-    return memoryTypes[memoryTypeIndex].propertyFlags;
+    if (deviceMemoryInfo.memoryTypeCount == 0 || memoryTypeIndex >= deviceMemoryInfo.memoryTypeCount) return 0;
+    return deviceMemoryInfo.memoryTypes[memoryTypeIndex].propertyFlags;
 }
 
 bool isHostVisibleMemory(uint32_t memoryTypeIndex) {
-    if (memoryTypeCount == 0 || memoryTypeIndex >= memoryTypeCount) return false;
-    VkMemoryType* memoryType = &memoryTypes[memoryTypeIndex];
+    if (deviceMemoryInfo.memoryTypeCount == 0 || memoryTypeIndex >= deviceMemoryInfo.memoryTypeCount) return false;
+    VkMemoryType* memoryType = &deviceMemoryInfo.memoryTypes[memoryTypeIndex];
     return memoryType->propertyFlags & (VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_CACHED_BIT);
 }
 
@@ -244,16 +247,16 @@ void injectExtensions2(VkContext* context, VkExtensionProperties** extensions, u
 
 void checkDeviceMemoryProperties(VkContext* context, VkPhysicalDeviceMemoryProperties* memoryProperties, void* pNext) {
     VkDeviceSize maxHeapSize = (VkDeviceSize)context->maxDeviceMemory << 20;
-    if (maxHeapSize > 0) {
-        for (int i = 0; i < memoryProperties->memoryHeapCount; i++) {
-            memoryProperties->memoryHeaps[i].size = MIN(memoryProperties->memoryHeaps[i].size, maxHeapSize);
-        }
+    if (maxHeapSize == 0) maxHeapSize = deviceMemoryInfo.maxAllocationSize;
+
+    for (int i = 0; i < memoryProperties->memoryHeapCount; i++) {
+        memoryProperties->memoryHeaps[i].size = MIN(memoryProperties->memoryHeaps[i].size, maxHeapSize);
     }
 
     VkPhysicalDeviceMemoryBudgetPropertiesEXT* memoryBudgetProperties = findNextVkStructure(pNext, VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_BUDGET_PROPERTIES_EXT);
     if (memoryBudgetProperties) {
         memoryBudgetProperties->heapUsage[0] = context->totalAllocationSize;
-        memoryBudgetProperties->heapBudget[0] = maxHeapSize > 0 ? maxHeapSize : getTotalSystemMemory();
+        memoryBudgetProperties->heapBudget[0] = maxHeapSize > 0 ? maxHeapSize : deviceMemoryInfo.maxAllocationSize;
     }
 }
 
