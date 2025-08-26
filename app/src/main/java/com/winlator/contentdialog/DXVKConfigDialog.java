@@ -31,7 +31,7 @@ public class DXVKConfigDialog extends ContentDialog {
 
         KeyValueSet config = new KeyValueSet(anchor.getTag());
         AppUtils.setSpinnerSelectionFromIdentifier(sFramerate, config.get("framerate", "0"));
-        AppUtils.setSpinnerSelectionFromNumber(sMaxDeviceMemory, config.get("maxDeviceMemory", "0"));
+        AppUtils.setSpinnerSelectionFromMemorySize(sMaxDeviceMemory, config.get("maxDeviceMemory", "0"));
 
         String version = config.get("version");
         String defaultVersion = DefaultVersion.DXVK(graphicsDriver);
@@ -53,7 +53,7 @@ public class DXVKConfigDialog extends ContentDialog {
             KeyValueSet newConfig = new KeyValueSet();
             newConfig.put("version", StringUtils.parseNumber(sVersion.getSelectedItem()));
             newConfig.put("framerate", StringUtils.parseNumber(sFramerate.getSelectedItem()));
-            newConfig.put("maxDeviceMemory", StringUtils.parseNumber(sMaxDeviceMemory.getSelectedItem()));
+            newConfig.put("maxDeviceMemory", StringUtils.parseMemorySize(sMaxDeviceMemory.getSelectedItem()));
 
             GPUCardAdapter.GPUCard gpuCard = (GPUCardAdapter.GPUCard)sCustomDevice.getSelectedItem();
             if (gpuCard.deviceId > 0) {

@@ -45,6 +45,44 @@ public class StringUtils {
         return parseNumber(text, "");
     }
 
+    public static String parseMemorySize(Object text) {
+        return parseMemorySize(text, "MB");
+    }
+
+    public static String parseMemorySize(Object text, String targetUnit) {
+        final String[] units = new String[]{"bytes", "KB", "MB", "GB", "TB"};
+        String value = text.toString();
+        int targetIndex = -1;
+        for (int i = 0; i < units.length; i++) {
+            if (units[i].equalsIgnoreCase(targetUnit)) {
+                targetIndex = i;
+                break;
+            }
+        }
+
+        if (targetIndex != -1) {
+            try {
+                for (int i = 0; i < units.length; i++) {
+                    if (value.endsWith(" "+units[i])) {
+                        long number = Long.parseLong(value.replace(" "+units[i], ""));
+                        int diff = targetIndex - i;
+                        if (diff < 0) {
+                            return String.valueOf((long)(number * Math.pow(1024, Math.abs(diff))));
+                        }
+                        else if (diff > 0) {
+                            return String.valueOf(number / Math.pow(1024, diff));
+                        }
+                        else return String.valueOf(number);
+                    }
+                }
+            }
+            catch (NumberFormatException e) {
+                return "0";
+            }
+        }
+        return value.matches("[0-9\\.]+") ? value : "0";
+    }
+
     public static String parseNumber(Object text, String fallback) {
         String result = text != null ? text.toString().replaceAll("[^0-9\\.]+", "") : "";
         return !result.isEmpty() ? result : fallback;

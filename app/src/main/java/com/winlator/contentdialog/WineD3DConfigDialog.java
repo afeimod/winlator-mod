@@ -51,7 +51,7 @@ public class WineD3DConfigDialog extends ContentDialog {
 
         final Spinner sVideoMemorySize = findViewById(R.id.SVideoMemorySize);
         final String videoMemorySize = config.get("VideoMemorySize", "2048");
-        AppUtils.setSpinnerSelectionFromNumber(sVideoMemorySize, videoMemorySize);
+        AppUtils.setSpinnerSelectionFromMemorySize(sVideoMemorySize, videoMemorySize);
 
         setOnConfirmCallback(() -> {
             KeyValueSet newConfig = new KeyValueSet();
@@ -63,7 +63,7 @@ public class WineD3DConfigDialog extends ContentDialog {
             newConfig.put("VideoPciVendorID", String.valueOf(gpuCard.vendorId));
             newConfig.put("OffscreenRenderingMode", sOffscreenRenderingMode.getSelectedItem().toString().toLowerCase(Locale.ENGLISH));
             newConfig.put("strict_shader_math", cbStrictShaderMath.isChecked() ? "1" : "0");
-            newConfig.put("VideoMemorySize", StringUtils.parseNumber(sVideoMemorySize.getSelectedItem()));
+            newConfig.put("VideoMemorySize", StringUtils.parseMemorySize(sVideoMemorySize.getSelectedItem()));
 
             anchor.setTag(newConfig.toString());
         });

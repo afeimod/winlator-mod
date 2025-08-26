@@ -29,7 +29,7 @@ public class TurnipConfigDialog extends ContentDialog {
         KeyValueSet config = new KeyValueSet(anchor.getTag());
         cbUseHWBuf.setChecked(config.getBoolean("useHWBuf", true));
         cbForceWaitForFences.setChecked(config.getBoolean("forceWaitForFences"));
-        AppUtils.setSpinnerSelectionFromNumber(sMaxDeviceMemory, config.get("maxDeviceMemory", "0"));
+        AppUtils.setSpinnerSelectionFromMemorySize(sMaxDeviceMemory, config.get("maxDeviceMemory", "0"));
 
         String version = config.get("version");
         GeneralComponents.initViews(GeneralComponents.Type.TURNIP, findViewById(R.id.TurnipToolbox), sVersion, version, DefaultVersion.TURNIP);
@@ -37,7 +37,7 @@ public class TurnipConfigDialog extends ContentDialog {
         setOnConfirmCallback(() -> {
             KeyValueSet newConfig = new KeyValueSet();
             newConfig.put("version", StringUtils.parseNumber(sVersion.getSelectedItem()));
-            newConfig.put("maxDeviceMemory", StringUtils.parseNumber(sMaxDeviceMemory.getSelectedItem()));
+            newConfig.put("maxDeviceMemory", StringUtils.parseMemorySize(sMaxDeviceMemory.getSelectedItem()));
             newConfig.put("useHWBuf", cbUseHWBuf.isChecked() ? "1" : "0");
             newConfig.put("forceWaitForFences", cbForceWaitForFences.isChecked() ? "1" : "0");
             anchor.setTag(newConfig.toString());

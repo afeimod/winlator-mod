@@ -274,10 +274,21 @@ public abstract class AppUtils {
         return false;
     }
 
-    public static boolean setSpinnerSelectionFromNumber(Spinner spinner, String number) {
+    public static boolean setSpinnerSelectionFromNumber(Spinner spinner, String value) {
         spinner.setSelection(0, false);
         for (int i = 0; i < spinner.getCount(); i++) {
-            if (StringUtils.parseNumber(spinner.getItemAtPosition(i)).equals(number)) {
+            if (StringUtils.parseNumber(spinner.getItemAtPosition(i)).equals(value)) {
+                spinner.setSelection(i, false);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public static boolean setSpinnerSelectionFromMemorySize(Spinner spinner, String value) {
+        spinner.setSelection(0, false);
+        for (int i = 0; i < spinner.getCount(); i++) {
+            if (StringUtils.parseMemorySize(spinner.getItemAtPosition(i)).equals(value)) {
                 spinner.setSelection(i, false);
                 return true;
             }
