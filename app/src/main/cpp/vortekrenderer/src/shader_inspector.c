@@ -90,6 +90,19 @@ static VkFormat getFallbackFormat(VkFormat format) {
     }
 }
 
+static void getSpvLiteralString(uint32_t* words, int instLength, char* outString) {
+    int numBit = 0;
+    for (int i = 0; i < instLength * 4; i++) {
+        outString[i] = (*words >> numBit) & 0xff;
+        if (outString[i] == '\0') break;
+
+        if ((numBit += 8) == 32) {
+            words++;
+            numBit = 0;
+        }
+    }
+}
+
 static uint32_t fetchSpvInstIndex(uint32_t* code, uint32_t sizeInBytes, int start, SpvOp targetOpcode, int field, uint32_t value, bool stopOnOpFunction) {
     uint32_t instLength;
     SpvOp opcode = SpvOpNop;
@@ -134,6 +147,15 @@ static uint32_t fetchSpvInstIndex2(uint32_t* code, uint32_t sizeInBytes, int sta
     return -1;
 }
 
+static void getSpvVariableName(uint32_t* code, uint32_t sizeInBytes, int varId, char* outName) {
+    int index = fetchSpvInstIndex(code, sizeInBytes, CODE_START, SpvOpName, 1, varId, true);
+    outName[0] = '\0';
+    if (index != -1) {
+        int strLen = SPV_INST_LENGTH(code[index]) - 2;
+        getSpvLiteralString(&code[index+2], strLen, outName);
+    }
+}
+
 static uint32_t fetchSpvOpTypeIndex(uint32_t* code, uint32_t sizeInBytes, int start, int field, uint32_t value) {
     uint32_t instLength;
     SpvOp opcode = SpvOpNop;
@@ -157,6 +179,8 @@ static uint32_t fetchSpvOpTypeIndex(uint32_t* code, uint32_t sizeInBytes, int st
 static void fetchSpvVariableOffsets(ShaderModule* module, SpvStorageClass storageClass, ArrayList* result) {
     uint32_t instLength;
     SpvOp opcode = SpvOpNop;
+    char varname[32] = {0};
+    char location[8] = {0};
 
     for (int i = CODE_START, j, k, l, size = module->codeSize / sizeof(uint32_t); i < size && opcode != SpvOpFunction && !IS_SPV_OP_TYPE(opcode);) {
         opcode = SPV_INST_OPCODE(module->code[i]);
@@ -170,12 +194,18 @@ static void fetchSpvVariableOffsets(ShaderModule* module, SpvStorageClass storag
                     l = fetchSpvInstIndex(module->code, module->codeSize, i, SpvOpTypeVector, 1, module->code[k+3], true);
                     if (l == -1) l = fetchSpvInstIndex(module->code, module->codeSize, i, SpvOpTypeFloat, 1, module->code[k+3], true);
                     if (l != -1) {
-                        SpvVariableOffsets* variableOffsets = calloc(1, sizeof(SpvVariableOffsets));
-                        variableOffsets->decorate = i;
-                        variableOffsets->variable = j;
-                        variableOffsets->pointer = k;
-                        variableOffsets->vector = l;
-                        ArrayList_add(result, variableOffsets);
+                        getSpvVariableName(module->code, module->codeSize, module->code[j+2], varname);
+                        if ((varname[0] == 'o' || varname[0] == 'v')) {
+                            sprintf(location, "%d", module->code[i+3]);
+                            if (strcmp(varname + 1, location) == 0) {
+                                SpvVariableOffsets* variableOffsets = calloc(1, sizeof(SpvVariableOffsets));
+                                variableOffsets->decorate = i;
+                                variableOffsets->variable = j;
+                                variableOffsets->pointer = k;
+                                variableOffsets->vector = l;
+                                ArrayList_add(result, variableOffsets);
+                            }
+                        }
                     }
                 }
             }
@@ -468,6 +498,8 @@ static void inspectVertexShaderCode(ShaderInspector* shaderInspector, ShaderModu
 }
 
 static void inspectFragmentShaderCode(ShaderInspector* shaderInspector, ShaderModule* vsModule, ShaderModule* fsModule) {
+    if (!shaderInspector->checkInOutVariablesSize) return;
+
     ArrayList mergeCodes = {0};
 
     ArrayList vsVariables = {0};
@@ -553,13 +585,14 @@ static SpvExecutionModel getSpvExecutionModel(const uint32_t* code, uint32_t siz
     return index != -1 ? code[index+1] : SpvExecutionModelMax;
 }
 
-ShaderInspector* ShaderInspector_create(VkPhysicalDevice physicalDevice, VkPhysicalDeviceFeatures* supportedFeatures) {
+ShaderInspector* ShaderInspector_create(VkContext* context, VkPhysicalDevice physicalDevice, VkPhysicalDeviceFeatures* supportedFeatures) {
     ShaderInspector* shaderInspector = calloc(1, sizeof(ShaderInspector));
-    shaderInspector->checkClipDistance = supportedFeatures->shaderClipDistance == VK_FALSE; /* workaround for vertex explosion on Mali devices */
+    shaderInspector->checkClipDistance = supportedFeatures->shaderClipDistance == VK_FALSE;
 
     VkPhysicalDeviceProperties deviceProperties = {0};
     vulkanWrapper.vkGetPhysicalDeviceProperties(physicalDevice, &deviceProperties);
     bool isMaliDevice = strstr(deviceProperties.deviceName, "Mali") ? true : false;
+    bool isDXVKEngine = context->engineName ? strcmp(context->engineName, "DXVK") == 0 : false;
 
     if (isMaliDevice) {
         VkFormatProperties formatProperties = {0};
@@ -568,8 +601,11 @@ ShaderInspector* ShaderInspector_create(VkPhysicalDevice physicalDevice, VkPhysi
     }
     else shaderInspector->convertFormatScaled = true;
 
-    shaderInspector->removeImageBoundCheck = isMaliDevice; /* workaround for black screen */
-    shaderInspector->removePointSizeExport = true; /* workaround for graphical glitches on DXVK 2.4.1 (See Out Of Action game) */
+    shaderInspector->removeImageBoundCheck = isMaliDevice && isDXVKEngine;
+    if (isDXVKEngine) {
+        shaderInspector->removePointSizeExport = true;
+        shaderInspector->checkInOutVariablesSize = true;
+    }
 
     return shaderInspector;
 }
