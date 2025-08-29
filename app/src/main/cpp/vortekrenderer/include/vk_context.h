@@ -44,6 +44,7 @@ typedef struct VkContext {
     pthread_mutex_t extraDataRequestsMutex;
 
     JMethods jmethods;
+    char* engineName;
 } VkContext;
 
 typedef struct ExtraDataRequest {

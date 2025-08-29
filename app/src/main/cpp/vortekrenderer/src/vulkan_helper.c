@@ -28,17 +28,19 @@ static bool isExternalMemoryHandleTypeSupported(VkPhysicalDevice physicalDevice,
            (memoryProperties->compatibleHandleTypes & handleType) != 0;
 }
 
-static void setupExposedDeviceExtensions(VkContext* context, const char* engineName) {
+static void setupExposedDeviceExtensions(VkContext* context) {
+    if (!context->engineName) return;
+
     ArrayList_free(context->disabledDeviceExtensions);
     context->disabledDeviceExtensions = NULL;
 
-    if (engineName && strstr(engineName, "zink")) {
+    if (strcmp(context->engineName, "mesa zink") == 0) {
         const char* disabledDeviceExtensions[] = {"VK_EXT_extended_dynamic_state", "VK_EXT_color_write_enable", "VK_KHR_push_descriptor"};
         ArrayList_free(context->exposedDeviceExtensions);
         context->disabledDeviceExtensions = ArrayList_fromStrings(disabledDeviceExtensions, ARRAY_SIZE(disabledDeviceExtensions));
         context->exposedDeviceExtensions = ArrayList_fromStrings(globalExposedDeviceExtensions, ARRAY_SIZE(globalExposedDeviceExtensions));
     }
-    else {
+    else if (strcmp(context->engineName, "DXVK") == 0) {
         const char* disabledDeviceExtensions[] = {"VK_KHR_shader_float_controls", "VK_EXT_hdr_metadata", "VK_EXT_swapchain_maintenance1"};
         context->disabledDeviceExtensions = ArrayList_fromStrings(disabledDeviceExtensions, ARRAY_SIZE(disabledDeviceExtensions));
     }
@@ -73,7 +75,10 @@ void initVulkanInstance(VkContext* context, VkInstance instance, const VkApplica
     context->hasExternalMemoryFd = isExternalMemoryHandleTypeSupported(physicalDevices[0], VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT);
     context->hasExternalMemoryDMABuf = isExternalMemoryHandleTypeSupported(physicalDevices[0], VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT);
 
-    setupExposedDeviceExtensions(context, applicationInfo ? applicationInfo->pEngineName : NULL);
+    MEMFREE(context->engineName);
+    context->engineName = applicationInfo && applicationInfo->pEngineName ? strdup(applicationInfo->pEngineName) : NULL;
+
+    setupExposedDeviceExtensions(context);
 
 #if ENABLE_VALIDATION_LAYER
     VkDebugReportCallbackCreateInfoEXT debugCreateInfo = {0};
@@ -105,8 +110,8 @@ void initVulkanDevice(VkContext* context, VkPhysicalDevice physicalDevice, VkDev
     VkPhysicalDeviceFeatures supportedFeatures = {0};
     vulkanWrapper.vkGetPhysicalDeviceFeatures(physicalDevice, &supportedFeatures);
 
-    if (!context->textureDecoder) context->textureDecoder = TextureDecoder_create(&supportedFeatures, context->imageCacheSize, context->threadPool);
-    if (!context->shaderInspector) context->shaderInspector = ShaderInspector_create(physicalDevice, &supportedFeatures);
+    if (!context->textureDecoder) context->textureDecoder = TextureDecoder_create(context, &supportedFeatures);
+    if (!context->shaderInspector) context->shaderInspector = ShaderInspector_create(context, physicalDevice, &supportedFeatures);
     if (context->textureDecoder) context->textureDecoder->threadPool = context->threadPool;
 }
 

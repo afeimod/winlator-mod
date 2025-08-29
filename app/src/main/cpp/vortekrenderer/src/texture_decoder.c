@@ -139,11 +139,11 @@ static void writeImageToCache(TextureDecoder* textureDecoder, TextureDecoder_Ima
     if (!success) remove(filename);
 }
 
-TextureDecoder* TextureDecoder_create(VkPhysicalDeviceFeatures* supportedFeatures, short imageCacheSize, ThreadPool* threadPool) {
+TextureDecoder* TextureDecoder_create(VkContext* context, VkPhysicalDeviceFeatures* supportedFeatures) {
     if (supportedFeatures->textureCompressionBC) return NULL;
     TextureDecoder* textureDecoder = calloc(1, sizeof(TextureDecoder));
-    textureDecoder->imageCacheSize = imageCacheSize;
-    textureDecoder->threadPool = threadPool;
+    textureDecoder->imageCacheSize = context->imageCacheSize;
+    textureDecoder->threadPool = context->threadPool;
     ArrayDeque_init(&textureDecoder->bufferImageCopies, 8);
     return textureDecoder;
 }

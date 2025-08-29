@@ -33,7 +33,7 @@ typedef struct TextureDecoder {
     ThreadPool* threadPool;
 } TextureDecoder;
 
-extern TextureDecoder* TextureDecoder_create(VkPhysicalDeviceFeatures* supportedFeatures, short imageCacheSize, ThreadPool* threadPool);
+extern TextureDecoder* TextureDecoder_create(VkContext* context, VkPhysicalDeviceFeatures* supportedFeatures);
 extern void TextureDecoder_destroy(TextureDecoder* textureDecoder);
 extern void TextureDecoder_decodeAll(TextureDecoder* textureDecoder);
 extern void TextureDecoder_copyBufferToImage(TextureDecoder* textureDecoder, VkCommandBuffer commandBuffer, VkBuffer srcBuffer, VkImage dstImage, VkImageLayout dstImageLayout, VkDeviceSize bufferOffset);
