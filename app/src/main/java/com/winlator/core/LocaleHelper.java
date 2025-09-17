@@ -41,11 +41,11 @@ public class LocaleHelper {
         Locale locale = Locale.getDefault();
         for (String name : supportedLocales) {
             if (locale.toString().startsWith(name.substring(0, 2))) {
-                envVars.put("LC_ALL", name+".utf8");
+                envVars.put("LC_ALL", name+".UTF-8");
                 return;
             }
         }
 
-        envVars.put("LC_ALL", "en_US.utf8");
+        envVars.put("LC_ALL", "en_US.UTF-8");
     }
 }
