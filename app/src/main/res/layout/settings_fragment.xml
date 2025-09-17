@@ -113,6 +113,63 @@
                         android:id="@+id/SPreferredInputApi"
                         android:layout_width="match_parent"
                         android:entries="@array/preferred_input_api_entries" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/player"
+                            android:layout_marginRight="8dp" />
+
+                        <LinearLayout
+                            style="@style/Toolbox">
+
+                            <LinearLayout
+                                android:id="@+id/LLGamepadPlayer"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:orientation="horizontal">
+
+                                <ImageView
+                                    style="@style/ListMenuButton"
+                                    android:layout_width="40dp"
+                                    android:layout_height="40dp"
+                                    android:src="@drawable/gamepad_player_1" />
+
+                                <ImageView
+                                    style="@style/ListMenuButton"
+                                    android:layout_width="40dp"
+                                    android:layout_height="40dp"
+                                    android:src="@drawable/gamepad_player_2" />
+
+                                <ImageView
+                                    style="@style/ListMenuButton"
+                                    android:layout_width="40dp"
+                                    android:layout_height="40dp"
+                                    android:src="@drawable/gamepad_player_3" />
+
+                                <ImageView
+                                    style="@style/ListMenuButton"
+                                    android:layout_width="40dp"
+                                    android:layout_height="40dp"
+                                    android:src="@drawable/gamepad_player_4" />
+                            </LinearLayout>
+
+                            <View style="@style/VerticalLine" />
+
+                            <ImageView
+                                android:id="@+id/BTResetGamepadPlayerConfigs"
+                                style="@style/ListMenuButton"
+                                android:layout_width="40dp"
+                                android:layout_height="40dp"
+                                android:src="@drawable/icon_reset" />
+                        </LinearLayout>
+                    </LinearLayout>
                 </LinearLayout>
 
                 <TextView
@@ -196,6 +253,31 @@
                         android:id="@+id/SLanguage"
                         android:layout_width="match_parent"
                         android:entries="@array/language_entries" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/theme" />
+
+                    <RadioGroup
+                        android:id="@+id/RGAppTheme"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <RadioButton
+                            android:id="@+id/RBLight"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/light" />
+
+                        <RadioButton
+                            android:id="@+id/RBDark"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/dark" />
+                    </RadioGroup>
 
                     <CheckBox
                         android:id="@+id/CBOpenAndroidBrowserFromWine"

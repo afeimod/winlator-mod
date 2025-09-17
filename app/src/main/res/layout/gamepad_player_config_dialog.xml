@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <LinearLayout
+        android:layout_width="300dp"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <LinearLayout style="@style/FieldSet">
+                <RadioGroup
+                    android:id="@+id/RGMode"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <RadioButton
+                        android:id="@+id/RBExternalController"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/external_controller" />
+
+                    <RadioButton
+                        android:id="@+id/RBControlsProfile"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/controls_profile" />
+                </RadioGroup>
+
+                <Spinner
+                    style="@style/ComboBox"
+                    android:layout_width="match_parent"
+                    android:id="@+id/SSource"
+                    android:layout_marginTop="8dp" />
+            </LinearLayout>
+
+            <TextView
+                style="@style/FieldSetLabel"
+                android:background="?attr/colorSecondarySurface"
+                android:text="@string/mode" />
+        </FrameLayout>
+
+        <CheckBox
+            android:id="@+id/CBEnableVibration"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/enable_vibration"
+            android:layout_marginTop="8dp" />
+    </LinearLayout>
+</LinearLayout>

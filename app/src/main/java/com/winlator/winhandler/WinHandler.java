@@ -9,8 +9,6 @@ import com.winlator.XServerDisplayActivity;
 import com.winlator.core.DefaultVersion;
 import com.winlator.core.GeneralComponents;
 import com.winlator.core.StringUtils;
-import com.winlator.inputcontrols.ControlsProfile;
-import com.winlator.inputcontrols.ExternalController;
 import com.winlator.xserver.XServer;
 
 import java.io.IOException;
@@ -22,46 +20,43 @@ import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executors;
 
 public class WinHandler {
-    public enum PreferredInputApi {AUTO, DINPUT, XINPUT, BOTH}
     private static final short SERVER_PORT = 7947;
     private static final short CLIENT_PORT = 7946;
-    public static final byte DINPUT_MAPPER_TYPE_STANDARD = 0;
-    public static final byte DINPUT_MAPPER_TYPE_XINPUT = 1;
+    private static final byte DEFAULT_PACKET_LENGTH = 64;
     private DatagramSocket socket;
-    private final ByteBuffer sendData = ByteBuffer.allocate(64).order(ByteOrder.LITTLE_ENDIAN);
-    private final ByteBuffer receiveData = ByteBuffer.allocate(64).order(ByteOrder.LITTLE_ENDIAN);
-    private final DatagramPacket sendPacket = new DatagramPacket(sendData.array(), 64);
-    private final DatagramPacket receivePacket = new DatagramPacket(receiveData.array(), 64);
+    protected final ByteBuffer sendData = ByteBuffer.allocate(128).order(ByteOrder.LITTLE_ENDIAN);
+    protected final ByteBuffer receiveData = ByteBuffer.allocate(DEFAULT_PACKET_LENGTH).order(ByteOrder.LITTLE_ENDIAN);
+    private final DatagramPacket sendPacket = new DatagramPacket(sendData.array(), sendData.capacity());
+    private final DatagramPacket receivePacket = new DatagramPacket(receiveData.array(), receiveData.capacity());
     private final ArrayDeque<Runnable> actions = new ArrayDeque<>();
     protected boolean initReceived = false;
     private boolean running = false;
     private OnGetProcessInfoListener onGetProcessInfoListener;
-    private ExternalController currentController;
     private InetAddress localhost;
-    private byte dinputMapperType = DINPUT_MAPPER_TYPE_XINPUT;
-    private PreferredInputApi preferredInputApi = PreferredInputApi.BOTH;
     protected final XServerDisplayActivity activity;
-    private final List<Integer> gamepadClients = new CopyOnWriteArrayList<>();
-    private final ArrayList<Integer> xinputProcesses = new ArrayList<>();
     private MIDIHandler midiHandler;
+    public final GamepadHandler gamepadHandler = new GamepadHandler(this);
 
     public WinHandler(XServerDisplayActivity activity) {
         this.activity = activity;
     }
 
-    private boolean sendPacket(int port) {
+    protected boolean sendPacket(int port) {
+        return sendPacket(port, DEFAULT_PACKET_LENGTH);
+    }
+
+    protected boolean sendPacket(int port, int packetLength) {
         try {
             int size = sendData.position();
             if (size == 0) return false;
             sendPacket.setAddress(localhost);
             sendPacket.setPort(port);
+            sendPacket.setLength(packetLength);
             socket.send(sendPacket);
+            sendPacket.setLength(DEFAULT_PACKET_LENGTH);
             return true;
         }
         catch (IOException e) {
@@ -71,10 +66,11 @@ public class WinHandler {
 
     protected boolean sendPacket(int port, byte[] data) {
         try {
-            DatagramPacket sendPacket = new DatagramPacket(data, data.length);
+            sendPacket.setData(data);
             sendPacket.setAddress(localhost);
             sendPacket.setPort(port);
             socket.send(sendPacket);
+            sendPacket.setData(sendData.array());
             return true;
         }
         catch (IOException e) {
@@ -303,92 +299,15 @@ public class WinHandler {
                 break;
             }
             case RequestCodes.GET_GAMEPAD: {
-                boolean isXInput = receiveData.get() == 1;
-                boolean notify = receiveData.get() == 1;
-                final ControlsProfile profile = activity.getInputControlsView().getProfile();
-                boolean useVirtualGamepad = profile != null && profile.isVirtualGamepad();
-                int processId = receiveData.getInt();
-
-                if (!useVirtualGamepad && (currentController == null || !currentController.isConnected())) {
-                    currentController = ExternalController.getController(0);
-                }
-
-                boolean enabled = currentController != null || useVirtualGamepad;
-
-                if (enabled) {
-                    switch (preferredInputApi) {
-                        case AUTO:
-                            boolean hasXInputProcess = xinputProcesses.contains(processId);
-                            if (isXInput) {
-                                if (!hasXInputProcess) xinputProcesses.add(processId);
-                            }
-                            else if (hasXInputProcess) enabled = false;
-                            break;
-                        case DINPUT:
-                            if (isXInput) enabled = false;
-                            break;
-                        case XINPUT:
-                            if (!isXInput) enabled = false;
-                            break;
-                    }
-                }
-
-                if (enabled && notify) {
-                    if (!gamepadClients.contains(port)) gamepadClients.add(port);
-                }
-                else gamepadClients.remove(Integer.valueOf(port));
-
-                final boolean finalEnabled = enabled;
-                addAction(() -> {
-                    sendData.rewind();
-                    sendData.put(RequestCodes.GET_GAMEPAD);
-
-                    if (finalEnabled) {
-                        sendData.putInt(!useVirtualGamepad ? currentController.getDeviceId() : profile.id);
-                        sendData.put(dinputMapperType);
-                        byte[] bytes = (useVirtualGamepad ? profile.getName() : currentController.getName()).getBytes();
-                        sendData.putInt(bytes.length);
-                        sendData.put(bytes);
-                    }
-                    else {
-                        sendData.putInt(0);
-                        sendData.put((byte)0);
-                        sendData.putInt(0);
-                    }
-
-                    sendPacket(port);
-                });
-                break;
-            }
-            case RequestCodes.GET_GAMEPAD_STATE: {
-                int gamepadId = receiveData.getInt();
-                final ControlsProfile profile = activity.getInputControlsView().getProfile();
-                boolean useVirtualGamepad = profile != null && profile.isVirtualGamepad();
-                final boolean enabled = currentController != null || useVirtualGamepad;
-
-                if (currentController != null && currentController.getDeviceId() != gamepadId) currentController = null;
-
-                addAction(() -> {
-                    sendData.rewind();
-                    sendData.put(RequestCodes.GET_GAMEPAD_STATE);
-                    sendData.put((byte)(enabled ? 1 : 0));
-
-                    if (enabled) {
-                        sendData.putInt(gamepadId);
-                        if (useVirtualGamepad) {
-                            profile.getGamepadState().writeTo(sendData);
-                        }
-                        else currentController.state.writeTo(sendData);
-                    }
-
-                    sendPacket(port);
-                });
+                gamepadHandler.handleGetGamepadRequest(port);
                 break;
             }
             case RequestCodes.RELEASE_GAMEPAD: {
-                currentController = null;
-                gamepadClients.clear();
-                xinputProcesses.clear();
+                gamepadHandler.handleReleaseGamepadRequest(port);
+                break;
+            }
+            case RequestCodes.SET_GAMEPAD_STATE: {
+                gamepadHandler.handleSetGamepadStateRequest(port);
                 break;
             }
             case RequestCodes.CURSOR_POS_FEEDBACK: {
@@ -469,75 +388,12 @@ public class WinHandler {
         });
     }
 
-    public void sendGamepadState() {
-        if (!initReceived || gamepadClients.isEmpty()) return;
-        final ControlsProfile profile = activity.getInputControlsView().getProfile();
-        final boolean useVirtualGamepad = profile != null && profile.isVirtualGamepad();
-        final boolean enabled = currentController != null || useVirtualGamepad;
-
-        for (final int port : gamepadClients) {
-            addAction(() -> {
-                sendData.rewind();
-                sendData.put(RequestCodes.GET_GAMEPAD_STATE);
-                sendData.put((byte)(enabled ? 1 : 0));
-
-                if (enabled) {
-                    sendData.putInt(!useVirtualGamepad ? currentController.getDeviceId() : profile.id);
-                    if (useVirtualGamepad) {
-                        profile.getGamepadState().writeTo(sendData);
-                    }
-                    else currentController.state.writeTo(sendData);
-                }
-
-                sendPacket(port);
-            });
-        }
-    }
-
     public boolean onGenericMotionEvent(MotionEvent event) {
-        boolean handled = false;
-        if (currentController != null && currentController.getDeviceId() == event.getDeviceId()) {
-            handled = currentController.updateStateFromMotionEvent(event);
-            if (handled) sendGamepadState();
-        }
-        return handled;
+        return gamepadHandler.onGenericMotionEvent(event);
     }
 
     public boolean onKeyEvent(KeyEvent event) {
-        boolean handled = false;
-        if (currentController != null && currentController.getDeviceId() == event.getDeviceId() && event.getRepeatCount() == 0) {
-            int action = event.getAction();
-
-            if (action == KeyEvent.ACTION_DOWN) {
-                handled = currentController.updateStateFromKeyEvent(event);
-            }
-            else if (action == KeyEvent.ACTION_UP) {
-                handled = currentController.updateStateFromKeyEvent(event);
-            }
-
-            if (handled) sendGamepadState();
-        }
-        return handled;
-    }
-
-    public byte getDInputMapperType() {
-        return dinputMapperType;
-    }
-
-    public void setDInputMapperType(byte dinputMapperType) {
-        this.dinputMapperType = dinputMapperType;
-    }
-
-    public PreferredInputApi getPreferredInputApi() {
-        return preferredInputApi;
-    }
-
-    public void setPreferredInputApi(PreferredInputApi preferredInputApi) {
-        this.preferredInputApi = preferredInputApi;
-    }
-
-    public ExternalController getCurrentController() {
-        return currentController;
+        return gamepadHandler.onKeyEvent(event);
     }
 
     public MIDIHandler getMIDIhandler() {

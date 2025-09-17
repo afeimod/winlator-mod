@@ -20,7 +20,7 @@ import com.winlator.core.StringUtils;
 import com.winlator.inputcontrols.ControlsProfile;
 import com.winlator.inputcontrols.InputControlsManager;
 import com.winlator.widget.EnvVarsView;
-import com.winlator.winhandler.WinHandler;
+import com.winlator.winhandler.GamepadHandler;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -86,10 +86,10 @@ public class ShortcutSettingsDialog extends ContentDialog {
         loadControlsProfileSpinner(sControlsProfile, shortcut.getExtra("controlsProfile", "0"));
 
         final Spinner sDInputMapperType = findViewById(R.id.SDInputMapperType);
-        sDInputMapperType.setSelection(Byte.parseByte(shortcut.getExtra("dinputMapperType", String.valueOf(WinHandler.DINPUT_MAPPER_TYPE_XINPUT))));
+        sDInputMapperType.setSelection(Byte.parseByte(shortcut.getExtra("dinputMapperType", String.valueOf(GamepadHandler.DINPUT_MAPPER_TYPE_XINPUT))));
 
         final Spinner sPreferredInputApi = findViewById(R.id.SPreferredInputApi);
-        sPreferredInputApi.setSelection(Byte.parseByte(shortcut.getExtra("preferredInputApi", String.valueOf(WinHandler.PreferredInputApi.BOTH.ordinal()))));
+        sPreferredInputApi.setSelection(Byte.parseByte(shortcut.getExtra("preferredInputApi", String.valueOf(GamepadHandler.PreferredInputApi.AUTO.ordinal()))));
 
         ContainerDetailFragment.createWinComponentsTab(getContentView(), shortcut.getExtra("wincomponents", shortcut.container.getWinComponents()));
         final EnvVarsView envVarsView = createEnvVarsTab();
@@ -147,10 +147,10 @@ public class ShortcutSettingsDialog extends ContentDialog {
                 shortcut.putExtra("controlsProfile", controlsProfile > 0 ? String.valueOf(controlsProfile) : null);
 
                 int dinputMapperType = sDInputMapperType.getSelectedItemPosition();
-                shortcut.putExtra("dinputMapperType", dinputMapperType != WinHandler.DINPUT_MAPPER_TYPE_XINPUT ? String.valueOf(dinputMapperType) : null);
+                shortcut.putExtra("dinputMapperType", dinputMapperType != GamepadHandler.DINPUT_MAPPER_TYPE_XINPUT ? String.valueOf(dinputMapperType) : null);
 
                 int preferredInputApi = sPreferredInputApi.getSelectedItemPosition();
-                shortcut.putExtra("preferredInputApi", preferredInputApi != WinHandler.PreferredInputApi.BOTH.ordinal() ? String.valueOf(preferredInputApi): null);
+                shortcut.putExtra("preferredInputApi", preferredInputApi != GamepadHandler.PreferredInputApi.AUTO.ordinal() ? String.valueOf(preferredInputApi): null);
 
                 shortcut.saveData();
             }

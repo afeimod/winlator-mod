@@ -289,7 +289,8 @@ public class InputControlsView extends View {
     private void processJoystickInput(ExternalController controller) {
         ExternalControllerBinding controllerBinding;
         final int[] axes = {MotionEvent.AXIS_X, MotionEvent.AXIS_Y, MotionEvent.AXIS_Z, MotionEvent.AXIS_RZ, MotionEvent.AXIS_HAT_X, MotionEvent.AXIS_HAT_Y};
-        final float[] values = {controller.state.thumbLX, controller.state.thumbLY, controller.state.thumbRX, controller.state.thumbRY, controller.state.getDPadX(), controller.state.getDPadY()};
+        GamepadState state = controller.getGamepadState();
+        final float[] values = {state.thumbLX, state.thumbLY, state.thumbRX, state.thumbRY, state.getDPadX(), state.getDPadY()};
 
         for (byte i = 0; i < axes.length; i++) {
             if (Math.abs(values[i]) > ControlElement.STICK_DEAD_ZONE) {
@@ -310,12 +311,13 @@ public class InputControlsView extends View {
         if (!editMode && profile != null) {
             ExternalController controller = profile.getController(event.getDeviceId());
             if (controller != null && controller.updateStateFromMotionEvent(event)) {
+                GamepadState state = controller.getGamepadState();
                 ExternalControllerBinding controllerBinding;
                 controllerBinding = controller.getControllerBinding(KeyEvent.KEYCODE_BUTTON_L2);
-                if (controllerBinding != null) handleInputEvent(controllerBinding.getBinding(), controller.state.isPressed(ExternalController.IDX_BUTTON_L2));
+                if (controllerBinding != null) handleInputEvent(controllerBinding.getBinding(), state.isPressed(ExternalController.IDX_BUTTON_L2));
 
                 controllerBinding = controller.getControllerBinding(KeyEvent.KEYCODE_BUTTON_R2);
-                if (controllerBinding != null) handleInputEvent(controllerBinding.getBinding(), controller.state.isPressed(ExternalController.IDX_BUTTON_R2));
+                if (controllerBinding != null) handleInputEvent(controllerBinding.getBinding(), state.isPressed(ExternalController.IDX_BUTTON_R2));
 
                 processJoystickInput(controller);
                 return true;
@@ -474,11 +476,7 @@ public class InputControlsView extends View {
                 state.dpad[binding.ordinal() - Binding.GAMEPAD_DPAD_UP.ordinal()] = isActionDown;
             }
 
-            if (winHandler != null) {
-                ExternalController controller = winHandler.getCurrentController();
-                if (controller != null) controller.state.copy(state);
-                winHandler.sendGamepadState();
-            }
+            if (winHandler != null) winHandler.gamepadHandler.sendGamepadState(profile);
         }
         else {
             if (binding == Binding.MOUSE_MOVE_LEFT || binding == Binding.MOUSE_MOVE_RIGHT) {
