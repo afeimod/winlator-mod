@@ -29,7 +29,7 @@
 
         <TextView
             style="@style/FieldSetLabel"
-            android:background="#ffffff"
+            android:background="?attr/colorSecondarySurface"
             android:text="@string/environment_variables" />
     </FrameLayout>
 </LinearLayout>

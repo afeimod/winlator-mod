@@ -35,7 +35,7 @@
                 android:id="@+id/TVTitle"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:textColor="@color/colorPrimary"
+                android:textColor="?attr/colorPrimaryVariant"
                 android:textStyle="bold"
                 android:ellipsize="end"
                 android:maxLines="1" />
@@ -44,6 +44,7 @@
                 android:id="@+id/TVSubtitle"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:textColor="?attr/colorSecondaryText"
                 android:ellipsize="end"
                 android:maxLines="1" />
         </LinearLayout>

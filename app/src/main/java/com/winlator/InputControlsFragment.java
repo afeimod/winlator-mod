@@ -24,7 +24,6 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.content.ContextCompat;
 import androidx.core.widget.ImageViewCompat;
 import androidx.fragment.app.Fragment;
 import androidx.preference.PreferenceManager;
@@ -320,7 +319,7 @@ public class InputControlsFragment extends Fragment {
                 ((TextView)itemView.findViewById(R.id.TVSubtitle)).setText(controllerBindingCount+" "+bindingsText);
 
                 ImageView imageView = itemView.findViewById(R.id.ImageView);
-                int tintColor = controller.isConnected() ? ContextCompat.getColor(context, R.color.colorAccent) : 0xffe57373;
+                int tintColor = AppUtils.getThemeColor(context, controller.isConnected() ? R.attr.colorAccent : R.attr.colorError);
                 ImageViewCompat.setImageTintList(imageView, ColorStateList.valueOf(tintColor));
 
                 if (controllerBindingCount > 0) {

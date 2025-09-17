@@ -62,7 +62,7 @@
                 <TextView
                     style="@style/FieldSetLabel"
                     android:text="@string/color_adjustment"
-                    android:background="#ffffff" />
+                    android:background="?attr/colorSecondarySurface" />
             </FrameLayout>
         </LinearLayout>
 

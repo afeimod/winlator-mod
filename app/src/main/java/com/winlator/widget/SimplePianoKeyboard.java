@@ -87,11 +87,9 @@ public class SimplePianoKeyboard extends View {
                 path.reset();
                 path.addRoundRect(offsetX, startY, offsetX + keyWidth, endY, bottomRadius, Path.Direction.CW);
 
-                if (pressedKeys.contains(index)) {
-                    paint.setStyle(Paint.Style.FILL);
-                    paint.setColor(0xffc0c0c0);
-                    canvas.drawPath(path, paint);
-                }
+                paint.setStyle(Paint.Style.FILL);
+                paint.setColor(pressedKeys.contains(index) ? 0xffc0c0c0 : 0xffffffff);
+                canvas.drawPath(path, paint);
 
                 paint.setStyle(Paint.Style.STROKE);
                 paint.setColor(0xff000000);

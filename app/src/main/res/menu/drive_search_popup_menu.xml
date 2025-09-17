@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:id="@+id/menu_item_open_directory" android:title="@string/open_directory" android:icon="@drawable/icon_popup_menu_folder_open" android:iconTint="@color/colorAccent" />
-    <item android:id="@+id/menu_item_locations" android:title="@string/locations" android:icon="@drawable/icon_popup_menu_folder_list" android:iconTint="@color/colorAccent">
+    <item android:id="@+id/menu_item_open_directory" android:title="@string/open_directory" android:icon="@drawable/icon_popup_menu_folder_open" android:iconTint="?attr/colorAccent" />
+    <item android:id="@+id/menu_item_locations" android:title="@string/locations" android:icon="@drawable/icon_popup_menu_folder_list" android:iconTint="?attr/colorAccent">
         <menu>
             <item android:id="@+id/menu_item_downloads" android:title="@string/downloads" />
             <item android:id="@+id/menu_item_internal_storage" android:title="@string/internal_storage" />

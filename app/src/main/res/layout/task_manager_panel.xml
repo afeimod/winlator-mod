@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:background="@drawable/panel_background"
+    android:background="?attr/panelBackground"
     android:gravity="center_vertical">
 
     <LinearLayout
@@ -17,7 +18,7 @@
             android:id="@+id/TVTitle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textColor="@color/colorAccent"
+            android:textColor="?attr/colorAccent"
             android:maxLines="1"
             android:textStyle="bold" />
 
@@ -35,5 +36,6 @@
         android:layout_gravity="right|bottom"
         android:layout_margin="3dp"
         android:visibility="gone"
-        android:src="@drawable/panel_corner_arrow" />
+        android:src="@drawable/panel_corner_arrow"
+        app:tint="?attr/colorSecondaryVariant" />
 </FrameLayout>

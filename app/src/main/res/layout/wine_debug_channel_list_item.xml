@@ -11,7 +11,7 @@
         android:layout_width="wrap_content"
         android:layout_height="36dp"
         android:textSize="16dp"
-        android:textColor="@color/colorPrimary"
+        android:textColor="?attr/colorPrimaryVariant"
         android:textStyle="bold"
         android:paddingLeft="16dp"
         android:paddingRight="16dp"

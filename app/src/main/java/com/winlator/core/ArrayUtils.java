@@ -6,6 +6,8 @@ import org.json.JSONException;
 import java.util.Arrays;
 
 public abstract class ArrayUtils {
+    public static final byte INDEX_NOT_FOUND = -1;
+
     public static byte[] concat(byte[]... elements) {
         byte[] result = Arrays.copyOf(elements[0], elements[0].length);
         for (int i = 1; i < elements.length; i++) {
@@ -49,5 +51,25 @@ public abstract class ArrayUtils {
         if (prefix == null || array == null || array.length < prefix.length) return false;
         for (int i = 0; i < prefix.length; i++) if (array[i] != prefix[i]) return false;
         return true;
+    }
+
+    public static boolean contains(int[] array, int value) {
+        return indexOf(array, value) != INDEX_NOT_FOUND;
+    }
+
+    public static boolean contains(Object[] array, Object value) {
+        return indexOf(array, value) != INDEX_NOT_FOUND;
+    }
+
+    public static int indexOf(int[] array, int value) {
+        if (array == null) return INDEX_NOT_FOUND;
+        for (int i = 0; i < array.length; i++) if (value == array[i]) return i;
+        return INDEX_NOT_FOUND;
+    }
+
+    public static int indexOf(Object[] array, Object value) {
+        if (array == null || value == null) return INDEX_NOT_FOUND;
+        for (int i = 0; i < array.length; i++) if (value.equals(array[i])) return i;
+        return INDEX_NOT_FOUND;
     }
 }

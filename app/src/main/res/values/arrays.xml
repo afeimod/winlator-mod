@@ -80,10 +80,6 @@
         <item>Standard</item>
         <item>XInput</item>
     </string-array>
-    <string-array name="desktop_theme_entries">
-        <item>@string/light</item>
-        <item>@string/dark</item>
-    </string-array>
     <string-array name="desktop_background_type_entries">
         <item>@string/image</item>
         <item>@string/solid_color</item>

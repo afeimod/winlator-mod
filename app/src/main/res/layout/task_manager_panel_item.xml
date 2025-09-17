@@ -10,7 +10,7 @@
         android:id="@+id/ImageView"
         android:layout_width="22dp"
         android:layout_height="22dp"
-        app:tint="@color/colorPrimary"
+        app:tint="?attr/colorPrimary"
         android:layout_marginRight="4dp" />
 
     <TextView

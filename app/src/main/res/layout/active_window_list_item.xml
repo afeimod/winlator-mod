@@ -6,7 +6,7 @@
     android:layout_height="wrap_content"
     android:layout_marginRight="8dp"
     android:padding="8dp"
-    android:background="@drawable/panel_background">
+    android:background="?attr/panelBackground">
 
     <LinearLayout
         android:layout_width="wrap_content"

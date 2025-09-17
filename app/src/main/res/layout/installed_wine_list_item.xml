@@ -19,14 +19,14 @@
             android:layout_height="36dp"
             android:src="@drawable/icon_wine"
             android:layout_marginRight="8dp"
-            app:tint="@color/colorPrimaryDark" />
+            app:tint="?attr/colorPrimaryDark" />
 
         <TextView
             android:id="@+id/TVTitle"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:textColor="@color/colorPrimary"
+            android:textColor="?attr/colorPrimary"
             android:maxLines="1"
             android:ellipsize="end" />
 

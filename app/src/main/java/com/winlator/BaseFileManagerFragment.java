@@ -14,6 +14,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentActivity;
 import androidx.preference.PreferenceManager;
@@ -80,7 +81,9 @@ public abstract class BaseFileManagerFragment<T> extends Fragment {
         pasteButton.setOnClickListener((v) -> pasteFiles());
 
         if (itemDecoration == null) {
-            itemDecoration = new DividerItemDecoration(getContext(), DividerItemDecoration.VERTICAL);
+            Context context = getContext();
+            itemDecoration = new DividerItemDecoration(context, DividerItemDecoration.VERTICAL);
+            itemDecoration.setDrawable(ContextCompat.getDrawable(context, R.drawable.list_item_divider));
         }
         return rootView;
     }

@@ -107,15 +107,30 @@ public class ContentDialog extends Dialog {
     }
 
     public void setMessage(int msgResId) {
-        setMessage(getContext().getString(msgResId));
+        setMessage(msgResId, 0);
+    }
+
+    public void setMessage(int msgResId, int iconResId) {
+        setMessage(getContext().getString(msgResId), iconResId);
     }
 
     public void setMessage(String message) {
+        setMessage(message, 0);
+    }
+
+    public void setMessage(String message, int iconResId) {
         TextView tvMessage = findViewById(R.id.TVMessage);
+        ImageView imageView = findViewById(R.id.IVMessageIcon);
+        imageView.setVisibility(View.GONE);
 
         if (message != null && !message.isEmpty()) {
             tvMessage.setText(message);
             tvMessage.setVisibility(View.VISIBLE);
+
+            if (iconResId > 0) {
+                imageView.setImageResource(iconResId);
+                imageView.setVisibility(View.VISIBLE);
+            }
         }
         else {
             tvMessage.setText("");
@@ -125,7 +140,7 @@ public class ContentDialog extends Dialog {
 
     public static void alert(Context context, int msgResId, Runnable callback) {
         ContentDialog dialog = new ContentDialog(context);
-        dialog.setMessage(msgResId);
+        dialog.setMessage(msgResId, R.drawable.content_dialog_type_alert);
         dialog.setOnConfirmCallback(callback);
         dialog.findViewById(R.id.BTCancel).setVisibility(View.GONE);
         dialog.show();
@@ -133,7 +148,7 @@ public class ContentDialog extends Dialog {
 
     public static void confirm(Context context, int msgResId, Runnable callback) {
         ContentDialog dialog = new ContentDialog(context);
-        dialog.setMessage(msgResId);
+        dialog.setMessage(msgResId, R.drawable.content_dialog_type_confirm);
         dialog.setOnConfirmCallback(callback);
         dialog.show();
     }
@@ -165,7 +180,7 @@ public class ContentDialog extends Dialog {
         final ListView listView = dialog.findViewById(R.id.ListView);
         listView.getLayoutParams().width = AppUtils.getPreferredDialogWidth(context);
         listView.setChoiceMode(multiSelection ? ListView.CHOICE_MODE_MULTIPLE : ListView.CHOICE_MODE_SINGLE);
-        int layoutResId = multiSelection ? android.R.layout.simple_list_item_multiple_choice : android.R.layout.simple_list_item_single_choice;
+        int layoutResId = multiSelection ? R.layout.simple_list_item_multiple_choice : R.layout.simple_list_item_single_choice;
         listView.setAdapter(new ArrayAdapter<>(context, layoutResId, items));
         listView.setVisibility(View.VISIBLE);
 

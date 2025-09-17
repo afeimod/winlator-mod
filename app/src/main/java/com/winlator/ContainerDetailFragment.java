@@ -20,6 +20,7 @@ import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.PopupMenu;
+import android.widget.RadioGroup;
 import android.widget.Spinner;
 import android.widget.TextView;
 
@@ -300,8 +301,8 @@ public class ContainerDetailFragment extends Fragment {
         Context context = getContext();
 
         WineThemeManager.ThemeInfo desktopTheme = new WineThemeManager.ThemeInfo(isEditMode() ? container.getDesktopTheme() : WineThemeManager.DEFAULT_DESKTOP_THEME);
-        Spinner sDesktopTheme = view.findViewById(R.id.SDesktopTheme);
-        sDesktopTheme.setSelection(desktopTheme.theme.ordinal());
+        RadioGroup rgDesktopTheme = view.findViewById(R.id.RGDesktopTheme);
+        rgDesktopTheme.check(desktopTheme.theme == WineThemeManager.Theme.LIGHT ? R.id.RBLight : R.id.RBDark);
         final ImagePickerView ipvDesktopBackgroundImage = view.findViewById(R.id.IPVDesktopBackgroundImage);
         final ColorPickerView cpvDesktopBackgroundColor = view.findViewById(R.id.CPVDesktopBackgroundColor);
         cpvDesktopBackgroundColor.setColor(desktopTheme.backgroundColor);
@@ -364,9 +365,9 @@ public class ContainerDetailFragment extends Fragment {
     private String getDesktopTheme(View view) {
         Spinner sDesktopBackgroundType = view.findViewById(R.id.SDesktopBackgroundType);
         WineThemeManager.BackgroundType type = WineThemeManager.BackgroundType.values()[sDesktopBackgroundType.getSelectedItemPosition()];
-        Spinner sDesktopTheme = view.findViewById(R.id.SDesktopTheme);
+        RadioGroup rgDesktopTheme = view.findViewById(R.id.RGDesktopTheme);
         ColorPickerView cpvDesktopBackground = view.findViewById(R.id.CPVDesktopBackgroundColor);
-        WineThemeManager.Theme theme = WineThemeManager.Theme.values()[sDesktopTheme.getSelectedItemPosition()];
+        WineThemeManager.Theme theme = rgDesktopTheme.getCheckedRadioButtonId() == R.id.RBLight ? WineThemeManager.Theme.LIGHT : WineThemeManager.Theme.DARK;
 
        String desktopTheme = theme+","+type+","+cpvDesktopBackground.getColorAsString();
         if (type == WineThemeManager.BackgroundType.IMAGE) {

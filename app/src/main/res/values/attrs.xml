@@ -5,6 +5,12 @@
     <attr name="maxValue" format="integer|float" />
     <attr name="step" format="integer|float" />
     <attr name="textSize" format="dimension" />
+    <attr name="colorPrimaryText" format="color" />
+    <attr name="colorSecondaryText" format="color" />
+    <attr name="colorSecondarySurface" format="color" />
+    <attr name="toolboxBackground" format="reference" />
+    <attr name="preloaderBackground" format="reference" />
+    <attr name="progressBarIndeterminateImage" format="reference" />
     <declare-styleable name="NumberPicker">
         <attr name="value" />
         <attr name="minValue" />

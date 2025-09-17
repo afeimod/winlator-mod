@@ -16,11 +16,8 @@
             android:layout_width="match_parent"
             android:layout_height="?actionBarSize"
             android:id="@+id/Toolbar"
-            android:background="@color/colorPrimary"
             app:layout_scrollFlags="enterAlways|scroll"
-            app:title="@string/app_name"
-            app:titleTextColor="#ffffff"
-            app:titleTextAppearance="@style/TextAppearance.AppCompat.Medium" />
+            app:title="@string/app_name" />
 
         <FrameLayout
             android:id="@+id/FLFragmentContainer"
@@ -36,6 +33,8 @@
         android:id="@+id/NavigationView"
         android:fitsSystemWindows="true"
         app:headerLayout="@layout/main_menu_header"
-        app:itemIconTint="@color/colorAccent"
+        app:itemIconTint="?attr/colorAccent"
+        app:itemTextColor="?attr/colorPrimaryText"
+        android:background="?attr/colorSecondarySurface"
         app:menu="@menu/main_menu"/>
 </androidx.drawerlayout.widget.DrawerLayout>

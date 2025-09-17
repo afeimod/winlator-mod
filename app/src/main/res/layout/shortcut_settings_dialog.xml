@@ -193,6 +193,7 @@
             android:layout_marginTop="8dp"
             android:layout_marginBottom="4dp"
             android:background="@drawable/tab_layout_background"
+            app:tabTextColor="?attr/tabTextColor"
             app:tabGravity="center"
             app:tabMode="auto">
 
@@ -230,7 +231,7 @@
 
                 <TextView
                     style="@style/FieldSetLabel"
-                    android:background="#ffffff"
+                    android:background="?attr/colorSecondarySurface"
                     android:text="@string/directx" />
             </FrameLayout>
 
@@ -245,7 +246,7 @@
 
                 <TextView
                     style="@style/FieldSetLabel"
-                    android:background="#ffffff"
+                    android:background="?attr/colorSecondarySurface"
                     android:text="@string/general" />
             </FrameLayout>
         </LinearLayout>
@@ -301,7 +302,7 @@
 
                 <TextView
                     style="@style/FieldSetLabel"
-                    android:background="#ffffff"
+                    android:background="?attr/colorSecondarySurface"
                     android:text="@string/box64" />
             </FrameLayout>
 
@@ -346,7 +347,7 @@
 
                 <TextView
                     style="@style/FieldSetLabel"
-                    android:background="#ffffff"
+                    android:background="?attr/colorSecondarySurface"
                     android:text="@string/input_controls" />
             </FrameLayout>
 
@@ -389,7 +390,7 @@
 
                 <TextView
                     style="@style/FieldSetLabel"
-                    android:background="#ffffff"
+                    android:background="?attr/colorSecondarySurface"
                     android:text="@string/system" />
             </FrameLayout>
 

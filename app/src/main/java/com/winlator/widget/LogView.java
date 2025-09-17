@@ -95,10 +95,11 @@ public class LogView extends View {
 
         synchronized (lock) {
             paint.setStyle(Paint.Style.FILL);
+            Context context = getContext();
 
             if (lines.isEmpty()) {
                 paint.setTextSize(UnitUtils.dpToPx(20));
-                paint.setColor(0xffbdbdbd);
+                paint.setColor(AppUtils.getThemeColor(context, R.attr.colorSecondaryText));
                 String text = getContext().getString(R.string.no_items_to_display);
                 float centerX = (width - paint.measureText(text)) * 0.5f;
                 float centerY = (height - paint.getFontSpacing()) * 0.5f - paint.ascent();
@@ -110,16 +111,20 @@ public class LogView extends View {
             float textHeight = paint.getFontSpacing();
 
             float rowY = -scrollPosition.y;
+            int colorPrimarySurface = AppUtils.getThemeColor(context, R.attr.colorPrimarySurface);
+            int colorSecondarySurface = AppUtils.getThemeColor(context, R.attr.colorSecondarySurface);
+            int colorPrimaryText = AppUtils.getThemeColor(context, R.attr.colorPrimaryText);
+
             for (int i = 0, count = lines.size(); i < count; i++) {
                 if ((rowY + rowHeight) < 0 || rowY >= height) {
                     rowY += rowHeight;
                     continue;
                 }
 
-                paint.setColor((i % 2) != 0 ? 0xffe1f5fe : 0xffffffff);
+                paint.setColor((i % 2) != 0 ? colorPrimarySurface : colorSecondarySurface);
                 canvas.drawRect(-scrollPosition.x, rowY, width, rowY + rowHeight, paint);
 
-                paint.setColor(0xff212121);
+                paint.setColor(colorPrimaryText);
                 float centerY = (rowY - paint.ascent()) + (rowHeight - textHeight) * 0.5f;
                 canvas.drawText(lines.get(i), -scrollPosition.x, centerY, paint);
                 rowY += rowHeight;

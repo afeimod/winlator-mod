@@ -217,6 +217,7 @@
                 android:layout_marginTop="8dp"
                 android:layout_marginBottom="4dp"
                 android:background="@drawable/tab_layout_background"
+                app:tabTextColor="?attr/tabTextColor"
                 app:tabGravity="center"
                 app:tabMode="auto">
 
@@ -264,11 +265,25 @@
                             android:layout_height="wrap_content"
                             android:text="@string/theme" />
 
-                        <Spinner
-                            style="@style/ComboBox"
-                            android:id="@+id/SDesktopTheme"
+                        <RadioGroup
+                            android:id="@+id/RGDesktopTheme"
                             android:layout_width="match_parent"
-                            android:entries="@array/desktop_theme_entries" />
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical">
+
+                            <RadioButton
+                                android:id="@+id/RBLight"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/light" />
+
+                            <RadioButton
+                                android:id="@+id/RBDark"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/dark" />
+                        </RadioGroup>
 
                         <TextView
                             android:layout_width="wrap_content"

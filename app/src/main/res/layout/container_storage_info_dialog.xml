@@ -26,7 +26,7 @@
                 android:id="@+id/TVDriveCSize"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textColor="@color/colorAccent"
+                android:textColor="?attr/colorAccent"
                 android:textSize="18dp"
                 android:textStyle="bold" />
 
@@ -40,7 +40,7 @@
                 android:id="@+id/TVCacheSize"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textColor="@color/colorAccent"
+                android:textColor="?attr/colorAccent"
                 android:textSize="18dp"
                 android:textStyle="bold" />
 
@@ -54,7 +54,7 @@
                 android:id="@+id/TVTotalSize"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textColor="@color/colorAccent"
+                android:textColor="?attr/colorAccent"
                 android:textSize="18dp"
                 android:textStyle="bold" />
         </LinearLayout>
@@ -75,7 +75,7 @@
                     android:layout_height="wrap_content"
                     app:trackThickness="16dp"
                     app:trackColor="#bdbdbd"
-                    app:indicatorColor="@color/colorAccent"
+                    app:indicatorColor="?attr/colorAccent"
                     app:indicatorSize="120dp"
                     android:layout_gravity="center" />
 

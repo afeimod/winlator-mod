@@ -13,6 +13,7 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.widget.AppCompatTextView;
 import androidx.appcompat.widget.ListPopupWindow;
 
+import com.winlator.R;
 import com.winlator.core.UnitUtils;
 
 import java.util.ArrayList;
@@ -90,7 +91,7 @@ public class MultiSelectionComboBox extends AppCompatTextView {
     @Override
     public boolean performClick() {
         if (items == null || items.length == 0) return true;
-        final ArrayAdapter<String> adapter = new ArrayAdapter<String>(getContext(), android.R.layout.simple_list_item_multiple_choice, items) {
+        final ArrayAdapter<String> adapter = new ArrayAdapter<String>(getContext(), R.layout.simple_list_item_multiple_choice, items) {
             @NonNull
             @Override
             public View getView(int position, @Nullable View convertView, @NonNull ViewGroup parent) {

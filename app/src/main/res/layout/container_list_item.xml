@@ -15,7 +15,7 @@
         android:layout_marginRight="16dp"
         android:layout_marginTop="8dp"
         android:layout_marginBottom="8dp"
-        app:tint="@color/colorPrimaryDark" />
+        app:tint="?attr/colorPrimaryVariant" />
 
     <TextView
         android:id="@+id/TVTitle"

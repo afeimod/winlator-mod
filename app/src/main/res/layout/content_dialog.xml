@@ -23,7 +23,7 @@
                 android:id="@+id/IVIcon"
                 android:layout_width="28dp"
                 android:layout_height="28dp"
-                app:tint="@color/colorPrimary"
+                app:tint="?attr/colorPrimaryVariant"
                 android:layout_marginRight="8dp"
                 android:visibility="gone" />
 
@@ -31,7 +31,7 @@
                 android:id="@+id/TVTitle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textColor="@color/colorPrimary"
+                android:textColor="?attr/colorPrimaryVariant"
                 android:textStyle="bold"
                 android:textSize="18sp" />
         </LinearLayout>
@@ -39,13 +39,28 @@
         <View style="@style/HorizontalLine" />
     </LinearLayout>
 
-    <TextView
-        android:id="@+id/TVMessage"
-        android:layout_width="wrap_content"
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textSize="18sp"
-        android:layout_marginBottom="8dp"
-        android:visibility="gone" />
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="8dp">
+
+        <ImageView
+            android:id="@+id/IVMessageIcon"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            app:tint="?attr/colorPrimaryVariant"
+            android:layout_marginRight="16dp"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/TVMessage"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="18sp"
+            android:visibility="gone" />
+    </LinearLayout>
 
     <EditText
         style="@style/EditText"
@@ -87,7 +102,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:textColor="@color/colorPrimary"
+                android:textColor="?attr/colorPrimaryVariant"
                 android:textStyle="bold"
                 android:visibility="gone" />
 

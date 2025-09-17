@@ -48,6 +48,7 @@ public class ControlsEditorActivity extends AppCompatActivity implements View.On
 
     @Override
     public void onCreate(Bundle bundle) {
+        AppUtils.setActivityTheme(this);
         super.onCreate(bundle);
         AppUtils.hideSystemUI(this);
         setContentView(R.layout.controls_editor_activity);

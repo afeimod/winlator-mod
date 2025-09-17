@@ -16,20 +16,20 @@
         android:paddingRight="32dp"
         android:gravity="center_vertical"
         android:layout_gravity="center"
-        android:background="@drawable/preloader_background">
+        android:background="?attr/preloaderBackground">
 
         <ProgressBar
             android:layout_width="64dp"
             android:layout_height="64dp"
             android:indeterminate="true"
             android:layout_marginRight="16dp"
-            android:indeterminateDrawable="@drawable/progress_bar_indeterminate" />
+            android:indeterminateDrawable="?attr/progressBarIndeterminateImage" />
 
         <TextView
             android:id="@+id/TextView"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textSize="20dp"
-            android:textColor="@color/colorPrimaryDark" />
+            android:textColor="?attr/colorPrimaryText" />
     </LinearLayout>
 </FrameLayout>

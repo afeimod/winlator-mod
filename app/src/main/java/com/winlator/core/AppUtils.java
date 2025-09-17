@@ -3,6 +3,7 @@ package com.winlator.core;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
@@ -30,9 +31,11 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.preference.PreferenceManager;
 
 import com.google.android.material.tabs.TabLayout;
 import com.winlator.R;
+import com.winlator.SettingsFragment;
 
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
@@ -364,5 +367,22 @@ public abstract class AppUtils {
         textView.setText("DEBUG VERSION");
         textView.setBackgroundColor(0x88ffffff);
         return textView;
+    }
+
+    public static int getThemeColor(Context context, int attrId) {
+        TypedValue typedValue = new TypedValue();
+        context.getTheme().resolveAttribute(attrId, typedValue, true);
+        return typedValue.data;
+    }
+
+    public static void setActivityTheme(Activity activity) {
+        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(activity);
+        int appTheme = preferences.getInt("app_theme", SettingsFragment.APP_THEME_DARK);
+        if (appTheme == SettingsFragment.APP_THEME_LIGHT) {
+            activity.setTheme(R.style.AppThemeLight);
+        }
+        else if (appTheme == SettingsFragment.APP_THEME_DARK) {
+            activity.setTheme(R.style.AppThemeDark);
+        }
     }
 }

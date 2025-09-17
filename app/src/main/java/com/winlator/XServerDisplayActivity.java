@@ -71,6 +71,7 @@ import com.winlator.widget.InputControlsView;
 import com.winlator.widget.MagnifierView;
 import com.winlator.widget.TouchpadView;
 import com.winlator.widget.XServerView;
+import com.winlator.winhandler.GamepadHandler;
 import com.winlator.winhandler.TaskManagerDialog;
 import com.winlator.winhandler.WinHandler;
 import com.winlator.xconnector.UnixSocketConfig;
@@ -135,6 +136,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        AppUtils.setActivityTheme(this);
         super.onCreate(savedInstanceState);
         AppUtils.hideSystemUI(this);
         AppUtils.keepScreenOn(this);
@@ -198,7 +200,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             audioDriverConfig = new KeyValueSet(container.getAudioDriverConfig());
             screenInfo = new ScreenInfo(container.getScreenSize());
 
-            int preferredInputApiIdx = preferences.getInt("preferred_input_api", WinHandler.PreferredInputApi.BOTH.ordinal());
+            int preferredInputApiIdx = preferences.getInt("preferred_input_api", GamepadHandler.PreferredInputApi.AUTO.ordinal());
 
             if (shortcut != null) {
                 graphicsDriver = shortcut.getExtra("graphicsDriver", container.getGraphicsDriver());
@@ -211,7 +213,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
                 screenInfo = new ScreenInfo(shortcut.getExtra("screenSize", container.getScreenSize()));
 
                 String dinputMapperType = shortcut.getExtra("dinputMapperType");
-                if (!dinputMapperType.isEmpty()) winHandler.setDInputMapperType(Byte.parseByte(dinputMapperType));
+                if (!dinputMapperType.isEmpty()) winHandler.gamepadHandler.setDInputMapperType(Byte.parseByte(dinputMapperType));
 
                 String preferredInputApi = shortcut.getExtra("preferredInputApi");
                 if (!preferredInputApi.isEmpty()) preferredInputApiIdx = Byte.parseByte(preferredInputApi);
@@ -223,7 +225,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
                 if (intent.hasExtra("exec_path")) win32AppWorkarounds.applyStartupWorkarounds(FileUtils.getName(intent.getStringExtra("exec_path")));
             }
 
-            winHandler.setPreferredInputApi(WinHandler.PreferredInputApi.values()[preferredInputApiIdx]);
+            winHandler.gamepadHandler.setPreferredInputApi(GamepadHandler.PreferredInputApi.values()[preferredInputApiIdx]);
         }
 
         preloaderDialog.show(R.string.starting_up);
