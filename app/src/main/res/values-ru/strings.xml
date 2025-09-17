@@ -277,4 +277,11 @@
     <string name="both">Оба</string>
     <string name="low_latency">Низкая задержка</string>
     <string name="power_saving">Энергосбережение</string>
+    <string name="player">Игрок:</string>
+    <string name="gamepad">Геймпад</string>
+    <string name="enable_vibration">Включить вибрацию</string>
+    <string name="mode">Режим</string>
+    <string name="external_controller">Внешний контроллер</string>
+    <string name="controls_profile">Контрольный профиль</string>
+    <string name="do_you_want_to_reset_configurations">Вы хотите сбросить настройки?</string>
 </resources>

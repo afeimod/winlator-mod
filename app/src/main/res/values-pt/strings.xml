@@ -90,7 +90,7 @@
     <string name="duplicate">Duplicar</string>
     <string name="about">Sobre</string>
     <string name="credits_and_third_party_apps">Créditos e Apps de Terceiros</string>
-    <string name="external_controllers">Controladores Externos</string>
+    <string name="external_controllers">Controles Externos</string>
     <string name="graphics_driver">Driver Gráfico</string>
     <string name="audio_driver">Driver de Áudio</string>
     <string name="loading">Carregando...</string>
@@ -277,4 +277,11 @@
     <string name="both">Ambos</string>
     <string name="low_latency">Baixa Latência</string>
     <string name="power_saving">Economia de Energia</string>
+    <string name="player">Player</string>
+    <string name="gamepad">Gamepad</string>
+    <string name="enable_vibration">Habilitar Vibração</string>
+    <string name="mode">Modo</string>
+    <string name="external_controller">Controle Externo</string>
+    <string name="controls_profile">Perfil de Controle</string>
+    <string name="do_you_want_to_reset_configurations">Deseja redefinir as configurações?</string>
 </resources>

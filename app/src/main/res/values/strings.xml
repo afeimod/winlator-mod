@@ -334,4 +334,11 @@
     <string name="both">Both</string>
     <string name="low_latency">Low Latency</string>
     <string name="power_saving">Power Saving</string>
+    <string name="player">Player</string>
+    <string name="gamepad">Gamepad</string>
+    <string name="enable_vibration">Enable Vibration</string>
+    <string name="mode">Mode</string>
+    <string name="external_controller">External Controller</string>
+    <string name="controls_profile">Controls Profile</string>
+    <string name="do_you_want_to_reset_configurations">Do you want to reset the configurations?</string>
 </resources>
