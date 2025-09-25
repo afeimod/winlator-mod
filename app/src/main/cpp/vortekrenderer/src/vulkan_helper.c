@@ -384,6 +384,9 @@ void checkDeviceProperties(VkContext* context, VkPhysicalDeviceProperties* prope
 
     VkPhysicalDeviceDriverProperties* driverProperties = findNextVkStructure(pNext, VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES);
     if (driverProperties) VK_MAKE_VERSION_STR(driverProperties->driverInfo, properties->driverVersion);
+
+    VkPhysicalDeviceMapMemoryPlacedPropertiesEXT* mapPlacedProperties = findNextVkStructure(pNext, VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAP_MEMORY_PLACED_PROPERTIES_EXT);
+    if (mapPlacedProperties) mapPlacedProperties->minPlacedMemoryMapAlignment = getpagesize();
 }
 
 void checkDeviceFeatures(VkPhysicalDeviceFeatures* features, void* pNext) {
@@ -408,6 +411,13 @@ void checkDeviceFeatures(VkPhysicalDeviceFeatures* features, void* pNext) {
     features->fragmentStoresAndAtomics = VK_TRUE;
     features->multiDrawIndirect = VK_TRUE;
     features->tessellationShader = VK_TRUE;
+
+    VkPhysicalDeviceMapMemoryPlacedFeaturesEXT* mapMemoryPlacedFeatures = findNextVkStructure(pNext, VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAP_MEMORY_PLACED_FEATURES_EXT);
+    if (mapMemoryPlacedFeatures) {
+        mapMemoryPlacedFeatures->memoryMapPlaced = VK_TRUE;
+        mapMemoryPlacedFeatures->memoryMapRangePlaced = VK_FALSE;
+        mapMemoryPlacedFeatures->memoryUnmapReserve = VK_TRUE;
+    }
 }
 
 void destroyVkObject(VkObjectType type, VkDevice device, void* handle) {
@@ -460,8 +470,7 @@ void destroyVkObject(VkObjectType type, VkDevice device, void* handle) {
             vulkanWrapper.vkDestroyRenderPass(device, handle, NULL);
             break;
         case VK_OBJECT_TYPE_PIPELINE: {
-            VkPipeline pipeline = AsyncPipelineCreator_getVkHandle(handle);
-            if (pipeline) vulkanWrapper.vkDestroyPipeline(device, pipeline, NULL);
+            vulkanWrapper.vkDestroyPipeline(device, handle, NULL);
             break;
         }
         case VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT:
