@@ -39,7 +39,6 @@ typedef struct VkContext {
     ShaderInspector* shaderInspector;
     ThreadPool* threadPool;
 
-    AsyncPipelineCreator asyncPipelineCreator;
     ArrayList extraDataRequests;
     pthread_mutex_t extraDataRequestsMutex;
 

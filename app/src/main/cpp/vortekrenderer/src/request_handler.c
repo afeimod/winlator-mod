@@ -870,7 +870,7 @@ void vt_handle_vkDestroyShaderModule(VkContext* context) {
     VkDevice device = VkObject_fromId(deviceId);
     ShaderModule* shaderModule = VkObject_fromId(shaderModuleId);
 
-    destroyVkObjectIfNotBusy(&context->asyncPipelineCreator, VK_OBJECT_TYPE_SHADER_MODULE, device, shaderModule);
+    destroyVkObject(VK_OBJECT_TYPE_SHADER_MODULE, device, shaderModule);
 }
 
 void vt_handle_vkCreatePipelineCache(VkContext* context) {
@@ -931,11 +931,11 @@ void vt_handle_vkMergePipelineCaches(VkContext* context) {
 }
 
 void vt_handle_vkCreateGraphicsPipelines(VkContext* context) {
-    AsyncPipelineCreator_create(&context->asyncPipelineCreator, context->clientRing, context->shaderInspector, context->threadPool, PIPELINE_TYPE_GRAPHICS, context->inputBuffer);
+    AsyncPipelineCreator_create(context, PIPELINE_TYPE_GRAPHICS);
 }
 
 void vt_handle_vkCreateComputePipelines(VkContext* context) {
-    AsyncPipelineCreator_create(&context->asyncPipelineCreator, context->clientRing, context->shaderInspector, context->threadPool, PIPELINE_TYPE_COMPUTE, context->inputBuffer);
+    AsyncPipelineCreator_create(context, PIPELINE_TYPE_COMPUTE);
 }
 
 void vt_handle_vkDestroyPipeline(VkContext* context) {
@@ -944,8 +944,9 @@ void vt_handle_vkDestroyPipeline(VkContext* context) {
 
     vt_unserialize_vkDestroyPipeline((VkDevice)&deviceId, (VkPipeline)&pipelineId, NULL, context->inputBuffer, &context->memoryPool);
     VkDevice device = VkObject_fromId(deviceId);
+    VkPipeline pipeline = VkObject_fromId(pipelineId);
 
-    destroyVkObject(VK_OBJECT_TYPE_PIPELINE, device, VkObject_fromId(pipelineId));
+    vulkanWrapper.vkDestroyPipeline(device, pipeline, NULL);
 }
 
 void vt_handle_vkCreatePipelineLayout(VkContext* context) {
@@ -1162,7 +1163,7 @@ void vt_handle_vkDestroyRenderPass(VkContext* context) {
     VkDevice device = VkObject_fromId(deviceId);
     VkRenderPass renderPass = VkObject_fromId(renderPassId);
 
-    destroyVkObjectIfNotBusy(&context->asyncPipelineCreator, VK_OBJECT_TYPE_RENDER_PASS, device, renderPass);
+    vulkanWrapper.vkDestroyRenderPass(device, renderPass, NULL);
 }
 
 void vt_handle_vkGetRenderAreaGranularity(VkContext* context) {
@@ -1299,9 +1300,9 @@ void vt_handle_vkCmdBindPipeline(VkContext* context) {
 
     vt_unserialize_vkCmdBindPipeline((VkCommandBuffer)&commandBufferId, &pipelineBindPoint, (VkPipeline)&pipelineId, context->inputBuffer, &context->memoryPool);
     VkCommandBuffer commandBuffer = VkObject_fromId(commandBufferId);
-    VkPipeline pipeline = AsyncPipelineCreator_getVkHandle(VkObject_fromId(pipelineId));
+    VkPipeline pipeline = VkObject_fromId(pipelineId);
 
-    if (pipeline) vulkanWrapper.vkCmdBindPipeline(commandBuffer, pipelineBindPoint, pipeline);
+    vulkanWrapper.vkCmdBindPipeline(commandBuffer, pipelineBindPoint, pipeline);
 }
 
 void vt_handle_vkCmdSetViewport(VkContext* context) {

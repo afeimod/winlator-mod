@@ -115,7 +115,6 @@ VkContext* createVkContext(JNIEnv* env, jobject obj, int clientFd, jobject optio
     context->exposedDeviceExtensions = jstringArrayToCharArray(env, exposedDeviceExtensions);
 
     pthread_mutex_init(&context->extraDataRequestsMutex, NULL);
-    pthread_mutex_init(&context->asyncPipelineCreator.mutex, NULL);
 
     context->memoryPool.data = calloc(MEMORY_POOL_MAX_SIZE, 1);
     context->threadPool = ThreadPool_init(4);
@@ -164,9 +163,6 @@ void destroyVkContext(JNIEnv* env, VkContext* context) {
 
     ArrayList_free(context->disabledDeviceExtensions);
     context->disabledDeviceExtensions = NULL;
-
-    MEMFREE(context->asyncPipelineCreator.busyObjects.elements);
-    pthread_mutex_destroy(&context->asyncPipelineCreator.mutex);
 
     ArrayList_free(&context->extraDataRequests);
     pthread_mutex_destroy(&context->extraDataRequestsMutex);
