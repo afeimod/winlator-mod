@@ -114,6 +114,7 @@ public class GamepadHandler {
             notify = false;
         }
 
+        final boolean[] forceDisable = !isXInput ? new boolean[GAMEPAD_MAX_COUNT] : null;
         int clientIndex = findGamepadClientIndex(port, null, null);
         if (notify) {
             GamepadClient client;
@@ -132,7 +133,10 @@ public class GamepadHandler {
                     GamepadClient xinputClient = gamepadClients.get(xinputClientIndex);
                     if (xinputClient.updatedOnce) {
                         for (byte i = 0; i < GAMEPAD_MAX_COUNT; i++) {
-                            if (xinputClient.enabledSlots[i]) client.enabledSlots[i] = false;
+                            if (xinputClient.enabledSlots[i]) {
+                                client.enabledSlots[i] = false;
+                                forceDisable[i] = true;
+                            }
                         }
                     }
                 }
@@ -157,9 +161,9 @@ public class GamepadHandler {
                 winHandler.sendData.put(RequestCodes.GET_GAMEPAD);
                 winHandler.sendData.put(dinputMapperType);
 
-                for (GamepadSlot gamepadSlot : gamepadSlots) {
-                    if (gamepadSlot != null) {
-                        String name = gamepadSlot.getName();
+                for (byte i = 0; i < GAMEPAD_MAX_COUNT; i++) {
+                    if (gamepadSlots[i] != null && !forceDisable[i]) {
+                        String name = gamepadSlots[i].getName();
                         byte[] bytes = name.getBytes();
                         byte nameLength = (byte)Math.min((byte)bytes.length, 31);
                         winHandler.sendData.put(nameLength);
