@@ -13,7 +13,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class WineInfo implements Parcelable {
-    public static final String MAIN_WINE_VERSION = "9.2";
+    public static final String MAIN_WINE_VERSION = "10.10";
     public static final WineInfo MAIN_WINE_INFO = new WineInfo(MAIN_WINE_VERSION);
     private static final Pattern pattern = Pattern.compile("^wine\\-([0-9\\.]+)\\-?([0-9\\.]+)?\\-?(x86|x86_64)?$");
     public final String version;
@@ -39,7 +39,7 @@ public class WineInfo implements Parcelable {
     }
 
     public String identifier() {
-        return "wine-"+fullVersion()+"-"+(this == MAIN_WINE_INFO ? "custom" : "");
+        return "wine-"+fullVersion()+(this == MAIN_WINE_INFO ? "-custom" : "");
     }
 
     public String fullVersion() {

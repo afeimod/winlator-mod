@@ -12,6 +12,9 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.CharBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -192,8 +195,8 @@ public class WineRegistryEditor implements Closeable {
 
     public byte[] getHexValues(String key, String name) {
         String value = getRawValue(key, name);
-        if (value != null && value.startsWith("hex:")) {
-            String[] items = value.replace("hex:", "").replace("\\\n  ", "").split(",");
+        if (value != null && (value.startsWith("hex:") || value.startsWith("hex("))) {
+            String[] items = value.replaceAll("hex[\\(\\)0-9]*:", "").replace("\\\n  ", "").split(",");
             byte[] bytes = new byte[items.length];
             for (int i = 0; i < items.length; i++) {
                 try {
@@ -204,6 +207,15 @@ public class WineRegistryEditor implements Closeable {
             return bytes;
         }
         return null;
+    }
+
+    public String getSymlinkValue(String key, String name) {
+        byte[] symlinkBytes = getHexValues(key, name);
+        if (symlinkBytes != null) {
+            CharBuffer buffer = ByteBuffer.wrap(symlinkBytes).order(ByteOrder.LITTLE_ENDIAN).asCharBuffer();
+            return buffer.toString().replace("\\Registry\\Machine\\", "");
+        }
+        else return null;
     }
 
     private String getRawValue(String key, String name) {

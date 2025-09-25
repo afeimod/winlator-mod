@@ -54,6 +54,7 @@ import com.winlator.core.KeyValueSet;
 import com.winlator.core.PreloaderDialog;
 import com.winlator.core.StringUtils;
 import com.winlator.core.WineInfo;
+import com.winlator.core.WineInstaller;
 import com.winlator.core.WineRegistryEditor;
 import com.winlator.core.WineThemeManager;
 import com.winlator.core.WineUtils;
@@ -132,7 +133,7 @@ public class ContainerDetailFragment extends Fragment {
         }
         else etName.setText(getString(R.string.container)+"-"+manager.getNextContainerId());
 
-        final ArrayList<WineInfo> wineInfos = WineUtils.getInstalledWineInfos(context);
+        final ArrayList<WineInfo> wineInfos = WineInstaller.getInstalledWineInfos(context);
         final Spinner sWineVersion = view.findViewById(R.id.SWineVersion);
         if (wineInfos.size() > 1) loadWineVersionSpinner(view, sWineVersion, wineInfos);
 

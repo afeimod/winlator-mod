@@ -47,7 +47,7 @@ import com.winlator.core.LocaleHelper;
 import com.winlator.core.PreloaderDialog;
 import com.winlator.core.StringUtils;
 import com.winlator.core.WineInfo;
-import com.winlator.core.WineUtils;
+import com.winlator.core.WineInstaller;
 import com.winlator.widget.ColorPickerView;
 import com.winlator.widget.LogView;
 import com.winlator.widget.SeekBar;
@@ -311,7 +311,7 @@ public class SettingsFragment extends Fragment {
 
     private void loadWineVersionSpinner(final View view, final Spinner sWineVersion) {
         Context context = getContext();
-        final ArrayList<WineInfo> wineInfos = WineUtils.getInstalledWineInfos(context);
+        final ArrayList<WineInfo> wineInfos = WineInstaller.getInstalledWineInfos(context);
         sWineVersion.setAdapter(new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, wineInfos));
 
         view.findViewById(R.id.BTInstallWine).setOnClickListener((v) -> selectWineFileForInstall());
@@ -329,9 +329,9 @@ public class SettingsFragment extends Fragment {
         final Context context = getContext();
         selectWineFileCallback = (uri) -> {
             preloaderDialog.show(R.string.preparing_installation);
-            WineUtils.extractWineFileForInstallAsync(context, uri, (wineDir) -> {
+            WineInstaller.extractWineFileForInstallAsync(context, uri, (wineDir) -> {
                 if (wineDir != null) {
-                    WineUtils.findWineVersionAsync(context, wineDir, (wineInfo) -> {
+                    WineInstaller.findWineVersionAsync(context, wineDir, (wineInfo) -> {
                         preloaderDialog.closeOnUiThread();
                         if (wineInfo == null) {
                             AppUtils.showToast(context, R.string.unable_to_install_wine);

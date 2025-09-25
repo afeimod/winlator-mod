@@ -57,6 +57,7 @@ import com.winlator.core.StringUtils;
 import com.winlator.core.TarCompressorUtils;
 import com.winlator.core.Win32AppWorkarounds;
 import com.winlator.core.WineInfo;
+import com.winlator.core.WineInstaller;
 import com.winlator.core.WineRegistryEditor;
 import com.winlator.core.WineStartMenuCreator;
 import com.winlator.core.WineThemeManager;
@@ -558,7 +559,10 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         guestProgramLauncherComponent.setTerminationCallback((status) -> exit());
         environment.addComponent(guestProgramLauncherComponent);
 
-        if (isGenerateWineprefix()) generateWineprefix();
+        if (isGenerateWineprefix()) {
+            wineInfo = getIntent().getParcelableExtra("wine_info");
+            if (wineInfo != null) WineInstaller.generateWineprefix(wineInfo, environment);
+        }
         if (overrideEnvVars != null) {
             envVars.putAll(overrideEnvVars);
             overrideEnvVars = null;
@@ -751,7 +755,6 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
                 envVars.put("GALLIUM_DRIVER", "zink");
                 envVars.put("ZINK_CONTEXT_THREADED", "1");
                 envVars.put("MESA_VK_WSI_PRESENT_MODE", "mailbox");
-                envVars.put("WINEVKUSEPLACEDADDR", "1");
 
                 TurnipConfigDialog.setEnvVars(this, graphicsDriverConfig, envVars);
 
@@ -765,7 +768,6 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
                 envVars.put("GALLIUM_DRIVER", "zink");
                 envVars.put("ZINK_CONTEXT_THREADED", "1");
                 envVars.put("MESA_GL_VERSION_OVERRIDE", "3.3");
-                envVars.put("WINEVKUSEPLACEDADDR", "1");
                 if (dxwrapper.equals(DXWrappers.DXVK)) envVars.put("WINE_D3D_CONFIG", "renderer=gdi");
 
                 if (changed || MainActivity.DEBUG_MODE) {
@@ -817,67 +819,6 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
     public InputControlsView getInputControlsView() {
         return inputControlsView;
-    }
-
-    private void generateWineprefix() {
-        Intent intent = getIntent();
-
-        final File rootDir = rootFS.getRootDir();
-        final File installedWineDir = rootFS.getInstalledWineDir();
-        wineInfo = intent.getParcelableExtra("wine_info");
-        envVars.put("WINEARCH", "win64");
-        rootFS.setWinePath(wineInfo.path);
-
-        final File containerPatternDir = new File(installedWineDir, "/preinstall/container-pattern");
-        if (containerPatternDir.isDirectory()) FileUtils.delete(containerPatternDir);
-        containerPatternDir.mkdirs();
-
-        File linkFile = new File(rootDir, RootFS.HOME_PATH);
-        FileUtils.symlink(containerPatternDir.getPath(), linkFile.getPath());
-
-        GuestProgramLauncherComponent guestProgramLauncherComponent = environment.getComponent(GuestProgramLauncherComponent.class);
-        guestProgramLauncherComponent.setBox64Preset(Box64Preset.CONSERVATIVE);
-        guestProgramLauncherComponent.setGuestExecutable("wine explorer /desktop=shell,"+Container.DEFAULT_SCREEN_SIZE+" winecfg");
-
-        final PreloaderDialog preloaderDialog = new PreloaderDialog(this);
-        guestProgramLauncherComponent.setTerminationCallback((status) -> Executors.newSingleThreadExecutor().execute(() -> {
-            if (status > 0) {
-                AppUtils.showToast(this, R.string.unable_to_install_wine);
-                FileUtils.delete(new File(installedWineDir, "/preinstall"));
-                AppUtils.restartApplication(this);
-                return;
-            }
-
-            preloaderDialog.showOnUiThread(R.string.finishing_installation);
-            FileUtils.writeString(new File(rootDir, RootFS.WINEPREFIX+"/.update-timestamp"), "disable\n");
-
-            File userDir = new File(rootDir, RootFS.WINEPREFIX+"/drive_c/users/xuser");
-            File[] userFiles = userDir.listFiles();
-            if (userFiles != null) {
-                for (File userFile : userFiles) {
-                    if (FileUtils.isSymlink(userFile)) {
-                        String path = userFile.getPath();
-                        userFile.delete();
-                        (new File(path)).mkdirs();
-                    }
-                }
-            }
-
-            File containerPatternFile = new File(installedWineDir, "/preinstall/container-pattern-"+wineInfo.fullVersion()+".tzst");
-            TarCompressorUtils.compress(TarCompressorUtils.Type.ZSTD, new File(rootDir, RootFS.WINEPREFIX), containerPatternFile, MainActivity.CONTAINER_PATTERN_COMPRESSION_LEVEL);
-
-            if (!containerPatternFile.renameTo(new File(installedWineDir, containerPatternFile.getName())) ||
-                !(new File(wineInfo.path)).renameTo(new File(installedWineDir, wineInfo.identifier()))) {
-                containerPatternFile.delete();
-            }
-
-            FileUtils.delete(new File(installedWineDir, "/preinstall"));
-
-            preloaderDialog.closeOnUiThread();
-            AppUtils.RestartApplicationOptions options = new AppUtils.RestartApplicationOptions();
-            options.selectedMenuItemId = R.id.menu_item_settings;
-            AppUtils.restartApplication(this, options);
-        }));
     }
 
     private void extractDXWrapperFiles() {
