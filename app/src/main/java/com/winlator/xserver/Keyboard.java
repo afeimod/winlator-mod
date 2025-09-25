@@ -4,6 +4,7 @@ import android.view.KeyEvent;
 
 import androidx.collection.ArraySet;
 
+import com.winlator.core.AppUtils;
 import com.winlator.core.Bitmask;
 import com.winlator.inputcontrols.ExternalController;
 
@@ -36,13 +37,13 @@ public class Keyboard {
     }
 
     public void setKeysyms(byte keycode, int minKeysym, int majKeysym) {
-        int index = keycode - 8;
+        int index = keycode - MIN_KEYCODE;
         keysyms[index*KEYSYMS_PER_KEYCODE+0] = minKeysym;
         keysyms[index*KEYSYMS_PER_KEYCODE+1] = majKeysym;
     }
 
     public boolean hasKeysym(byte keycode, int keysym) {
-        int index = keycode - 8;
+        int index = keycode - MIN_KEYCODE;
         return keysyms[index*KEYSYMS_PER_KEYCODE+0] == keysym || keysyms[index*KEYSYMS_PER_KEYCODE+1] == keysym;
     }
 
@@ -113,12 +114,37 @@ public class Keyboard {
                 xServer.injectKeyRelease(xKeycode);
             }
         }
+        else if (action == KeyEvent.ACTION_MULTIPLE) {
+            String chars = event.getCharacters();
+            if (chars != null && chars.length() == 1) {
+                int keysym = chars.charAt(0);
+                XKeycode xKeycode = getCustomXKeycodeForKeysym(keysym);
+                xServer.injectKeyPress(xKeycode, keysym);
+                AppUtils.runDelayed(() -> xServer.injectKeyRelease(xKeycode), 30);
+            }
+        }
         return true;
     }
 
+    private XKeycode getCustomXKeycodeForKeysym(int keysym) {
+        XKeycode[] customKeys = XKeycode.getCustomKeys();
+        for (XKeycode xKeycode : customKeys) if (hasKeysym(xKeycode.id, keysym)) return xKeycode;
+        for (XKeycode xKeycode : customKeys) {
+            int index = xKeycode.id - MIN_KEYCODE;
+            if (keysyms[index*KEYSYMS_PER_KEYCODE+0] == 0) return xKeycode;
+        }
+        for (XKeycode xKeycode : customKeys) {
+            int index = xKeycode.id - MIN_KEYCODE;
+            keysyms[index*KEYSYMS_PER_KEYCODE+0] = 0;
+            keysyms[index*KEYSYMS_PER_KEYCODE+1] = 0;
+        }
+        return XKeycode.KEY_CUSTOM_1;
+    }
+
     private static XKeycode[] createKeycodeMap() {
-        XKeycode[] keycodeMap = new XKeycode[(KeyEvent.getMaxKeyCode() + 1)];
+        XKeycode[] keycodeMap = new XKeycode[159];
         keycodeMap[KeyEvent.KEYCODE_ENTER] = XKeycode.KEY_ENTER;
+        keycodeMap[KeyEvent.KEYCODE_ESCAPE] = XKeycode.KEY_ESC;
         keycodeMap[KeyEvent.KEYCODE_DPAD_LEFT] = XKeycode.KEY_LEFT;
         keycodeMap[KeyEvent.KEYCODE_DPAD_RIGHT] = XKeycode.KEY_RIGHT;
         keycodeMap[KeyEvent.KEYCODE_DPAD_UP] = XKeycode.KEY_UP;

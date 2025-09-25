@@ -102,10 +102,31 @@ public enum XKeycode {
     KEY_NEXT(117),
     KEY_INSERT(118),
     KEY_DEL(119),
-    KEY_MAX(KEY_DEL.id);
+    KEY_CUSTOM_1(93),
+    KEY_CUSTOM_2(94),
+    KEY_CUSTOM_3(97),
+    KEY_CUSTOM_4(98),
+    KEY_CUSTOM_5(99),
+    KEY_CUSTOM_6(100),
+    KEY_CUSTOM_7(101),
+    KEY_CUSTOM_8(102),
+    KEY_CUSTOM_9(103),
+    KEY_CUSTOM_10(109),
+    KEY_CUSTOM_11(120),
+    KEY_CUSTOM_12(121),
+    KEY_CUSTOM_13(122),
+    KEY_CUSTOM_14(123),
+    KEY_CUSTOM_15(124),
+    KEY_CUSTOM_16(125),
+    KEY_CUSTOM_17(126),
+    KEY_MAX(KEY_CUSTOM_17.id);
     public final byte id;
 
     XKeycode(int id) {
         this.id = (byte)id;
+    }
+
+    public static XKeycode[] getCustomKeys() {
+        return new XKeycode[]{KEY_CUSTOM_1, KEY_CUSTOM_2, KEY_CUSTOM_3, KEY_CUSTOM_4, KEY_CUSTOM_5, KEY_CUSTOM_6, KEY_CUSTOM_7, KEY_CUSTOM_8, KEY_CUSTOM_9, KEY_CUSTOM_10, KEY_CUSTOM_11, KEY_CUSTOM_12, KEY_CUSTOM_13, KEY_CUSTOM_14, KEY_CUSTOM_15, KEY_CUSTOM_16, KEY_CUSTOM_17};
     }
 }
