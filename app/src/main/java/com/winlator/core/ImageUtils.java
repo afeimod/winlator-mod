@@ -3,8 +3,7 @@ package com.winlator.core;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.graphics.Canvas;
-import android.graphics.Paint;
+import android.graphics.BitmapRegionDecoder;
 import android.graphics.Rect;
 import android.net.Uri;
 
@@ -84,6 +83,41 @@ public abstract class ImageUtils {
         }
 
         return getBitmapFromUri(context, uri, options);
+    }
+
+    public static Bitmap getBitmapFromAsset(Context context, String filePath, Rect rect, BitmapFactory.Options options) {
+        InputStream is = null;
+        Bitmap bitmap = null;
+        try {
+            is = context.getAssets().open(filePath);
+            if (rect != null) {
+                bitmap = BitmapRegionDecoder.newInstance(is, false).decodeRegion(rect, options);
+            }
+            else {
+                if (options != null) {
+                    bitmap = BitmapFactory.decodeStream(is, null, options);
+                }
+                else bitmap = BitmapFactory.decodeStream(is);
+            }
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+        }
+        finally {
+            try {
+                if (is != null) is.close();
+            }
+            catch (IOException e) {}
+        }
+        return bitmap;
+    }
+
+    public static Bitmap getBitmapFromAsset(Context context, String filePath) {
+        return getBitmapFromAsset(context, filePath, null, null);
+    }
+
+    public static Bitmap getBitmapFromAsset(Context context, String filePath, BitmapFactory.Options options) {
+        return getBitmapFromAsset(context, filePath, null, options);
     }
 
     public static boolean save(Bitmap bitmap, File output, Bitmap.CompressFormat compressFormat, @IntRange(from = 0, to = 100) int quality) {

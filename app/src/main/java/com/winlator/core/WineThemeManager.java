@@ -8,12 +8,13 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.RectF;
-import android.util.DisplayMetrics;
 
-import com.winlator.R;
 import com.winlator.win32.MSBitmap;
 import com.winlator.xenvironment.RootFS;
 import com.winlator.xserver.ScreenInfo;
+
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.io.File;
 
@@ -21,15 +22,18 @@ public abstract class WineThemeManager {
     public enum Theme {LIGHT, DARK}
     public enum BackgroundType {IMAGE, COLOR}
     public static final String DEFAULT_DESKTOP_THEME = Theme.LIGHT+","+BackgroundType.IMAGE+",#0277bd";
+    public static final String DEFAULT_WALLPAPER_ID = "wallpaper-1";
 
     public static class ThemeInfo {
         public final Theme theme;
         public final BackgroundType backgroundType;
         public final int backgroundColor;
+        public final String wallpaperId;
 
         public ThemeInfo(String value) {
             String[] values = value.split(",");
             theme = Theme.valueOf(values[0]);
+
             if (values.length < 3) {
                 backgroundColor = Color.parseColor(values[1]);
                 backgroundType = BackgroundType.IMAGE;
@@ -38,6 +42,9 @@ public abstract class WineThemeManager {
                 backgroundType = BackgroundType.valueOf(values[1]);
                 backgroundColor = Color.parseColor(values[2]);
             }
+
+            String lastValue = values[values.length-1];
+            wallpaperId = lastValue.startsWith("wallpaper-") ? lastValue : (lastValue.equals("0") ? DEFAULT_WALLPAPER_ID : "user-wallpaper");
         }
     }
 
@@ -46,7 +53,7 @@ public abstract class WineThemeManager {
         File userRegFile = new File(rootDir, RootFS.WINEPREFIX+"/user.reg");
         String background = Color.red(themeInfo.backgroundColor)+" "+Color.green(themeInfo.backgroundColor)+" "+Color.blue(themeInfo.backgroundColor);
 
-        if (themeInfo.backgroundType == BackgroundType.IMAGE) createWallpaperBMPFile(context, screenInfo);
+        if (themeInfo.backgroundType == BackgroundType.IMAGE) createWallpaperBMPFile(context, themeInfo.wallpaperId, screenInfo);
 
         try (WineRegistryEditor registryEditor = new WineRegistryEditor(userRegFile)) {
             if (themeInfo.backgroundType == BackgroundType.IMAGE) {
@@ -121,7 +128,7 @@ public abstract class WineThemeManager {
         }
     }
 
-    private static void createWallpaperBMPFile(Context context, ScreenInfo screenInfo) {
+    private static void createWallpaperBMPFile(Context context, String wallpaperId, ScreenInfo screenInfo) {
         final int outputHeight = 480;
         int outputWidth = (int)Math.ceil(((float)outputHeight / screenInfo.height) * screenInfo.width);
 
@@ -130,23 +137,43 @@ public abstract class WineThemeManager {
         Canvas canvas = new Canvas(outputBitmap);
 
         File userWallpaperFile = getUserWallpaperFile(context);
-        if (userWallpaperFile.isFile()) {
+        if (wallpaperId.equals("user-wallpaper") && userWallpaperFile.isFile()) {
             Bitmap image = BitmapFactory.decodeFile(userWallpaperFile.getPath());
             Rect srcRect = new Rect(0, 0, image.getWidth(), image.getHeight());
             Rect dstRect = new Rect(0, 0, outputWidth, outputHeight);
             canvas.drawBitmap(image, srcRect, dstRect, paint);
         }
-        else {
-            BitmapFactory.Options options = new BitmapFactory.Options();
-            options.inTargetDensity = DisplayMetrics.DENSITY_HIGH;
-            Bitmap wallpaperBitmap = BitmapFactory.decodeResource(context.getResources(), R.drawable.wallpaper, options);
-            paint.setStyle(Paint.Style.FILL);
-            paint.setColor(0xff01579b);
-            canvas.drawRect(0, 0, outputWidth, outputHeight * 0.5f, paint);
-            paint.setColor(0xff0277bd);
-            canvas.drawRect(0, outputHeight * 0.5f, outputWidth, outputHeight, paint);
+        else if (wallpaperId.startsWith("wallpaper-")) {
+            String wallpaperDir = "wallpapers/"+wallpaperId;
+            JSONObject config;
+            try {
+                config = new JSONObject(FileUtils.readString(context, wallpaperDir+"/config.json"));
+            }
+            catch (JSONException e) {
+                return;
+            }
 
-            float targetSize = outputHeight * (320.0f / 480.0f);
+            int primaryColor = Color.parseColor(config.optString("primaryColor", "#ffffff"));
+            int secondaryColor = Color.parseColor(config.optString("secondaryColor", "#ffffff"));
+            String orientation = config.optString("orientation", "none");
+            float scale = (float)config.optDouble("scale", 1.0);
+            Bitmap wallpaperBitmap = ImageUtils.getBitmapFromAsset(context, wallpaperDir+"/image.png");
+            paint.setStyle(Paint.Style.FILL);
+
+            if (orientation.equals("horizontal")) {
+                paint.setColor(primaryColor);
+                canvas.drawRect(0, 0, outputWidth * 0.5f, outputHeight, paint);
+                paint.setColor(secondaryColor);
+                canvas.drawRect(outputWidth * 0.5f, 0, outputWidth, outputHeight, paint);
+            }
+            else if (orientation.equals("vertical")) {
+                paint.setColor(primaryColor);
+                canvas.drawRect(0, 0, outputWidth, outputHeight * 0.5f, paint);
+                paint.setColor(secondaryColor);
+                canvas.drawRect(0, outputHeight * 0.5f, outputWidth, outputHeight, paint);
+            }
+
+            float targetSize = outputHeight * scale;
             float centerX = (outputWidth - targetSize) * 0.5f;
             float centerY = (outputHeight - targetSize) * 0.5f;
             Rect srcRect = new Rect(0, 0, wallpaperBitmap.getWidth(), wallpaperBitmap.getHeight());
