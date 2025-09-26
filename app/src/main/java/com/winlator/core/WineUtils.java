@@ -205,7 +205,7 @@ public abstract class WineUtils {
         FileUtils.writeString(new File(rootDir, RootFS.WINEPREFIX+"/.update-timestamp"), "0\n");
 
         EnvVars envVars = new EnvVars();
-        envVars.put("WINEPREFIX", RootFS.WINEPREFIX);
+        envVars.put("WINEPREFIX", rootDir+RootFS.WINEPREFIX);
         envVars.put("WINEDLLOVERRIDES", "mscoree,mshtml=d");
 
         XEnvironment environment = new XEnvironment(context, rootFS);
