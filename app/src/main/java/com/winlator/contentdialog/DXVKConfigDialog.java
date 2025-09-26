@@ -71,7 +71,16 @@ public class DXVKConfigDialog extends ContentDialog {
         File rootDir = RootFS.find(context).getRootDir();
         File dxvkConfigFile = new File(rootDir, RootFS.USER_CONFIG_PATH+"/dxvk.conf");
 
+        FileUtils.delete(dxvkConfigFile);
+        String content = getDXVKConfigContent(config);
+        if (FileUtils.writeString(dxvkConfigFile, content)) {
+            envVars.put("DXVK_CONFIG_FILE", RootFS.getDosUserConfigPath()+"\\dxvk.conf");
+        }
+    }
+
+    private static String getDXVKConfigContent(KeyValueSet config) {
         String content = "";
+
         String maxDeviceMemory = config.get("maxDeviceMemory");
         if (!maxDeviceMemory.isEmpty() && !maxDeviceMemory.equals("0")) {
             content += "dxgi.maxDeviceMemory = "+maxDeviceMemory+"\n";
@@ -97,11 +106,11 @@ public class DXVKConfigDialog extends ContentDialog {
             content += "d3d9.customDeviceDesc = \""+parts[2]+"\"\n";
         }
 
-        content += "d3d11.constantBufferRangeCheck = \"True\"\n";
+        content += "d3d11.constantBufferRangeCheck = \"True\"\n\n";
 
-        FileUtils.delete(dxvkConfigFile);
-        if (FileUtils.writeString(dxvkConfigFile, content)) {
-            envVars.put("DXVK_CONFIG_FILE", RootFS.getDosUserConfigPath()+"\\dxvk.conf");
-        }
+        content += "[GTA5.exe]\n";
+        content += "dxgi.maxDeviceMemory = 512\n";
+        content += "dxgi.maxSharedMemory = 512\n";
+        return content;
     }
 }
