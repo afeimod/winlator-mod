@@ -27,7 +27,6 @@ import androidx.preference.PreferenceManager;
 
 import com.google.android.material.navigation.NavigationView;
 import com.winlator.alsaserver.ALSAClient;
-import com.winlator.box64.Box64Preset;
 import com.winlator.container.AudioDrivers;
 import com.winlator.container.Container;
 import com.winlator.container.ContainerManager;
@@ -238,17 +237,17 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         xServer.windowManager.addOnWindowModificationListener(new WindowManager.OnWindowModificationListener() {
             @Override
             public void onUpdateWindowContent(Window window) {
-                if (!winStarted[0] && !window.getClassName().isEmpty() && window.getHeight() > 1) {
-                    xServerView.getRenderer().setCursorVisible(true);
-                    preloaderDialog.closeOnUiThread();
-                    winStarted[0] = true;
-                }
-
                 if (window.id == frameRatingWindowId) frameRating.update();
             }
 
             @Override
             public void onMapWindow(Window window) {
+                if (!winStarted[0] && !window.getClassName().isEmpty() && window.isRenderable()) {
+                    xServerView.getRenderer().setCursorVisible(true);
+                    preloaderDialog.closeOnUiThread();
+                    winStarted[0] = true;
+                }
+
                 if (win32AppWorkarounds != null) win32AppWorkarounds.applyWindowWorkarounds(window);
                 changeFrameRatingVisibility(window, true);
             }
