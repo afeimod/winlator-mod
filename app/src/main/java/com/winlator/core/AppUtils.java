@@ -363,7 +363,7 @@ public abstract class AppUtils {
         params.setMargins(margin, margin, margin, margin);
         textView.setPadding(padding, padding, padding, padding);
         textView.setLayoutParams(params);
-        textView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 18);
+        textView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 16);
         textView.setText("DEBUG VERSION");
         textView.setBackgroundColor(0x88ffffff);
         return textView;
