@@ -7,11 +7,14 @@ import com.winlator.xconnector.XOutputStream;
 import com.winlator.xconnector.XStreamLock;
 import com.winlator.xserver.Drawable;
 import com.winlator.xserver.GraphicsContext;
+import com.winlator.xserver.Window;
 import com.winlator.xserver.XClient;
 import com.winlator.xserver.errors.BadDrawable;
 import com.winlator.xserver.errors.BadGraphicsContext;
 import com.winlator.xserver.errors.BadMatch;
+import com.winlator.xserver.errors.BadWindow;
 import com.winlator.xserver.errors.XRequestError;
+import com.winlator.xserver.events.Expose;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -91,6 +94,24 @@ public abstract class DrawRequests {
             outputStream.write(data);
             if ((-length & 3) > 0) outputStream.writePad(-length & 3);
         }
+    }
+
+    public static void clearArea(XClient client, XInputStream inputStream, XOutputStream outputStream) throws XRequestError {
+        boolean exposures = client.getRequestData() == 1;
+        int windowId = inputStream.readInt();
+        short x = inputStream.readShort();
+        short y = inputStream.readShort();
+        short width = inputStream.readShort();
+        short height = inputStream.readShort();
+
+        Window window = client.xServer.windowManager.getWindow(windowId);
+        if (window == null) throw new BadWindow(windowId);
+        if (!window.isInputOutput()) throw new BadMatch();
+
+        Drawable drawable = window.getContent();
+        drawable.fillRect(x, y, width, height, 0x000000);
+
+        if (exposures) window.sendEvent(new Expose(window));
     }
 
     public static void copyArea(XClient client, XInputStream inputStream, XOutputStream outputStream) throws XRequestError {

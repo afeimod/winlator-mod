@@ -37,6 +37,7 @@ public abstract class ClientOpcodes {
     public static final byte SET_DASHES = 58;
     public static final byte SET_CLIP_RECTANGLES = 59;
     public static final byte FREE_GC = 60;
+    public static final byte CLEAR_AREA = 61;
     public static final byte COPY_AREA = 62;
     public static final byte POLY_LINE = 65;
     public static final byte POLY_SEGMENT = 66;

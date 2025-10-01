@@ -329,6 +329,11 @@ public class XClientRequestHandler implements RequestHandler {
                             GraphicsContextRequests.freeGC(client, inputStream, outputStream);
                         }
                         break;
+                    case ClientOpcodes.CLEAR_AREA:
+                        try (XLock lock = client.xServer.lock(XServer.Lockable.WINDOW_MANAGER, XServer.Lockable.DRAWABLE_MANAGER)) {
+                            DrawRequests.clearArea(client, inputStream, outputStream);
+                        }
+                        break;
                     case ClientOpcodes.COPY_AREA:
                         try (XLock lock = client.xServer.lock(XServer.Lockable.DRAWABLE_MANAGER, XServer.Lockable.GRAPHIC_CONTEXT_MANAGER)) {
                             DrawRequests.copyArea(client, inputStream, outputStream);
