@@ -109,7 +109,7 @@ public class VortekRendererComponent extends EnvironmentComponent implements Con
     }
 
     @Keep
-    private long getWindowHardwareBuffer(int windowId) {
+    private long getWindowHardwareBuffer(int windowId, boolean useHALPixelFormatBGRA8888) {
         Window window = xServer.windowManager.getWindow(windowId);
         if (window != null) {
             Drawable drawable = window.getContent();
@@ -117,7 +117,7 @@ public class VortekRendererComponent extends EnvironmentComponent implements Con
 
             if (!(texture instanceof GPUImage)) {
                 xServer.getRenderer().xServerView.queueEvent(texture::destroy);
-                drawable.setTexture(new GPUImage(drawable.width, drawable.height, false));
+                drawable.setTexture(new GPUImage(drawable.width, drawable.height, false, useHALPixelFormatBGRA8888));
             }
 
             return ((GPUImage)drawable.getTexture()).getHardwareBufferPtr();

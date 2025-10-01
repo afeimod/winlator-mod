@@ -6,14 +6,12 @@ void getWindowExtent(JMethods* jmethods, int windowId, VkExtent2D* extent) {
     extent->height = (*jmethods->env)->CallIntMethod(jmethods->env, jmethods->obj, jmethods->getWindowHeight, windowId);
 }
 
-static AHardwareBuffer* getWindowHardwareBuffer(JMethods* jmethods, int windowId) {
-    jlong hardwareBufferPtr = (*jmethods->env)->CallLongMethod(jmethods->env, jmethods->obj, jmethods->getWindowHardwareBuffer, windowId);
+static AHardwareBuffer* getWindowHardwareBuffer(JMethods* jmethods, int windowId, jboolean useHALPixelFormatBGRA8888) {
+    jlong hardwareBufferPtr = (*jmethods->env)->CallLongMethod(jmethods->env, jmethods->obj, jmethods->getWindowHardwareBuffer, windowId, useHALPixelFormatBGRA8888);
     return (AHardwareBuffer*)hardwareBufferPtr;
 }
 
-static VkResult createImageMemory(VkDevice device, XWindowSwapchain* swapchain, VkImage image, VkDeviceMemory* pMemory) {
-    AHardwareBuffer* hardwareBuffer = getWindowHardwareBuffer(swapchain->jmethods, swapchain->windowId);
-
+static VkResult createImageMemory(VkDevice device, VkImage image, AHardwareBuffer* hardwareBuffer, VkDeviceMemory* pMemory) {
     VkAndroidHardwareBufferPropertiesANDROID ahbProperties = {0};
     ahbProperties.sType = VK_STRUCTURE_TYPE_ANDROID_HARDWARE_BUFFER_PROPERTIES_ANDROID;
     vulkanWrapper.vkGetAndroidHardwareBufferPropertiesANDROID(device, hardwareBuffer, &ahbProperties);
@@ -46,7 +44,8 @@ static VkResult createImageMemory(VkDevice device, XWindowSwapchain* swapchain, 
 }
 
 static VkResult createImage(VkDevice device, XWindowSwapchain* swapchain, XWindowSwapchain_Image* swapchainImage) {
-    AHardwareBuffer* hardwareBuffer = getWindowHardwareBuffer(swapchain->jmethods, swapchain->windowId);
+    jboolean useHALPixelFormatBGRA8888 = swapchain->imageFormat == VK_FORMAT_B8G8R8A8_UNORM || swapchain->imageFormat == VK_FORMAT_B8G8R8A8_SRGB;
+    AHardwareBuffer* hardwareBuffer = getWindowHardwareBuffer(swapchain->jmethods, swapchain->windowId, useHALPixelFormatBGRA8888);
 
     AHardwareBuffer_Desc ahbDesc = {0};
     AHardwareBuffer_describe(hardwareBuffer, &ahbDesc);
@@ -84,7 +83,7 @@ static VkResult createImage(VkDevice device, XWindowSwapchain* swapchain, XWindo
     result = vulkanWrapper.vkCreateImage(device, &imageInfo, NULL, &image);
     if (result != VK_SUCCESS) return result;
 
-    result = createImageMemory(device, swapchain, image, &memory);
+    result = createImageMemory(device, image, hardwareBuffer, &memory);
     if (result != VK_SUCCESS) return result;
 
     swapchainImage->image = image;
@@ -97,7 +96,7 @@ int getSurfaceMinImageCount() {
 }
 
 VkSurfaceFormatKHR* getSurfaceFormats(uint32_t* formatCount) {
-    static const VkFormat supportedFormats[] = {VK_FORMAT_B8G8R8A8_UNORM, VK_FORMAT_B8G8R8A8_SRGB};
+    static const VkFormat supportedFormats[] = {VK_FORMAT_B8G8R8A8_UNORM, VK_FORMAT_B8G8R8A8_SRGB, VK_FORMAT_R8G8B8A8_UNORM, VK_FORMAT_R8G8B8A8_SRGB};
     int supportedFormatCount = ARRAY_SIZE(supportedFormats);
     VkSurfaceFormatKHR* surfaceFormats = calloc(supportedFormatCount, sizeof(VkSurfaceFormatKHR));
 
