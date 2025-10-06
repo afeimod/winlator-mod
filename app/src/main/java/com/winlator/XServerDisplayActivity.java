@@ -233,7 +233,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         inputControlsManager = new InputControlsManager(this);
         xServer = new XServer(this, screenInfo);
         xServer.setWinHandler(winHandler);
-        boolean[] winStarted = {false};
+        boolean[] flags = {false, shortcut != null || getIntent().hasExtra("exec_path")};
         xServer.windowManager.addOnWindowModificationListener(new WindowManager.OnWindowModificationListener() {
             @Override
             public void onUpdateWindowContent(Window window) {
@@ -242,10 +242,15 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
             @Override
             public void onMapWindow(Window window) {
-                if (!winStarted[0] && !window.getClassName().isEmpty() && window.isRenderable()) {
+                if (!flags[0] && window.isRenderable() && !window.getClassName().isEmpty()) {
                     xServerView.getRenderer().setCursorVisible(true);
                     preloaderDialog.closeOnUiThread();
-                    winStarted[0] = true;
+                    flags[0] = true;
+                }
+
+                if (flags[1] & window.attributes.isViewable() && window.isDesktopWindow()) {
+                    window.attributes.setViewable(false);
+                    if (window.attributes.isEnabled()) window.disableAllDescendants();
                 }
 
                 if (win32AppWorkarounds != null) win32AppWorkarounds.applyWindowWorkarounds(window);
@@ -584,7 +589,6 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         renderer.setCursorColor(preferences.getInt("cursor_color", 0xffffff));
         renderer.setCursorScale(preferences.getFloat("cursor_scale", 1.0f));
         renderer.setForceWindowsFullscreen(shortcut != null && shortcut.getExtra("forceFullscreen", "0").equals("1"));
-        if (shortcut != null || getIntent().hasExtra("exec_path")) renderer.setUnviewableWMClasses("explorer.exe");
 
         xServer.setRenderer(renderer);
         rootView.addView(xServerView);

@@ -56,7 +56,6 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
     private int cursorBackColor = 0xffffff;
     private int cursorForeColor = 0x000000;
     private boolean screenOffsetYRelativeToCursor = false;
-    private String[] unviewableWMClasses = null;
     private float magnifierZoom = 1.0f;
     protected short surfaceWidth;
     protected short surfaceHeight;
@@ -289,50 +288,35 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
 
     private void collectRenderableWindows(Window window, int x, int y) {
         if (!window.isRenderable()) return;
-        if (window != xServer.windowManager.rootWindow) {
-            boolean viewable = true;
+        if (window != xServer.windowManager.rootWindow && window.attributes.isViewable()) {
+            Window parent = window.getParent();
+            boolean transparent = window.attributes.isTransparent() || parent.attributes.isTransparent() || parent.isLayered() || window.isLayered();
 
-            if (unviewableWMClasses != null) {
-                String wmClass = window.getClassName();
-                for (String unviewableWMClass : unviewableWMClasses) {
-                    if (wmClass.contains(unviewableWMClass)) {
-                        if (window.attributes.isEnabled()) window.disableAllDescendants();
-                        viewable = false;
-                        break;
+            if (forceWindowsFullscreen) {
+                short width = window.getWidth();
+                short height = window.getHeight();
+                FullscreenTransformation fullscreenTransformation = null;
+
+                boolean inBounds = width >= 320 && height >= 200 && width < xServer.screenInfo.width && height < xServer.screenInfo.height;
+                if (window.getType() == Window.Type.NORMAL && inBounds && window.hasNoDecorations()) {
+                    fullscreenTransformation = window.getFullscreenTransformation();
+                    if (fullscreenTransformation == null) window.setFullscreenTransformation(fullscreenTransformation = new FullscreenTransformation(window));
+                    fullscreenTransformation.update(xServer.screenInfo, window.getWidth(), window.getHeight());
+
+                    if (parent != xServer.windowManager.rootWindow && parent.getChildCount() == 1 && parent.hasDecoration(Decoration.BORDER) && parent.hasDecoration(Decoration.TITLE)) {
+                        FullscreenTransformation parentFullscreenTransformation = parent.getFullscreenTransformation();
+                        if (parentFullscreenTransformation == null) parent.setFullscreenTransformation(parentFullscreenTransformation = new FullscreenTransformation(parent));
+                        parentFullscreenTransformation.update(xServer.screenInfo, parent.getWidth(), parent.getHeight());
+
+                        removeRenderableWindow(parent);
                     }
+                    else parent.setFullscreenTransformation(null);
                 }
+                else window.setFullscreenTransformation(null);
+
+                renderableWindows.add(new RenderableWindow(window.getContent(), x, y, transparent, fullscreenTransformation));
             }
-
-            if (viewable) {
-                Window parent = window.getParent();
-                boolean transparent = window.attributes.isTransparent() || parent.attributes.isTransparent() || parent.isLayered() || window.isLayered();
-
-                if (forceWindowsFullscreen) {
-                    short width = window.getWidth();
-                    short height = window.getHeight();
-                    FullscreenTransformation fullscreenTransformation = null;
-
-                    boolean inBounds = width >= 320 && height >= 200 && width < xServer.screenInfo.width && height < xServer.screenInfo.height;
-                    if (window.getType() == Window.Type.NORMAL && inBounds && window.hasNoDecorations()) {
-                        fullscreenTransformation = window.getFullscreenTransformation();
-                        if (fullscreenTransformation == null) window.setFullscreenTransformation(fullscreenTransformation = new FullscreenTransformation(window));
-                        fullscreenTransformation.update(xServer.screenInfo, window.getWidth(), window.getHeight());
-
-                        if (parent != xServer.windowManager.rootWindow && parent.getChildCount() == 1 && parent.hasDecoration(Decoration.BORDER) && parent.hasDecoration(Decoration.TITLE)) {
-                            FullscreenTransformation parentFullscreenTransformation = parent.getFullscreenTransformation();
-                            if (parentFullscreenTransformation == null) parent.setFullscreenTransformation(parentFullscreenTransformation = new FullscreenTransformation(parent));
-                            parentFullscreenTransformation.update(xServer.screenInfo, parent.getWidth(), parent.getHeight());
-
-                            removeRenderableWindow(parent);
-                        }
-                        else parent.setFullscreenTransformation(null);
-                    }
-                    else window.setFullscreenTransformation(null);
-
-                    renderableWindows.add(new RenderableWindow(window.getContent(), x, y, transparent, fullscreenTransformation));
-                }
-                else renderableWindows.add(new RenderableWindow(window.getContent(), x, y, transparent, null));
-            }
+            else renderableWindows.add(new RenderableWindow(window.getContent(), x, y, transparent, null));
         }
 
         if (window.attributes.isRenderSubwindows()) {
@@ -402,14 +386,6 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
 
     public void setForceWindowsFullscreen(boolean forceWindowsFullscreen) {
         this.forceWindowsFullscreen = forceWindowsFullscreen;
-    }
-
-    public String[] getUnviewableWMClasses() {
-        return unviewableWMClasses;
-    }
-
-    public void setUnviewableWMClasses(String... unviewableWMNames) {
-        this.unviewableWMClasses = unviewableWMNames;
     }
 
     public boolean isFullscreen() {
