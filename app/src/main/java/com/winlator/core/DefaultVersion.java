@@ -4,7 +4,7 @@ import com.winlator.container.GraphicsDrivers;
 
 public abstract class DefaultVersion {
     public static final String BOX64 = "0.3.6";
-    public static final String TURNIP = "25.1.0";
+    public static final String TURNIP = "25.2.0";
     public static final String VORTEK = "2.1";
     public static final String ZINK = "22.2.5";
     public static final String VIRGL = "23.1.9";
