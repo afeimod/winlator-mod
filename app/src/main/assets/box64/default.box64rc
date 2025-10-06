@@ -1,6 +1,6 @@
 [steam.exe]
 BOX64_ENV=WINEARGS=-noshaders -nooverlay -nocrashmonitor -no-shared-textures -cef-disable-gpu -cef-disable-gpu-compositing -cef-disable-gpu-sandbox -cef-disable-d3d11 -cef-disable-sandbox -no-cef-sandbox -cef-disable-seccomp-sandbox
-BOX64_ENV1=WINEDLLOVERRIDES=gameoverlayrenderer,gameoverlayrenderer64,gameoverlayui.exe,gameoverlayui64.exe,x86launcher.exe,x64launcher.exe,dxsetup.exe,dotnetfx40_full_x86_x64.exe,dotnetfx40_client_x86_x64.exe=d
+BOX64_ENV1=WINEDLLOVERRIDES=gameoverlayrenderer,gameoverlayrenderer64,gameoverlayui.exe,gameoverlayui64.exe,x86launcher.exe,x64launcher.exe,dxsetup.exe=d
 
 [steamwebhelper.exe]
 BOX64_DYNAREC_STRONGMEM=1
@@ -54,27 +54,15 @@ BOX64_ENV=WINEARGS=+r_renderAPI 1
 [ff7remake_.exe]
 BOX64_ENV=WINEARGS=-dx11
 
-[EALocalHostSvc.exe]
-BOX64_DYNAREC_STRONGMEM=1
-BOX64_DYNAREC_BIGBLOCK=1
+#.NET Framework installers
+[*dotnetfx35*]
+BOX64_EXIT=1
 
-[EABackgroundService.exe]
-BOX64_DYNAREC_STRONGMEM=1
-BOX64_DYNAREC_BIGBLOCK=1
+[*dotnetfx40*]
+BOX64_EXIT=1
 
-[EACefSubprocess.exe]
-BOX64_DYNAREC_STRONGMEM=1
-BOX64_DYNAREC_BIGBLOCK=1
+[*ndp452-kb*]
+BOX64_EXIT=1
 
-[Link2EA.exe]
-BOX64_DYNAREC_STRONGMEM=1
-BOX64_DYNAREC_BIGBLOCK=1
-
-[EAappInstaller.exe]
-BOX64_DYNAREC_STRONGMEM=1
-BOX64_DYNAREC_BIGBLOCK=1
-
-[EALaunchHelper.exe]
-BOX64_DYNAREC_STRONGMEM=1
-BOX64_DYNAREC_BIGBLOCK=1
-BOX64_ENV=WINEDLLOVERRIDES=dxgi=b
+[*ndp462-kb*]
+BOX64_EXIT=1
