@@ -111,6 +111,10 @@ public class Window extends XResource {
         return (tags == null ? (tags = new ArrayMap<>()) : tags).getOrDefault(key, fallback);
     }
 
+    public void removeTag(String key) {
+        if (tags != null) tags.remove(key);
+    }
+
     public Drawable getContent() {
         return content;
     }

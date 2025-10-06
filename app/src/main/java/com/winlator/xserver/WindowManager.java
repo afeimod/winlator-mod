@@ -316,31 +316,31 @@ public class WindowManager extends XResourceManager {
         onWindowModificationListeners.remove(onWindowModificationListener);
     }
 
-    private void triggerOnMapWindow(Window window) {
+    public void triggerOnMapWindow(Window window) {
         for (int i = onWindowModificationListeners.size()-1; i >= 0; i--) {
             onWindowModificationListeners.get(i).onMapWindow(window);
         }
     }
 
-    private void triggerOnUnmapWindow(Window window) {
+    public void triggerOnUnmapWindow(Window window) {
         for (int i = onWindowModificationListeners.size()-1; i >= 0; i--) {
             onWindowModificationListeners.get(i).onUnmapWindow(window);
         }
     }
 
-    private void triggerOnChangeWindowZOrder(Window window) {
+    public void triggerOnChangeWindowZOrder(Window window) {
         for (int i = onWindowModificationListeners.size()-1; i >= 0; i--) {
             onWindowModificationListeners.get(i).onChangeWindowZOrder(window);
         }
     }
 
-    protected void triggerOnUpdateWindowContent(Window window) {
+    public void triggerOnUpdateWindowContent(Window window) {
         for (int i = onWindowModificationListeners.size()-1; i >= 0; i--) {
             onWindowModificationListeners.get(i).onUpdateWindowContent(window);
         }
     }
 
-    protected void triggerOnUpdateWindowGeometry(Window window, boolean resized) {
+    public void triggerOnUpdateWindowGeometry(Window window, boolean resized) {
         for (int i = onWindowModificationListeners.size()-1; i >= 0; i--) {
             onWindowModificationListeners.get(i).onUpdateWindowGeometry(window, resized);
         }
