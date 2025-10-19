@@ -96,6 +96,7 @@ jobs:
 
         make -j4
         patchelf --set-interpreter /data/data/com.winlator/files/rootfs/usr/lib/ld-linux-aarch64.so.1 box64
+        strip --strip-all --keep-section=.comment --keep-section=.note* box64
 
 
         # 打包只包含可执行文件，使用 xz 压缩
