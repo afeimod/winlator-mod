@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   build:
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-24.04
 
     steps:
     - name: 检出源码
@@ -91,14 +91,12 @@ jobs:
                 -DARM_DYNAREC=ON \
                 -DCMAKE_BUILD_TYPE=Release \
                 -DBAD_SIGNAL=ON \
-                -DARM64=ON \
                 -DSD845=ON \
-                -DSD8G2=ON \
-                -DNOLOADADDR=ON
+                -DSD8G2=ON
 
         make -j4
         patchelf --set-interpreter /data/data/com.winlator/files/rootfs/usr/lib/ld-linux-aarch64.so.1 box64
-        strip --strip-all --keep-section=.comment --keep-section=.note* box64
+
 
         # 打包只包含可执行文件，使用 xz 压缩
         tar -cJf box64-${BOX64_VERSION}-${BUILD_DATE}.tar.xz box64
