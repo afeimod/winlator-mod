@@ -7,7 +7,7 @@ on:
       wine_version:
         description: 'Wine 版本号 (例如: 9.9, 9.21, 9.22)'
         required: true
-        default: '9.21'
+        default: '9.2'
         type: string
 
 permissions:
@@ -109,59 +109,6 @@ jobs:
         cd wine-9.2-custom
         #git checkout wine-${{ env.WINE_VERSION }}
         
-
-    - name: 根据版本选择修复方式
-      run: |
-        cd wine-9.2-custom
-        
-        # 解析版本号进行比较
-        VERSION_MAJOR=$(echo ${{ env.WINE_VERSION }} | cut -d. -f1)
-        VERSION_MINOR=$(echo ${{ env.WINE_VERSION }} | cut -d. -f2)
-        
-        echo "Wine 版本: ${{ env.WINE_VERSION }}"
-        echo "主版本: $VERSION_MAJOR, 次版本: $VERSION_MINOR"
-        
-        # 判断版本是否 >= 9.10
-        if [ $VERSION_MAJOR -gt 9 ] || [ $VERSION_MAJOR -eq 9 -a $VERSION_MINOR -ge 10 ]; then
-            echo "使用 9.10+ 版本的修复方式 (wine_do_not_create_dxgi_manager2.patch)"
-            echo "PATCH_TYPE=wine_do_not_create_dxgi_manager2" >> $GITHUB_ENV
-        else
-            echo "使用 9.10 以下版本的修复方式 (fix_wine9.2_mfplat.sh)"
-            echo "PATCH_TYPE=fix_wine9_2_mfplat" >> $GITHUB_ENV
-        fi
-
-    - name: 应用 9.10 以下版本修复
-      if: env.PATCH_TYPE == 'fix_wine9_2_mfplat'
-      run: |
-        cd wine-9.2-custom
-        echo "下载并应用 fix_wine9.2_mfplat.sh..."
-        wget -O fix_wine9.2_mfplat.sh https://github.com/afeimod/linbox/raw/main/path/fix_wine9.2_mfplat.sh
-        chmod +x fix_wine9.2_mfplat.sh
-        ./fix_wine9.2_mfplat.sh
-        echo "✅ 9.10 以下版本修复完成"
-
-    - name: 应用 9.10 及以上版本修复
-      if: env.PATCH_TYPE == 'wine_do_not_create_dxgi_manager2'
-      run: |
-        cd wine-9.2-custom
-        echo "下载并应用 wine_do_not_create_dxgi_manager2.patch..."
-        wget https://github.com/afeimod/linbox/raw/main/path/wine_do_not_create_dxgi_manager2.patch
-        
-        # 检查目标文件是否存在
-        if [ -f "dlls/mfplat/main.c" ]; then
-            echo "找到目标文件 dlls/mfplat/main.c，准备应用补丁..."
-            
-            # 尝试应用补丁
-            if patch -p1 < wine_do_not_create_dxgi_manager2.patch; then
-                echo "✅ 补丁应用成功"
-            else
-                echo "❌ 补丁应用失败"
-                exit 1
-            fi
-        else
-            echo "❌ 错误：目标文件 dlls/mfplat/main.c 不存在"
-            exit 1
-        fi
 
     - name: 配置和构建真正的 WOW64 Wine（启用 Vulkan 和完整 GStreamer）
       run: |
