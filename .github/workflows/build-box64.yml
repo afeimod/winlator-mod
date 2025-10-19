@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   build:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-24.04-arm
 
     steps:
     - name: 检出源码
@@ -89,7 +89,7 @@ jobs:
 
         cmake  -DWINLATOR_GLIBC=ON .. \
                 -DARM_DYNAREC=ON \
-                -DCMAKE_BUILD_TYPE=Release \
+                -DCMAKE_BUILD_TYPE=RelWithDebInfo \
                 -DBAD_SIGNAL=ON \
                 -DSD845=ON \
                 -DSD8G2=ON
