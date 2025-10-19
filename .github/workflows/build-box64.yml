@@ -97,7 +97,6 @@ jobs:
                 -DARM64=ON \
                 -DSD845=ON \
                 -DSD8G2=ON \
-                -DWOW64=ON\
                 -DNOLOADADDR=ON
 
         make -j4
