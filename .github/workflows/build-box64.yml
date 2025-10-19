@@ -86,7 +86,19 @@ jobs:
       run: |
         cd box64
         mkdir build && cd build
-        cmake -DWINLATOR_GLIBC=ON .. -DARM_DYNAREC=ON -DCMAKE_BUILD_TYPE=RelWithDebInfo -DLD80BITS=ON -DBAD_SIGNAL=ON -DSD845=ON -DSD8G2=ON -DCMAKE_C_FLAGS="-O3 -march=native -mtune=native -flto" -DWOW64=ON
+        unset LD_PRELOAD
+        export GLIBC_PREFIX=/data/data/com.winlator/files/imagefs/usr/local
+        export PATH=$GLIBC_PREFIX/bin:$PATH
+        
+        cmake --install-prefix $GLIBC_PREFIX .. \
+                -DARM_DYNAREC=ON \
+                -DCMAKE_BUILD_TYPE=Release \
+                -DBAD_SIGNAL=ON \
+                -DARM64=ON \
+                -DSD845=ON \
+                -DSD8G2=ON \
+                -DWOW64=ON\
+                -DNOLOADADDR=ON
 
         make -j4
         patchelf --set-interpreter /data/data/com.winlator/files/imagefs/usr/lib/ld-linux-aarch64.so.1 box64
