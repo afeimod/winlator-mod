@@ -236,15 +236,15 @@ jobs:
         echo "彻底修复 Termux 路径问题..."
         
         # 修改所有硬编码的 /tmp 路径
-        find . -type f \( -name "*.c" -o -name "*.h" -o -name "*.in" -o -name "*.spec" \) -exec grep -l "/tmp" {} \; | xargs sed -i 's|/tmp/|/data/data/com.winlator/files/rootfs/usr/tmp/|g'
+        find . -type f \( -name "*.c" -o -name "*.h" -o -name "*.in" -o -name "*.spec" \) -exec grep -l "/tmp" {} \; | xargs sed -i 's|/tmp/|/data/data/com.winlator/files/rootfs/tmp/|g'
         
         # 修改 server 目录中的特定路径
-        find server -type f \( -name "*.c" -o -name "*.h" \) -exec sed -i 's|"/tmp"|"/data/data/com.winlator/files/rootfs/usr/tmp"|g' {} +
+        find server -type f \( -name "*.c" -o -name "*.h" \) -exec sed -i 's|"/tmp"|"/data/data/com.winlator/files/rootfs/tmp"|g' {} +
         
         # 修改其他关键文件
-        find . -name "file.c" -exec sed -i 's|"/tmp"|"/data/data/com.winlator/files/rootfs/usr/tmp"|g' {} +
-        find . -name "loader.c" -exec sed -i 's|"/tmp"|"/data/data/com.winlator/files/rootfs/usr/tmp"|g' {} +
-        find . -name "server.c" -exec sed -i 's|"/tmp"|"/data/data/com.winlator/files/rootfs/usr/tmp"|g' {} +
+        find . -name "file.c" -exec sed -i 's|"/tmp"|"/data/data/com.winlator/files/rootfs/tmp"|g' {} +
+        find . -name "loader.c" -exec sed -i 's|"/tmp"|"/data/data/com.winlator/files/rootfs/tmp"|g' {} +
+        find . -name "server.c" -exec sed -i 's|"/tmp"|"/data/data/com.winlator/files/rootfs/tmp"|g' {} +
         
         echo "路径修复完成"
 
