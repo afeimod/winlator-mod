@@ -148,9 +148,9 @@ jobs:
       - name: 打包 glibc 目录
         if: steps.check_build.outputs.skip_build == 'false'
         run: |
-          cd data/data/com.winlator/files/rootfs
+          cd /data/data/com.winlator/files/rootfs
           TAR_NAME="winlator-glibc-gst-decoders-${VERSION}.tar.gz"
-          tar -czvf /home/runner/$TAR_NAME glibc
+          tar -czvf /home/runner/$TAR_NAME usr
           echo "$LATEST_COMMIT" > ${{ env.LAST_COMMIT_FILE }}
           echo "TAR_NAME=$TAR_NAME" >> $GITHUB_ENV
       # ⬆️ 上传构建产物
@@ -176,14 +176,14 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ env.VERSION }}
-          name: "GStreamer Decoders ${{ env.VERSION }} (aarch64, Termux glibc)"
+          name: "GStreamer Decoders ${{ env.VERSION }} (aarch64, winlatot glibc)"
           body: |
             ## 🎯 GStreamer 开发版本构建
             
             ### 📋 构建信息
             - **版本**: `${{ env.VERSION }}`
             - **架构**: aarch64
-            - **环境**: Termux glibc
+            - **环境**: winlator glibc
             - **提交**: [`${{ env.COMMIT_SHORT }}`](https://gitlab.freedesktop.org/gstreamer/gstreamer/-/commit/${{ env.LATEST_COMMIT }})
             - **提交日期**: ${{ env.COMMIT_DATE }}
             - **作者**: `${{ env.AUTHOR }}`
