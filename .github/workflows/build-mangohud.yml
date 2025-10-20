@@ -1,0 +1,256 @@
+name: Build MangoHud (aarch64, winlator glibc)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 6 * * *'  # 每天早上6点自动检查更新构建
+
+permissions:
+  contents: write
+
+env:
+  REPO_URL: https://github.com/flightlessmango/MangoHud.git
+  LAST_COMMIT_FILE: last_mangohud_commit.txt
+
+jobs:
+  build: 
+    runs-on: ubuntu-24.04-arm
+
+    steps:
+      # 🧩 检出当前仓库（用于存放记录文件）
+      - name: Checkout workflow repository
+        uses: actions/checkout@v4
+
+      # 🔍 获取上次构建的提交哈希
+      - name: Get last built commit
+        id: get_last_commit
+        run: |
+          if [ -f "$LAST_COMMIT_FILE" ]; then
+            echo "LAST_COMMIT=$(cat $LAST_COMMIT_FILE)" >> $GITHUB_ENV
+          else
+            echo "LAST_COMMIT=none" >> $GITHUB_ENV
+          fi
+
+      # 🔎 检查上游源码的最新提交
+      - name: Check upstream latest commit
+        id: check_upstream
+        run: |
+          LATEST_COMMIT=$(git ls-remote $REPO_URL HEAD | awk '{print $1}')
+          echo "LATEST_COMMIT=$LATEST_COMMIT" >> $GITHUB_ENV
+          echo "最新源码提交: $LATEST_COMMIT"
+
+          if [ "$LATEST_COMMIT" = "$LAST_COMMIT" ]; then
+            echo "🔸 源码未更新，跳过构建。"
+            echo "skip_build=true" >> $GITHUB_ENV
+          else
+            echo "✅ 检测到新提交，将进行构建。"
+            echo "skip_build=false" >> $GITHUB_ENV
+          fi
+
+      # 🛑 如果没有新提交则跳过后续步骤
+      - name: Stop if no new commit
+        if: env.skip_build == 'true'
+        run: |
+          echo "没有新提交，终止 workflow。"
+          exit 0
+
+      # 🧭 克隆 MangoHud 源码
+      - name: Clone MangoHud source
+        run: |
+          git clone --depth=1 $REPO_URL MangoHud
+
+      # 🔖 获取源码版本号
+      - name: 获取源码版本号
+        id: get_version
+        run: |
+          cd MangoHud
+          if git describe --tags --abbrev=0 >/dev/null 2>&1; then
+            VERSION=$(git describe --tags --abbrev=0)
+          else
+            VERSION="dev-$(git rev-parse --short HEAD)"
+          fi
+          AUTHOR=$(git log -1 --pretty=format:'%an')
+          COMMIT=$(git rev-parse HEAD)
+          DATE=$(date '+%Y-%m-%d %H:%M:%S UTC')
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "AUTHOR=$AUTHOR" >> $GITHUB_ENV
+          echo "COMMIT=$COMMIT" >> $GITHUB_ENV
+          echo "BUILD_TIME=$DATE" >> $GITHUB_ENV
+          echo "✅ 版本: $VERSION"
+          echo "👤 作者: $AUTHOR"
+          echo "🔖 提交: $COMMIT"
+          echo "🕓 时间: $DATE"
+
+      # 📦 安装依赖
+      - name: 安装基础依赖
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential glslang-tools python3-pip git \
+            pkg-config meson libdbus-1-dev libx11-dev \
+            libxext-dev libxrandr-dev libxinerama-dev \
+            libxdamage-dev libxfixes-dev libdrm-dev \
+            libgl1-mesa-dev libwayland-dev libxkbcommon-dev patchelf
+
+      # 🛠️ 升级 Meson/Ninja
+      - name: 升级 Meson 和 Ninja
+        run: |
+          pip install --upgrade pip
+          pip install --upgrade meson ninja mako
+          meson --version
+          ninja --version
+
+      # ⚙️ 应用 winlator 无 root CPU 频率补丁
+      - name: 应用 winlator 无 root CPU 频率补丁
+        run: |
+          cd MangoHud
+          SRC_FILE="src/sysinfo/linux.cpp"
+          if [ -f "$SRC_FILE" ]; then
+            echo "🔧 应用 CPU 频率检测修补..."
+            cp "$SRC_FILE" "${SRC_FILE}.bak"
+            awk '
+            BEGIN {in_func=0}
+            /^int get_cpu_freq\(int core\)/ {print; in_func=1; next}
+            in_func && /^\{/ {print; print "    int freq = 0; std::string path;"; next}
+            in_func && /return freq;/ {
+                print "    // 尝试 scaling_cur_freq"
+                print "    path = \"/sys/devices/system/cpu/cpu\" + std::to_string(core) + \"/cpufreq/scaling_cur_freq\";"
+                print "    { std::ifstream f(path); if(f.is_open()){ f >> freq; if(freq>0) return freq/1000; } }"
+                print ""
+                print "    // 尝试 cpuinfo_cur_freq"
+                print "    path = \"/sys/devices/system/cpu/cpu\" + std::to_string(core) + \"/cpufreq/cpuinfo_cur_freq\";"
+                print "    { std::ifstream f(path); if(f.is_open()){ f >> freq; if(freq>0) return freq/1000; } }"
+                print ""
+                print "    // 从 /proc/cpuinfo 读取 (非 root fallback)"
+                print "    {"
+                print "        std::ifstream cpuinfo(\"/proc/cpuinfo\");"
+                print "        if(cpuinfo.is_open()){"
+                print "            std::string line; int index=-1;"
+                print "            while(std::getline(cpuinfo,line)){"
+                print "                if(line.find(\"processor\")!=std::string::npos) index++;"
+                print "                if(index==core && line.find(\"cpu MHz\")!=std::string::npos){"
+                print "                    size_t pos=line.find(\":\");"
+                print "                    if(pos!=std::string::npos){"
+                print "                        std::istringstream iss(line.substr(pos+1));"
+                print "                        iss >> freq; if(freq>0) return (int)freq;"
+                print "                    }"
+                print "                }"
+                print "            }"
+                print "        }"
+                print "    }"
+                print ""
+                print "    // fallback 默认值"
+                print "    return 2000;"
+                in_func=0; next
+            }
+            {print}
+            ' "${SRC_FILE}.bak" > "$SRC_FILE"
+            echo "✅ CPU 频率检测补丁应用成功"
+          else
+            echo "⚠️ 未找到 $SRC_FILE"
+          fi
+
+      # 🏗️ 构建 MangoHud
+      - name: 构建 MangoHud (winlator glibc)
+        run: |
+          cd MangoHud
+          sudo mkdir -p /data/data/com.winlator/files/rootfs/usr
+          sudo chmod -R 777 /data
+          meson setup build \
+            --prefix=/data/data/com.winlator/files/rootfs/usr \
+            --libdir=lib \
+            -Dbuildtype=release \
+            -Dwith_x11=enabled \
+            -Dwith_wayland=enabled \
+            -Dwith_xnvctrl=disabled \
+            -Dwith_dbus=enabled \
+            -Dmangoplot=enabled \
+            -Dmangoapp=false \
+            -Dmangohudctl=false \
+            -Dtests=disabled
+          ninja -C build -j$(nproc)
+          ninja -C build install
+
+      # 🔧 修正 $LIB 变量
+      - name: 修正 MangoHud 启动脚本
+        run: |
+          ROOT=/data/data/com.winlator/files/rootfs/usr
+          if [ -f "$ROOT/bin/mangohud" ]; then
+            sed -i 's|/\\$LIB|/lib|g' "$ROOT/bin/mangohud"
+          fi
+
+      # 🧱 修补 ELF 解释器
+      - name: 修补 ELF 可执行文件
+        run: |
+          ROOT=/data/data/com.winlator/files/rootfs/usr
+          INTERP=$ROOT/lib/ld-linux-aarch64.so.1
+          for dir in "$ROOT/bin" "$ROOT/lib"; do
+            [ -d "$dir" ] || continue
+            for f in "$dir"/*; do
+              if file "$f" | grep -q 'ELF'; then
+                patchelf --set-interpreter "$INTERP" "$f" || true
+              fi
+            done
+          done
+
+      # 📦 打包结果
+      - name: 打包构建产物
+        run: |
+          cd /data/data/com.winlator/files/rootfs/usr
+          TAR_NAME="winlator-glibc-mangohud-${{ env.VERSION }}-aarch64.tar.gz"
+          tar -czvf /home/runner/$TAR_NAME glibc
+          echo "TAR_NAME=$TAR_NAME" >> $GITHUB_ENV
+          echo "📦 打包完成: $TAR_NAME"
+
+      # ☁️ 上传产物
+      - name: 上传构建产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.TAR_NAME }}
+          path: /home/runner/${{ env.TAR_NAME }}
+
+      # 🚀 发布 Release
+      - name: 发布到 GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.VERSION }}
+          name: MangoHud ${{ env.VERSION }} (aarch64, winlator glibc)
+          body: |
+            ## MangoHud ${{ env.VERSION }} for winlator (aarch64 glibc)
+
+            ### 📋 构建信息
+            - **版本号**: `${{ env.VERSION }}`
+            - **架构**: aarch64
+            - **环境**: winlator glibc
+            - **作者**: `${{ env.AUTHOR }}`
+            - **提交**: `${{ env.COMMIT }}`
+            - **构建时间**: `${{ env.BUILD_TIME }}`
+
+            ### 📦 文件信息
+            - **文件名**: `${{ env.TAR_NAME }}`
+            - **包含**: 完整的 MangoHud 安装文件
+
+            ### 🛠️ 构建特性
+            - ✅ 支持 X11
+            - ✅ 支持 Wayland
+            - ✅ 支持 DBus
+            - ✅ 启用 MangoPlot
+            - ✅ winlator 无 root CPU 频率检测补丁
+            - ❌ 禁用 XNVCtrl (NVIDIA GPU 统计)
+            - ❌ 禁用 MangoApp
+            - ❌ 禁用 MangoHudctl
+
+          files: /home/runner/${{ env.TAR_NAME }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # 💾 保存最新构建的提交哈希
+      - name: Save last commit hash
+        run: echo "$LATEST_COMMIT" > $LAST_COMMIT_FILE
+
+      # 📤 上传记录文件（供下次比较）
+      - name: Upload commit record
+        uses: actions/upload-artifact@v4
+        with:
+          name: last-mangohud-commit
+          path: ${{ env.LAST_COMMIT_FILE }}
