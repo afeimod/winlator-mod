@@ -196,9 +196,9 @@ jobs:
       # 📦 打包结果
       - name: 打包构建产物
         run: |
-          cd /data/data/com.winlator/files/rootfs/usr
+          cd /data/data/com.winlator/files/rootfs
           TAR_NAME="winlator-glibc-mangohud-${{ env.VERSION }}-aarch64.tar.gz"
-          tar -czvf /home/runner/$TAR_NAME glibc
+          tar -czvf /home/runner/$TAR_NAME usr
           echo "TAR_NAME=$TAR_NAME" >> $GITHUB_ENV
           echo "📦 打包完成: $TAR_NAME"
 
