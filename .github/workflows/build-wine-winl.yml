@@ -120,50 +120,13 @@ jobs:
     - name: 克隆 Wine 源码 (Staging/Beta)
       if: env.WINE_TYPE == 'staging' || env.WINE_TYPE == 'beta'
       run: |
-        git clone https://github.com/wine-mirror/wine.git
+        git clone https://github.com/hostei33/wine-tkg.git
         cd wine
         git checkout wine-${{ env.WINE_VERSION }}
 
-    - name: 克隆 Wine-TKG 源码
-      if: env.WINE_TYPE == 'wine-tkg'
-      run: |
-        git clone https://github.com/Kron4ek/wine-tkg.git
-        cd wine-tkg
-        # 检查对应的版本标签或分支
-        if git checkout ${{ env.WINE_VERSION }} 2>/dev/null || git checkout wine-${{ env.WINE_VERSION }} 2>/dev/null; then
-          echo "成功切换到版本 ${{ env.WINE_VERSION }}"
-        else
-          echo "使用默认分支"
-          git checkout master
-        fi
+    
 
-    - name: 下载并应用 staging 补丁 (仅 Staging 版本)
-      if: env.WINE_TYPE == 'staging'
-      run: |
-        cd wine
-        # 下载 staging 补丁集
-        wget -O wine-staging-${{ env.WINE_VERSION }}.tar.gz https://github.com/wine-staging/wine-staging/archive/refs/tags/v${{ env.WINE_VERSION }}.tar.gz
-        tar -xzf wine-staging-${{ env.WINE_VERSION }}.tar.gz
     
-        # 应用 staging 补丁 - 使用正确的路径
-        cd wine-staging-${{ env.WINE_VERSION }}/staging
-        chmod +x patchinstall.py
-    
-        # 应用所有补丁到 Wine 源码目录（上级的上级目录）
-        ./patchinstall.py --all --destdir=../../
-    
-        echo "✅ Staging 补丁应用完成"
-
-    - name: 验证 staging 补丁应用 (仅 Staging 版本)
-      if: env.WINE_TYPE == 'staging'
-      run: |
-        cd wine
-        echo "检查 staging 补丁应用情况..."
-        if [ -f "dlls/ntdll/unix/esync.c" ]; then
-            echo "✅ esync 支持已通过 staging 补丁添加"
-        else
-            echo "❌ esync 支持未找到"
-        fi
 
     - name: 根据版本选择修复方式
       run: |
