@@ -229,7 +229,27 @@ jobs:
         find . -name "server.c" -exec sed -i 's|"/tmp"|"/data/data/com.winlator/files/rootfs/tmp"|g' {} +
         
         echo "路径修复完成"
-        
+        echo "修改 ip.c 文件中的 /proc 路径..."
+
+        # 修改 IPv4 和 IPv6 转发和 TTL 配置路径
+        find . -name "ip.c" -exec sed -i 's|"/proc/sys/net/ipv4/conf/default/forwarding"|"/data/data/com.winlator/files/rootfs/tmp/ifaddrs"|g' {} \;
+        find . -name "ip.c" -exec sed -i 's|"/proc/sys/net/ipv4/ip_default_ttl"|"/data/data/com.winlator/files/rootfs/tmp/ifaddrs"|g' {} \;
+        find . -name "ip.c" -exec sed -i 's|"/proc/sys/net/ipv6/conf/default/forwarding"|"/data/data/com.winlator/files/rootfs/tmp/ifaddrs"|g' {} \;
+        find . -name "ip.c" -exec sed -i 's|"/proc/sys/net/ipv6/conf/default/hop_limit"|"/data/data/com.winlator/files/rootfs/tmp/ifaddrs"|g' {} \;
+
+        # 修改 ICMPv4 统计信息读取路径
+        find . -name "ip.c" -exec sed -i 's|fopen( "/proc/net/snmp", "r" )|fopen( "/data/data/com.winlator/files/rootfs/tmp/ifaddrs", "r" )|g' {} \;
+
+        # 修改 ICMPv6 统计信息读取路径  
+        find . -name "ip.c" -exec sed -i 's|fopen( "/proc/net/snmp6", "r" )|fopen( "/data/data/com.winlator/files/rootfs/tmp/ifaddrs", "r" )|g' {} \;
+
+        # 修改 IPv4 统计信息读取路径
+        find . -name "ip.c" -exec sed -i 's|"/proc/net/snmp"|"/data/data/com.winlator/files/rootfs/tmp/ifaddrs"|g' {} \;
+
+        # 修改 IPv6 统计信息读取路径
+        find . -name "ip.c" -exec sed -i 's|"/proc/net/snmp6"|"/data/data/com.winlator/files/rootfs/tmp/ifaddrs"|g' {} \;
+
+        echo "ip.c 文件路径修改完成"
         # 生成 configure 脚本
         echo "生成 configure 脚本..."
         ./autogen.sh
