@@ -1,4 +1,4 @@
-# build-wine-all.yml
+# build-wine-proton精简.yml
 name: Build ProtonLite WOW64 for Termux
 
 on:
@@ -41,12 +41,21 @@ on:
         - O2
         - O3
         - Os
+      apply_compatibility_patches:
+        description: '应用兼容性补丁'
+        required: true
+        default: 'true'
+        type: choice
+        options:
+        - 'true'
+        - 'false'
 
 permissions:
   contents: write  # 允许 GITHUB_TOKEN 创建 Release
 
 env:
   BUILD_DIR: "/tmp/build_wine"
+  PATCH_BASE_URL: "https://github.com/afeimod/linbox/raw/main/path/"
 
 jobs:
   build:
@@ -59,6 +68,7 @@ jobs:
         echo "构建类型: ${{ github.event.inputs.build_type }}"
         echo "启用功能: ${{ github.event.inputs.enable_features }}"
         echo "优化级别: ${{ github.event.inputs.optimization_level }}"
+        echo "应用兼容性补丁: ${{ github.event.inputs.apply_compatibility_patches }}"
         
         # 设置功能标志
         if echo "${{ github.event.inputs.enable_features }}" | grep -q "vulkan"; then
@@ -88,6 +98,7 @@ jobs:
         echo "BUILD_TYPE=${{ github.event.inputs.build_type }}" >> $GITHUB_ENV
         echo "PROTON_BRANCH=${{ github.event.inputs.proton_branch }}" >> $GITHUB_ENV
         echo "OPT_LEVEL=${{ github.event.inputs.optimization_level }}" >> $GITHUB_ENV
+        echo "APPLY_PATCHES=${{ github.event.inputs.apply_compatibility_patches }}" >> $GITHUB_ENV
 
     - name: 安装构建依赖
       run: |
@@ -187,6 +198,49 @@ jobs:
         echo "  - 启用功能: Vulkan=$ENABLE_VULKAN, GStreamer=$ENABLE_GSTREAMER, OpenAL=$ENABLE_OPENAL, MPG123=$ENABLE_MPG123"
         ls -la
 
+    - name: 下载兼容性补丁
+      if: env.APPLY_PATCHES == 'true'
+      run: |
+        set -e
+        echo "开始下载兼容性补丁..."
+        
+        # 创建补丁目录
+        mkdir -p $BUILD_DIR/patches
+        cd $BUILD_DIR/patches
+        
+        # 定义补丁文件列表
+        PATCH_FILES=(
+          "xinerama_fallback.patch"
+          "shape_extension_fallback.patch" 
+          "non_critical_drivers.patch"
+          "seccomp_handling.patch"
+          "mobile_environment_detection.patch"
+        )
+        
+        # 下载所有补丁文件
+        for patch_file in "${PATCH_FILES[@]}"; do
+          echo "下载补丁: $patch_file"
+          patch_url="$PATCH_BASE_URL$patch_file"
+          
+          # 尝试下载补丁
+          if wget -q "$patch_url" -O "$patch_file"; then
+            echo "✅ 成功下载: $patch_file"
+            # 验证补丁文件格式
+            if head -n 1 "$patch_file" | grep -q "^--- "; then
+              echo "  补丁格式验证通过"
+            else
+              echo "⚠️  补丁格式可能不正确，但继续处理"
+            fi
+          else
+            echo "❌ 下载失败: $patch_file"
+            # 创建空的补丁文件作为占位符
+            touch "$patch_file"
+          fi
+        done
+        
+        echo "补丁下载完成"
+        ls -la
+
     - name: 构建 Proton WOW64 版本
       run: |
         set -e
@@ -197,6 +251,7 @@ jobs:
         echo "  - 构建类型: $BUILD_TYPE"
         echo "  - 优化级别: $OPT_LEVEL"
         echo "  - 启用功能: Vulkan=$ENABLE_VULKAN, GStreamer=$ENABLE_GSTREAMER, OpenAL=$ENABLE_OPENAL, MPG123=$ENABLE_MPG123"
+        echo "  - 应用兼容性补丁: $APPLY_PATCHES"
         
         # 设置中文构建环境
         export LANG=zh_CN.UTF-8
@@ -215,6 +270,7 @@ jobs:
         # 切换到指定的 Proton 分支
         echo "切换到分支: $PROTON_BRANCH"
         git checkout $PROTON_BRANCH
+        
         echo "彻底修复 Termux 路径问题..."
         
         # 修改所有硬编码的 /tmp 路径
@@ -250,6 +306,69 @@ jobs:
         find . -name "ip.c" -exec sed -i 's|"/proc/net/snmp6"|"/data/data/com.winlator/files/rootfs/tmp/ifaddrs"|g' {} \;
 
         echo "ip.c 文件路径修改完成"
+        
+        # 应用兼容性补丁
+        if [ "$APPLY_PATCHES" = "true" ]; then
+          echo "开始应用兼容性补丁..."
+          
+          # 检查补丁目录是否存在
+          if [ -d "../../patches" ]; then
+            echo "找到补丁目录，开始应用补丁..."
+            
+            # 定义补丁应用顺序
+            PATCH_FILES=(
+              "xinerama_fallback.patch"
+              "shape_extension_fallback.patch"
+              "non_critical_drivers.patch" 
+              "seccomp_handling.patch"
+              "mobile_environment_detection.patch"
+            )
+            
+            APPLIED_COUNT=0
+            FAILED_COUNT=0
+            
+            for patch_file in "${PATCH_FILES[@]}"; do
+              patch_path="../../patches/$patch_file"
+              
+              if [ -f "$patch_path" ] && [ -s "$patch_path" ]; then
+                echo "应用补丁: $patch_file"
+                
+                # 检查补丁是否可以应用
+                if git apply --check "$patch_path" 2>/dev/null; then
+                  git apply "$patch_path"
+                  echo "✅ $patch_file 应用成功"
+                  ((APPLIED_COUNT++))
+                else
+                  echo "⚠️  $patch_file 可能已经部分应用或存在冲突，尝试继续..."
+                  # 尝试忽略空格差异应用
+                  if patch -p1 -l -N --ignore-whitespace -i "$patch_path" --quiet; then
+                    echo "✅ $patch_file 应用成功 (忽略空格)"
+                    ((APPLIED_COUNT++))
+                  else
+                    echo "❌ $patch_file 应用失败，跳过此补丁"
+                    ((FAILED_COUNT++))
+                  fi
+                fi
+              else
+                echo "⚠️  补丁文件不存在或为空: $patch_file"
+                ((FAILED_COUNT++))
+              fi
+            done
+            
+            echo "补丁应用完成: 成功 $APPLIED_COUNT, 失败 $FAILED_COUNT"
+            
+            # 如果所有补丁都失败了，发出警告但继续构建
+            if [ $APPLIED_COUNT -eq 0 ]; then
+              echo "⚠️  警告: 所有补丁应用失败，但继续构建..."
+            fi
+            
+          else
+            echo "❌ 补丁目录不存在，跳过补丁应用"
+          fi
+        else
+          echo "跳过兼容性补丁应用"
+        fi
+        
         # 生成 configure 脚本
         echo "生成 configure 脚本..."
         ./autogen.sh
@@ -276,18 +395,32 @@ jobs:
         # 配置 Wine
         mkdir -p build64
         cd build64
+        
+        # 根据是否应用补丁调整编译标志
+        if [ "$APPLY_PATCHES" = "true" ]; then
+          echo "启用兼容性补丁编译选项..."
+          export EXTRA_CFLAGS="-DMOBILE_COMPATIBILITY=1"
+        fi
+        
         export CROSSCC="x86_64-w64-mingw32-gcc"
         export CROSSCXX="x86_64-w64-mingw32-g++"
-        export CFLAGS="-march=x86-64 -msse3 -mfpmath=sse $OPT_FLAGS"
-        export CXXFLAGS="-march=x86-64 -msse3 -mfpmath=sse $OPT_FLAGS"
-        export CROSSCFLAGS="-march=x86-64 -msse3 -mfpmath=sse $OPT_FLAGS"
-        export CROSSCXXFLAGS="-march=x86-64 -msse3 -mfpmath=sse $OPT_FLAGS"
+        export CFLAGS="-march=x86-64 -msse3 -mfpmath=sse $OPT_FLAGS $EXTRA_CFLAGS"
+        export CXXFLAGS="-march=x86-64 -msse3 -mfpmath=sse $OPT_FLAGS $EXTRA_CFLAGS"
+        export CROSSCFLAGS="-march=x86-64 -msse3 -mfpmath=sse $OPT_FLAGS $EXTRA_CFLAGS"
+        export CROSSCXXFLAGS="-march=x86-64 -msse3 -mfpmath=sse $OPT_FLAGS $EXTRA_CFLAGS"
         
         # 构建配置参数
         CONFIGURE_OPTS="\
           --enable-win64 \
           --enable-archs=i386,x86_64 \
           --prefix=/tmp/wine-install-proton \
+          --with-x \
+          --with-alsa \
+          --with-pulse \
+          --with-freetype \
+          --with-fontconfig \
+          --with-gettext \
+          --with-sdl \
           --enable-nls \
           --disable-winemenubuilder \
           --disable-win16 \
@@ -360,7 +493,11 @@ jobs:
         # 获取版本信息
         VERSION_PROTON=$(cd wine && git describe --tags --abbrev=0 2>/dev/null || echo "$PROTON_BRANCH")
         COMMIT_HASH=$(cd wine && git rev-parse --short HEAD)
-        PROTON_VERSION="${VERSION_PROTON}-${COMMIT_HASH}"
+        PATCH_STATUS=""
+        if [ "$APPLY_PATCHES" = "true" ]; then
+          PATCH_STATUS="-patched"
+        fi
+        PROTON_VERSION="${VERSION_PROTON}-${COMMIT_HASH}${PATCH_STATUS}"
         echo "PROTON_VERSION=$PROTON_VERSION" >> $GITHUB_ENV
 
     - name: 准备打包
@@ -657,6 +794,14 @@ jobs:
         prerelease: false
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: 上传补丁文件（如果应用了补丁）
+      if: env.APPLY_PATCHES == 'true'
+      uses: actions/upload-artifact@v4
+      with:
+        name: compatibility-patches-${{ env.RELEASE_TAG }}
+        path: ${{ env.BUILD_DIR }}/patches/
+        retention-days: 7
 
     - name: 输出版本信息和使用说明
       run: |
