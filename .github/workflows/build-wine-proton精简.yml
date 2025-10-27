@@ -317,7 +317,7 @@ jobs:
             
             # 定义补丁应用顺序
             PATCH_FILES=(
-              "xinerama_fallback.patch"
+              "steamify-proton-s-WINE.patch"
               "shape_extension_fallback.patch"
               "non_critical_drivers.patch" 
               "seccomp_handling.patch"
