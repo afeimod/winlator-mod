@@ -124,9 +124,46 @@ jobs:
         cd wine
         git checkout wine-${{ env.WINE_VERSION }}
 
+    - name: 下载并应用 staging 补丁 (仅 Staging 版本)
+      if: env.WINE_TYPE == 'staging'
+      run: |
+        cd wine
+        # 下载 staging 补丁集
+        wget -O wine-staging-${{ env.WINE_VERSION }}.tar.gz https://github.com/wine-staging/wine-staging/archive/refs/tags/v${{ env.WINE_VERSION }}.tar.gz
+        tar -xzf wine-staging-${{ env.WINE_VERSION }}.tar.gz
     
+        # 应用 staging 补丁 - 使用正确的路径
+        cd wine-staging-${{ env.WINE_VERSION }}/staging
+        chmod +x patchinstall.py
+    
+        # 应用所有补丁到 Wine 源码目录（上级的上级目录）
+        ./patchinstall.py --all --destdir=../../
+    
+        echo "✅ Staging 补丁应用完成"
 
-    
+    - name: 验证 staging 补丁应用 (仅 Staging 版本)
+      if: env.WINE_TYPE == 'staging'
+      run: |
+        cd wine
+        echo "检查 staging 补丁应用情况..."
+        if [ -f "dlls/ntdll/unix/esync.c" ]; then
+            echo "✅ esync 支持已通过 staging 补丁添加"
+        else
+            echo "❌ esync 支持未找到"
+        fi
+
+    - name: 克隆 Wine-TKG 源码
+      if: env.WINE_TYPE == 'wine-tkg'
+      run: |
+        git clone https://github.com/Kron4ek/wine-tkg.git
+        cd wine-tkg
+        # 检查对应的版本标签或分支
+        if git checkout ${{ env.WINE_VERSION }} 2>/dev/null || git checkout wine-${{ env.WINE_VERSION }} 2>/dev/null; then
+          echo "成功切换到版本 ${{ env.WINE_VERSION }}"
+        else
+          echo "使用默认分支"
+          git checkout master
+        fi
 
     - name: 根据版本选择修复方式
       run: |
@@ -210,6 +247,27 @@ jobs:
         find . -name "server.c" -exec sed -i 's|"/tmp"|"/data/data/com.winlator/files/rootfs/tmp"|g' {} +
         
         echo "路径修复完成"
+        echo "修改 ip.c 文件中的 /proc 路径..."
+
+        # 修改 IPv4 和 IPv6 转发和 TTL 配置路径
+        find . -name "ip.c" -exec sed -i 's|"/proc/sys/net/ipv4/conf/default/forwarding"|"/data/data/com.winlator/files/rootfs/tmp/ifaddrs"|g' {} \;
+        find . -name "ip.c" -exec sed -i 's|"/proc/sys/net/ipv4/ip_default_ttl"|"/data/data/com.winlator/files/rootfs/tmp/ifaddrs"|g' {} \;
+        find . -name "ip.c" -exec sed -i 's|"/proc/sys/net/ipv6/conf/default/forwarding"|"/data/data/com.winlator/files/rootfs/tmp/ifaddrs"|g' {} \;
+        find . -name "ip.c" -exec sed -i 's|"/proc/sys/net/ipv6/conf/default/hop_limit"|"/data/data/com.winlator/files/rootfs/tmp/ifaddrs"|g' {} \;
+
+        # 修改 ICMPv4 统计信息读取路径
+        find . -name "ip.c" -exec sed -i 's|fopen( "/proc/net/snmp", "r" )|fopen( "/data/data/com.winlator/files/rootfs/tmp/ifaddrs", "r" )|g' {} \;
+
+        # 修改 ICMPv6 统计信息读取路径  
+        find . -name "ip.c" -exec sed -i 's|fopen( "/proc/net/snmp6", "r" )|fopen( "/data/data/com.winlator/files/rootfs/tmp/ifaddrs", "r" )|g' {} \;
+
+        # 修改 IPv4 统计信息读取路径
+        find . -name "ip.c" -exec sed -i 's|"/proc/net/snmp"|"/data/data/com.winlator/files/rootfs/tmp/ifaddrs"|g' {} \;
+
+        # 修改 IPv6 统计信息读取路径
+        find . -name "ip.c" -exec sed -i 's|"/proc/net/snmp6"|"/data/data/com.winlator/files/rootfs/tmp/ifaddrs"|g' {} \;
+
+        echo "ip.c 文件路径修改完成"
 
     - name: 配置和构建真正的 WOW64 Wine（启用 Vulkan 和完整 GStreamer）
       run: |
