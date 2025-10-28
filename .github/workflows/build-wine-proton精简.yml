@@ -379,7 +379,7 @@ jobs:
           --enable-win64 \
           --enable-archs=i386,x86_64 \
           --prefix=/tmp/wine-install-proton \
-          --with-x \
+          --without-x \
           --with-alsa \
           --with-pulse \
           --with-freetype \
