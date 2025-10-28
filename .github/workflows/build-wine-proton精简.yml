@@ -392,7 +392,6 @@ jobs:
           --with-xinput2 \
           --without-xcomposite \
           --without-xcursor \
-          --without-xfixes \
           --without-xinerama \
           --without-xrandr \
           --without-xrender \
