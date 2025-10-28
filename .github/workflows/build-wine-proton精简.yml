@@ -374,22 +374,34 @@ jobs:
         export CROSSCFLAGS="-march=x86-64 -msse3 -mfpmath=sse $OPT_FLAGS $EXTRA_CFLAGS"
         export CROSSCXXFLAGS="-march=x86-64 -msse3 -mfpmath=sse $OPT_FLAGS $EXTRA_CFLAGS"
         
-        # 构建配置参数
+        # 精细控制 X11 功能
         CONFIGURE_OPTS="\
           --enable-win64 \
           --enable-archs=i386,x86_64 \
           --prefix=/tmp/wine-install-proton \
-          --without-x \
-          --with-alsa \
-          --with-pulse \
+          --with-x \  # 核心 X11 支持必须保留
+          --x-includes=/usr/include \
+          --x-libraries=/usr/lib/x86_64-linux-gnu \
           --with-freetype \
           --with-fontconfig \
-          --with-gettext \
-          --with-sdl \
           --enable-nls \
           --disable-winemenubuilder \
           --disable-win16 \
           --disable-tests \
+          --with-xinput \
+          --with-xinput2 \
+          --without-xcomposite \
+          --without-xcursor \
+          --without-xfixes \
+          --without-xinerama \
+          --without-xrandr \
+          --without-xrender \
+          --without-xshape \
+          --without-xshm \
+          --without-xxf86vm \
+          --with-alsa \
+          --with-pulse \
+          --with-sdl \
           --without-ldap \
           --without-capi \
           --without-oss \
@@ -401,14 +413,11 @@ jobs:
           --without-sane \
           --without-pcap \
           --without-pcsclite \
-          --without-xinerama \
-          --without-shape \
           --without-udev \
           --without-unwind \
           --without-usb \
           --without-v4l2 \
           --without-wayland"
-        
         # 根据功能添加配置选项
         if [ "$ENABLE_VULKAN" = "1" ]; then
           CONFIGURE_OPTS="$CONFIGURE_OPTS --with-vulkan"
