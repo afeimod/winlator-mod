@@ -379,7 +379,7 @@ jobs:
           --enable-win64 \
           --enable-archs=i386,x86_64 \
           --prefix=/tmp/wine-install-proton \
-          --with-x \  # 核心 X11 支持必须保留
+          --with-x \
           --x-includes=/usr/include \
           --x-libraries=/usr/lib/x86_64-linux-gnu \
           --with-freetype \
