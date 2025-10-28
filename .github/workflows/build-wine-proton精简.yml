@@ -211,10 +211,10 @@ jobs:
         # 定义补丁文件列表
         PATCH_FILES=(
           "steamify-proton-s-WINE.patch"
-          #"shape_extension_fallback.patch" 
-          #"non_critical_drivers.patch"
-          #"seccomp_handling.patch"
-          #"mobile_environment_detection.patch"
+          "shape_extension_fallback.patch" 
+          "non_critical_drivers.patch"
+          "seccomp_handling.patch"
+          "mobile_environment_detection.patch"
         )
         
         # 下载所有补丁文件
@@ -225,17 +225,36 @@ jobs:
           # 尝试下载补丁
           if wget -q "$patch_url" -O "$patch_file"; then
             echo "✅ 成功下载: $patch_file"
-            # 验证补丁文件格式
-            if head -n 1 "$patch_file" | grep -q "^--- "; then
-              echo "  补丁格式验证通过"
+            
+            # 详细验证补丁文件格式
+            echo "验证补丁文件格式..."
+            if [ -s "$patch_file" ]; then
+              echo "文件大小: $(wc -l < "$patch_file") 行"
+              echo "文件头:"
+              head -5 "$patch_file"
+              echo "文件尾:"
+              tail -5 "$patch_file"
+              
+              # 检查补丁文件基本格式
+              if head -n 1 "$patch_file" | grep -q "^diff \|^--- "; then
+                echo "✅ 补丁格式验证通过"
+              else
+                echo "❌ 补丁格式不正确，可能不是有效的补丁文件"
+                # 尝试修复或跳过
+                rm -f "$patch_file"
+                touch "$patch_file"  # 创建空文件占位
+              fi
             else
-              echo "⚠️  补丁格式可能不正确，但继续处理"
+              echo "❌ 补丁文件为空"
+              rm -f "$patch_file"
+              touch "$patch_file"
             fi
           else
             echo "❌ 下载失败: $patch_file"
             # 创建空的补丁文件作为占位符
             touch "$patch_file"
           fi
+          echo "---"
         done
         
         echo "补丁下载完成"
@@ -243,7 +262,16 @@ jobs:
 
     - name: 构建 Proton WOW64 版本
       run: |
-        set -e
+        set -e  # 遇到错误立即退出
+        
+        # 添加补丁应用失败的容错处理
+        handle_patch_failure() {
+          echo "⚠️  补丁应用出现问题，但继续构建流程..."
+          echo "这可能导致某些兼容性功能缺失，但核心构建将继续进行"
+        }
+        
+        # 设置错误处理陷阱
+        trap handle_patch_failure ERR
         
         echo "开始构建 Proton WOW64 版本..."
         echo "配置:"
@@ -315,17 +343,21 @@ jobs:
           if [ -d "../../patches" ]; then
             echo "找到补丁目录，开始应用补丁..."
             
-            # 定义补丁应用顺序
+            # 定义补丁应用顺序 - 将有问题的补丁放在最后
             PATCH_FILES=(
-              "steamify-proton-s-WINE.patch"
               "shape_extension_fallback.patch"
               "non_critical_drivers.patch" 
               "seccomp_handling.patch"
               "mobile_environment_detection.patch"
+              "steamify-proton-s-WINE.patch"  # 有问题的补丁放在最后
             )
             
             APPLIED_COUNT=0
             FAILED_COUNT=0
+            SKIPPED_COUNT=0
+            
+            # 暂时禁用 set -e，以便补丁应用失败时不退出脚本
+            set +e
             
             for patch_file in "${PATCH_FILES[@]}"; do
               patch_path="../../patches/$patch_file"
@@ -333,29 +365,68 @@ jobs:
               if [ -f "$patch_path" ] && [ -s "$patch_path" ]; then
                 echo "应用补丁: $patch_file"
                 
+                # 详细检查补丁内容
+                echo "检查补丁内容..."
+                PATCH_LINES=$(wc -l < "$patch_path")
+                echo "补丁文件行数: $PATCH_LINES"
+                
+                if [ "$PATCH_LINES" -lt 3 ]; then
+                  echo "⚠️  补丁文件过小，可能无效，跳过"
+                  ((SKIPPED_COUNT++))
+                  continue
+                fi
+                
+                # 检查补丁文件格式
+                echo "检查补丁文件格式..."
+                if head -n 1 "$patch_path" | grep -q "^diff \|^--- "; then
+                  echo "✅ 补丁格式正确"
+                else
+                  echo "❌ 补丁格式不正确，跳过"
+                  ((FAILED_COUNT++))
+                  continue
+                fi
+                
                 # 检查补丁是否可以应用
                 if git apply --check "$patch_path" 2>/dev/null; then
-                  git apply "$patch_path"
-                  echo "✅ $patch_file 应用成功"
-                  ((APPLIED_COUNT++))
-                else
-                  echo "⚠️  $patch_file 可能已经部分应用或存在冲突，尝试继续..."
-                  # 尝试忽略空格差异应用
-                  if patch -p1 -l -N --ignore-whitespace -i "$patch_path" --quiet; then
-                    echo "✅ $patch_file 应用成功 (忽略空格)"
+                  if git apply "$patch_path"; then
+                    echo "✅ $patch_file 应用成功"
                     ((APPLIED_COUNT++))
                   else
-                    echo "❌ $patch_file 应用失败，跳过此补丁"
+                    echo "❌ $patch_file 应用失败，尝试使用 patch 命令..."
+                    # 尝试使用 patch 命令，忽略小错误
+                    if patch -p1 -l -N -i "$patch_path" --quiet --force; then
+                      echo "✅ $patch_file 应用成功 (使用 patch 命令)"
+                      ((APPLIED_COUNT++))
+                    else
+                      echo "❌ $patch_file 应用完全失败，跳过此补丁"
+                      ((FAILED_COUNT++))
+                    fi
+                  fi
+                else
+                  echo "⚠️  $patch_file 可能已经应用或存在冲突，尝试强制应用..."
+                  # 尝试忽略空格和轻微差异
+                  if patch -p1 -l -N -i "$patch_path" --quiet --force; then
+                    echo "✅ $patch_file 应用成功 (强制模式)"
+                    ((APPLIED_COUNT++))
+                  else
+                    echo "❌ $patch_file 无法应用，跳过此补丁"
                     ((FAILED_COUNT++))
                   fi
                 fi
               else
                 echo "⚠️  补丁文件不存在或为空: $patch_file"
-                ((FAILED_COUNT++))
+                ((SKIPPED_COUNT++))
               fi
+              echo "---"
             done
             
-            echo "补丁应用完成: 成功 $APPLIED_COUNT, 失败 $FAILED_COUNT"
+            # 恢复 set -e
+            set -e
+            
+            echo "补丁应用完成:"
+            echo "  - 成功: $APPLIED_COUNT"
+            echo "  - 失败: $FAILED_COUNT" 
+            echo "  - 跳过: $SKIPPED_COUNT"
             
             # 如果所有补丁都失败了，发出警告但继续构建
             if [ $APPLIED_COUNT -eq 0 ]; then
