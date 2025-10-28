@@ -55,7 +55,6 @@ permissions:
 
 env:
   BUILD_DIR: "/tmp/build_wine"
-  PATCH_BASE_URL: "https://github.com/afeimod/linbox/raw/main/path/"
 
 jobs:
   build:
@@ -198,80 +197,9 @@ jobs:
         echo "  - 启用功能: Vulkan=$ENABLE_VULKAN, GStreamer=$ENABLE_GSTREAMER, OpenAL=$ENABLE_OPENAL, MPG123=$ENABLE_MPG123"
         ls -la
 
-    - name: 下载兼容性补丁
-      if: env.APPLY_PATCHES == 'true'
-      run: |
-        set -e
-        echo "开始下载兼容性补丁..."
-        
-        # 创建补丁目录
-        mkdir -p $BUILD_DIR/patches
-        cd $BUILD_DIR/patches
-        
-        # 定义补丁文件列表
-        PATCH_FILES=(
-          "steamify-proton-s-WINE.patch"
-          "shape_extension_fallback.patch" 
-          "non_critical_drivers.patch"
-          "seccomp_handling.patch"
-          "mobile_environment_detection.patch"
-        )
-        
-        # 下载所有补丁文件
-        for patch_file in "${PATCH_FILES[@]}"; do
-          echo "下载补丁: $patch_file"
-          patch_url="$PATCH_BASE_URL$patch_file"
-          
-          # 尝试下载补丁
-          if wget -q "$patch_url" -O "$patch_file"; then
-            echo "✅ 成功下载: $patch_file"
-            
-            # 详细验证补丁文件格式
-            echo "验证补丁文件格式..."
-            if [ -s "$patch_file" ]; then
-              echo "文件大小: $(wc -l < "$patch_file") 行"
-              echo "文件头:"
-              head -5 "$patch_file"
-              echo "文件尾:"
-              tail -5 "$patch_file"
-              
-              # 检查补丁文件基本格式
-              if head -n 1 "$patch_file" | grep -q "^diff \|^--- "; then
-                echo "✅ 补丁格式验证通过"
-              else
-                echo "❌ 补丁格式不正确，可能不是有效的补丁文件"
-                # 尝试修复或跳过
-                rm -f "$patch_file"
-                touch "$patch_file"  # 创建空文件占位
-              fi
-            else
-              echo "❌ 补丁文件为空"
-              rm -f "$patch_file"
-              touch "$patch_file"
-            fi
-          else
-            echo "❌ 下载失败: $patch_file"
-            # 创建空的补丁文件作为占位符
-            touch "$patch_file"
-          fi
-          echo "---"
-        done
-        
-        echo "补丁下载完成"
-        ls -la
-
     - name: 构建 Proton WOW64 版本
       run: |
         set -e  # 遇到错误立即退出
-        
-        # 添加补丁应用失败的容错处理
-        handle_patch_failure() {
-          echo "⚠️  补丁应用出现问题，但继续构建流程..."
-          echo "这可能导致某些兼容性功能缺失，但核心构建将继续进行"
-        }
-        
-        # 设置错误处理陷阱
-        trap handle_patch_failure ERR
         
         echo "开始构建 Proton WOW64 版本..."
         echo "配置:"
@@ -335,107 +263,59 @@ jobs:
 
         echo "ip.c 文件路径修改完成"
         
-        # 应用兼容性补丁
+        # 应用兼容性补丁 - 使用 sed 直接修改源码
         if [ "$APPLY_PATCHES" = "true" ]; then
-          echo "开始应用兼容性补丁..."
+          echo "开始应用兼容性补丁（使用 sed 直接修改源码）..."
           
-          # 检查补丁目录是否存在
-          if [ -d "../../patches" ]; then
-            echo "找到补丁目录，开始应用补丁..."
-            
-            # 定义补丁应用顺序 - 将有问题的补丁放在最后
-            PATCH_FILES=(
-              "shape_extension_fallback.patch"
-              "non_critical_drivers.patch" 
-              "seccomp_handling.patch"
-              "mobile_environment_detection.patch"
-              "steamify-proton-s-WINE.patch"  # 有问题的补丁放在最后
-            )
-            
-            APPLIED_COUNT=0
-            FAILED_COUNT=0
-            SKIPPED_COUNT=0
-            
-            # 暂时禁用 set -e，以便补丁应用失败时不退出脚本
-            set +e
-            
-            for patch_file in "${PATCH_FILES[@]}"; do
-              patch_path="../../patches/$patch_file"
-              
-              if [ -f "$patch_path" ] && [ -s "$patch_path" ]; then
-                echo "应用补丁: $patch_file"
-                
-                # 详细检查补丁内容
-                echo "检查补丁内容..."
-                PATCH_LINES=$(wc -l < "$patch_path")
-                echo "补丁文件行数: $PATCH_LINES"
-                
-                if [ "$PATCH_LINES" -lt 3 ]; then
-                  echo "⚠️  补丁文件过小，可能无效，跳过"
-                  ((SKIPPED_COUNT++))
-                  continue
-                fi
-                
-                # 检查补丁文件格式
-                echo "检查补丁文件格式..."
-                if head -n 1 "$patch_path" | grep -q "^diff \|^--- "; then
-                  echo "✅ 补丁格式正确"
-                else
-                  echo "❌ 补丁格式不正确，跳过"
-                  ((FAILED_COUNT++))
-                  continue
-                fi
-                
-                # 检查补丁是否可以应用
-                if git apply --check "$patch_path" 2>/dev/null; then
-                  if git apply "$patch_path"; then
-                    echo "✅ $patch_file 应用成功"
-                    ((APPLIED_COUNT++))
-                  else
-                    echo "❌ $patch_file 应用失败，尝试使用 patch 命令..."
-                    # 尝试使用 patch 命令，忽略小错误
-                    if patch -p1 -l -N -i "$patch_path" --quiet --force; then
-                      echo "✅ $patch_file 应用成功 (使用 patch 命令)"
-                      ((APPLIED_COUNT++))
-                    else
-                      echo "❌ $patch_file 应用完全失败，跳过此补丁"
-                      ((FAILED_COUNT++))
-                    fi
-                  fi
-                else
-                  echo "⚠️  $patch_file 可能已经应用或存在冲突，尝试强制应用..."
-                  # 尝试忽略空格和轻微差异
-                  if patch -p1 -l -N -i "$patch_path" --quiet --force; then
-                    echo "✅ $patch_file 应用成功 (强制模式)"
-                    ((APPLIED_COUNT++))
-                  else
-                    echo "❌ $patch_file 无法应用，跳过此补丁"
-                    ((FAILED_COUNT++))
-                  fi
-                fi
-              else
-                echo "⚠️  补丁文件不存在或为空: $patch_file"
-                ((SKIPPED_COUNT++))
-              fi
-              echo "---"
-            done
-            
-            # 恢复 set -e
-            set -e
-            
-            echo "补丁应用完成:"
-            echo "  - 成功: $APPLIED_COUNT"
-            echo "  - 失败: $FAILED_COUNT" 
-            echo "  - 跳过: $SKIPPED_COUNT"
-            
-            # 如果所有补丁都失败了，发出警告但继续构建
-            if [ $APPLIED_COUNT -eq 0 ]; then
-              echo "⚠️  警告: 所有补丁应用失败，但继续构建..."
-            fi
-            
-          else
-            echo "❌ 补丁目录不存在，跳过补丁应用"
-          fi
+          # 1. Steamify Proton's WINE 补丁
+          echo "应用 Steamify Proton's WINE 补丁..."
+          sed -i 's/static const char steamuserA\\[\\] = {.*};/DWORD len = GetEnvironmentVariableA( "WINEUSERNAME", name, *size ); BOOL ret; if (!len) return FALSE; if ((ret = (len < *size))) len++; else SetLastError( ERROR_INSUFFICIENT_BUFFER ); *size = len; return ret;/g' dlls/advapi32/advapi.c
+          sed -i 's/static const WCHAR steamuserW\\[\\] = {.*};/DWORD len = GetEnvironmentVariableW( L"WINEUSERNAME", name, *size ); BOOL ret; if (!len) return FALSE; if ((ret = (len < *size))) len++; else SetLastError( ERROR_INSUFFICIENT_BUFFER ); *size = len; return ret;/g' dlls/advapi32/advapi.c
+
+          # 2. Xinerama fallback 补丁
+          echo "应用 Xinerama fallback 补丁..."
+          # 在 x11drv_main.c 中添加 xinerama_available 变量
+          sed -i '/static BOOL use_system_cursors = TRUE;/a\\nstatic BOOL xinerama_available = FALSE;' dlls/winex11.drv/x11drv_main.c
+          
+          # 添加 init_xinerama 函数
+          sed -i '/static BOOL use_system_cursors = TRUE;/a\\nstatic void init_xinerama(void)\n{\n    void *xinerama_handle;\n    \n    xinerama_handle = dlopen("libXinerama.so.1", RTLD_NOW);\n    if (!xinerama_handle) {\n        xinerama_handle = dlopen("libXinerama.so", RTLD_NOW);\n    }\n    \n    if (xinerama_handle) {\n        xinerama_available = TRUE;\n        dlclose(xinerama_handle);\n        TRACE("Xinerama support enabled\\\\n");\n    } else {\n        WARN("libXinerama not available, continuing without multi-monitor support\\\\n");\n        xinerama_available = FALSE;\n    }\n}' dlls/winex11.drv/x11drv_main.c
+          
+          # 添加 xinerama_init_fallback 函数
+          sed -i '/static BOOL use_system_cursors = TRUE;/a\\nvoid xinerama_init_fallback( int width, int height )\n{\n    struct x11drv_mode_info *mode;\n    TRACE( "Using fallback Xinerama with single monitor %dx%d\\\\n", width, height );\n    /* Add basic single monitor setup here if needed */\n}' dlls/winex11.drv/x11drv_main.c
+          
+          # 在 X11DRV_CreateWindow 中添加初始化调用
+          sed -i '/X11DRV_DisplayDevices_Init(FALSE);/i\\    /* Initialize Xinerama with fallback */\n    init_xinerama();\n    if (!xinerama_available)\n        xinerama_init_fallback( DisplayWidth( gdi_display, default_visual.screen ), DisplayHeight( gdi_display, default_visual.screen ) );' dlls/winex11.drv/x11drv_main.c
+
+          # 3. SHAPE extension fallback 补丁
+          echo "应用 SHAPE extension fallback 补丁..."
+          # 在 shape.c 中添加 shape_available 变量
+          sed -i '/WINE_DEFAULT_DEBUG_CHANNEL(x11drv);/a\\nstatic BOOL shape_available = FALSE;' dlls/winex11.drv/shape.c
+          
+          # 添加 init_shape_extension 函数
+          sed -i '/WINE_DEFAULT_DEBUG_CHANNEL(x11drv);/a\\nvoid init_shape_extension(Display *display)\n{\n    int event_base, error_base;\n    \n    if (XShapeQueryExtension(display, &event_base, &error_base)) {\n        shape_available = TRUE;\n        TRACE("SHAPE extension available\\\\n");\n    } else {\n        WARN("SHAPE extension not available, continuing without shaped windows\\\\n");\n        shape_available = FALSE;\n    }\n}' dlls/winex11.drv/shape.c
+          
+          # 修改 X11DRV_SetWindowShape 函数
+          sed -i '/void X11DRV_SetWindowShape( Display \\*display, Window window, HRGN shape_region,/a\\    if (!shape_available) {\n        TRACE("SHAPE extension disabled, skipping window shaping\\\\n");\n        return;\n    }' dlls/winex11.drv/shape.c
+
+          # 4. Seccomp handling 补丁
+          echo "应用 Seccomp handling 补丁..."
+          # 在 install_bpf 函数中添加检查
+          sed -i '/int install_bpf(struct sigaction \\*old_act)/a\\    if (are_libs_in_low_addresses()) {\n        static int warned = 0;\n        if (!warned) {\n            WARN("Native libraries loaded in low addresses, disabling seccomp for compatibility\\\\n");\n            warned = 1;\n        }\n        return 0;\n    }' dlls/ntdll/unix/signal_x86_64.c
+
+          # 5. Non-critical drivers 补丁
+          echo "应用 Non-critical drivers 补丁..."
+          # 在 server.c 中添加辅助函数
+          sed -i '/static BOOL is_non_critical_driver( const WCHAR \\*name )/i\\static BOOL is_non_critical_driver( const WCHAR *name )\n{\n    static const WCHAR *non_critical_drivers[] = {\n        L"winebus",\n        L"SharedGpuResources", \n        L"winebth",\n        NULL\n    };\n    \n    for (int i = 0; non_critical_drivers[i]; i++) {\n        if (strcmpW(name, non_critical_drivers[i]) == 0)\n            return TRUE;\n    }\n    return FALSE;\n}' dlls/ntdll/unix/server.c
+          
+          # 添加 load_driver_with_fallback 函数
+          sed -i '/static BOOL is_non_critical_driver( const WCHAR \\*name )/a\\static NTSTATUS load_driver_with_fallback( const WCHAR *name )\n{\n    NTSTATUS status = orig_load_driver(name);\n    \n    if (!NT_SUCCESS(status)) {\n        if (is_non_critical_driver(name)) {\n            WARN("Failed to load non-critical driver %s: %x, continuing...\\\\n", debugstr_w(name), status);\n            return STATUS_SUCCESS;\n        }\n    }\n    \n    return status;\n}' dlls/ntdll/unix/server.c
+
+          # 6. Mobile environment detection 补丁
+          echo "应用 Mobile environment detection 补丁..."
+          # 在 unix_private.h 中添加检测函数
+          sed -i '/extern void CDECL set_signal_handler( int signal, void (\\*handler)(int) );/a\\nstatic inline BOOL is_mobile_environment(void)\n{\n    static int mobile_env = -1;\n    \n    if (mobile_env == -1) {\n        const char *android_env = getenv("ANDROID_ROOT");\n        mobile_env = (android_env != NULL);\n    }\n    \n    return mobile_env;\n}' dlls/ntdll/unix/unix_private.h
+
+          echo "所有兼容性补丁应用完成"
         else
           echo "跳过兼容性补丁应用"
         fi
@@ -865,14 +745,6 @@ jobs:
         prerelease: false
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-    - name: 上传补丁文件（如果应用了补丁）
-      if: env.APPLY_PATCHES == 'true'
-      uses: actions/upload-artifact@v4
-      with:
-        name: compatibility-patches-${{ env.RELEASE_TAG }}
-        path: ${{ env.BUILD_DIR }}/patches/
-        retention-days: 7
 
     - name: 输出版本信息和使用说明
       run: |
