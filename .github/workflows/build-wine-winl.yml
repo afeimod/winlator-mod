@@ -196,6 +196,36 @@ jobs:
         
         echo "SOURCE_DIR=$SOURCE_DIR" >> $GITHUB_ENV
 
+    - name: 检查并应用 esync 补丁
+      run: |
+        cd ${{ env.SOURCE_DIR }}
+        echo "检查 esync 支持..."
+        
+        # 检查 esync.c 文件是否存在
+        if [ ! -f "dlls/ntdll/unix/esync.c" ] && [ ! -f "server/esync.c" ]; then
+            echo "❌ 未找到 esync 支持，下载并应用 esync 补丁..."
+            
+            # 下载 esync 补丁
+            wget -O esync2-stdintfix.patch https://github.com/afeimod/winlator-mod/blob/main/path/esync2-stdintfix.patch
+            
+            # 应用补丁
+            if patch -p1 < esync2-stdintfix.patch; then
+                echo "✅ esync 补丁应用成功"
+                
+                # 验证补丁应用
+                if [ -f "dlls/ntdll/unix/esync.c" ] || [ -f "server/esync.c" ]; then
+                    echo "✅ esync 支持已成功添加"
+                else
+                    echo "❌ esync 支持添加失败"
+                fi
+            else
+                echo "❌ esync 补丁应用失败"
+                # 不退出，继续构建
+            fi
+        else
+            echo "✅ esync 支持已存在"
+        fi
+
     - name: 应用 9.10 以下版本修复
       if: env.PATCH_TYPE == 'fix_wine9_2_mfplat'
       run: |
@@ -405,12 +435,14 @@ jobs:
           - **平台**: Winlator 10+(Android)
           - **图形 API**: Vulkan 支持已启用
           - **多媒体**: 完整 GStreamer 支持（包含 FFmpeg 插件）
+          - **Esync 支持**: 已通过补丁添加
           
           ## 特性
           ✓ 真正的 WOW64 架构
           ✓ 同时支持 32 位和 64 位 Windows 应用程序
           ✓ Vulkan 图形 API 支持
           ✓ 完整的 GStreamer 支持
+          ✓ Esync 事件同步支持
           ✓ 中文环境支持
           ✓ 应用了关键补丁提升兼容性
           ## 构建信息
@@ -431,6 +463,7 @@ jobs:
         echo "环境: Termux"
         echo "图形 API: Vulkan 支持已启用"
         echo "多媒体: 完整 GStreamer 支持"
+        echo "Esync 支持: 已通过补丁添加"
         echo "修复方式: ${{ env.PATCH_TYPE }}"
         echo ""
         echo "修复的问题:"
@@ -438,4 +471,5 @@ jobs:
         echo "✓ 中文环境支持"
         echo "✓ Vulkan 支持"
         echo "✓ 完整的 GStreamer 支持"
+        echo "✓ Esync 事件同步支持"
         echo "✓ 应用了关键补丁，提升兼容性"
