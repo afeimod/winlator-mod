@@ -390,13 +390,13 @@ jobs:
           --disable-tests \
           --with-xinput \
           --with-xinput2 \
+          --with-xshape \
+          --with-xshm \
           --without-xcomposite \
           --without-xcursor \
           --without-xinerama \
           --without-xrandr \
           --without-xrender \
-          --without-xshape \
-          --without-xshm \
           --without-xxf86vm \
           --with-alsa \
           --with-pulse \
