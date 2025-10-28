@@ -120,7 +120,7 @@ jobs:
     - name: 克隆 Wine 源码 (Staging/Beta)
       if: env.WINE_TYPE == 'staging' || env.WINE_TYPE == 'beta'
       run: |
-        git clone https://github.com/hostei33/wine-tkg.git
+        git clone https://github.com/wine-mirror/wine.git
         cd wine
         git checkout wine-${{ env.WINE_VERSION }}
 
