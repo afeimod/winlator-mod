@@ -269,51 +269,65 @@ jobs:
           
           # 1. Steamify Proton's WINE 补丁
           echo "应用 Steamify Proton's WINE 补丁..."
-          sed -i 's/static const char steamuserA\\[\\] = {.*};/DWORD len = GetEnvironmentVariableA( "WINEUSERNAME", name, *size ); BOOL ret; if (!len) return FALSE; if ((ret = (len < *size))) len++; else SetLastError( ERROR_INSUFFICIENT_BUFFER ); *size = len; return ret;/g' dlls/advapi32/advapi.c
-          sed -i 's/static const WCHAR steamuserW\\[\\] = {.*};/DWORD len = GetEnvironmentVariableW( L"WINEUSERNAME", name, *size ); BOOL ret; if (!len) return FALSE; if ((ret = (len < *size))) len++; else SetLastError( ERROR_INSUFFICIENT_BUFFER ); *size = len; return ret;/g' dlls/advapi32/advapi.c
+          if [ -f "dlls/advapi32/advapi.c" ]; then
+            sed -i 's/static const char steamuserA\\[\\] = {.*};/DWORD len = GetEnvironmentVariableA( "WINEUSERNAME", name, *size ); BOOL ret; if (!len) return FALSE; if ((ret = (len < *size))) len++; else SetLastError( ERROR_INSUFFICIENT_BUFFER ); *size = len; return ret;/g' dlls/advapi32/advapi.c
+            sed -i 's/static const WCHAR steamuserW\\[\\] = {.*};/DWORD len = GetEnvironmentVariableW( L"WINEUSERNAME", name, *size ); BOOL ret; if (!len) return FALSE; if ((ret = (len < *size))) len++; else SetLastError( ERROR_INSUFFICIENT_BUFFER ); *size = len; return ret;/g' dlls/advapi32/advapi.c
+            echo "✅ Steamify Proton's WINE 补丁应用成功"
+          else
+            echo "⚠️  dlls/advapi32/advapi.c 文件不存在，跳过 Steamify 补丁"
+          fi
 
           # 2. Xinerama fallback 补丁
           echo "应用 Xinerama fallback 补丁..."
-          # 在 x11drv_main.c 中添加 xinerama_available 变量
-          sed -i '/static BOOL use_system_cursors = TRUE;/a\\nstatic BOOL xinerama_available = FALSE;' dlls/winex11.drv/x11drv_main.c
-          
-          # 添加 init_xinerama 函数
-          sed -i '/static BOOL use_system_cursors = TRUE;/a\\nstatic void init_xinerama(void)\n{\n    void *xinerama_handle;\n    \n    xinerama_handle = dlopen("libXinerama.so.1", RTLD_NOW);\n    if (!xinerama_handle) {\n        xinerama_handle = dlopen("libXinerama.so", RTLD_NOW);\n    }\n    \n    if (xinerama_handle) {\n        xinerama_available = TRUE;\n        dlclose(xinerama_handle);\n        TRACE("Xinerama support enabled\\\\n");\n    } else {\n        WARN("libXinerama not available, continuing without multi-monitor support\\\\n");\n        xinerama_available = FALSE;\n    }\n}' dlls/winex11.drv/x11drv_main.c
-          
-          # 添加 xinerama_init_fallback 函数
-          sed -i '/static BOOL use_system_cursors = TRUE;/a\\nvoid xinerama_init_fallback( int width, int height )\n{\n    struct x11drv_mode_info *mode;\n    TRACE( "Using fallback Xinerama with single monitor %dx%d\\\\n", width, height );\n    /* Add basic single monitor setup here if needed */\n}' dlls/winex11.drv/x11drv_main.c
-          
-          # 在 X11DRV_CreateWindow 中添加初始化调用
-          sed -i '/X11DRV_DisplayDevices_Init(FALSE);/i\\    /* Initialize Xinerama with fallback */\n    init_xinerama();\n    if (!xinerama_available)\n        xinerama_init_fallback( DisplayWidth( gdi_display, default_visual.screen ), DisplayHeight( gdi_display, default_visual.screen ) );' dlls/winex11.drv/x11drv_main.c
+          if [ -f "dlls/winex11.drv/x11drv_main.c" ]; then
+            # 在 x11drv_main.c 中添加 xinerama_available 变量
+            sed -i '/static BOOL use_system_cursors = TRUE;/a\\nstatic BOOL xinerama_available = FALSE;' dlls/winex11.drv/x11drv_main.c
+            
+            # 添加 init_xinerama 函数
+            sed -i '/static BOOL use_system_cursors = TRUE;/a\\nstatic void init_xinerama(void)\n{\n    void *xinerama_handle;\n    \n    xinerama_handle = dlopen("libXinerama.so.1", RTLD_NOW);\n    if (!xinerama_handle) {\n        xinerama_handle = dlopen("libXinerama.so", RTLD_NOW);\n    }\n    \n    if (xinerama_handle) {\n        xinerama_available = TRUE;\n        dlclose(xinerama_handle);\n        TRACE("Xinerama support enabled\\\\n");\n    } else {\n        WARN("libXinerama not available, continuing without multi-monitor support\\\\n");\n        xinerama_available = FALSE;\n    }\n}' dlls/winex11.drv/x11drv_main.c
+            
+            # 添加 xinerama_init_fallback 函数
+            sed -i '/static BOOL use_system_cursors = TRUE;/a\\nvoid xinerama_init_fallback( int width, int height )\n{\n    struct x11drv_mode_info *mode;\n    TRACE( "Using fallback Xinerama with single monitor %dx%d\\\\n", width, height );\n    /* Add basic single monitor setup here if needed */\n}' dlls/winex11.drv/x11drv_main.c
+            
+            # 在 X11DRV_CreateWindow 中添加初始化调用
+            sed -i '/X11DRV_DisplayDevices_Init(FALSE);/i\\    /* Initialize Xinerama with fallback */\n    init_xinerama();\n    if (!xinerama_available)\n        xinerama_init_fallback( DisplayWidth( gdi_display, default_visual.screen ), DisplayHeight( gdi_display, default_visual.screen ) );' dlls/winex11.drv/x11drv_main.c
+            echo "✅ Xinerama fallback 补丁应用成功"
+          else
+            echo "⚠️  dlls/winex11.drv/x11drv_main.c 文件不存在，跳过 Xinerama 补丁"
+          fi
 
-          # 3. SHAPE extension fallback 补丁
-          echo "应用 SHAPE extension fallback 补丁..."
-          # 在 shape.c 中添加 shape_available 变量
-          sed -i '/WINE_DEFAULT_DEBUG_CHANNEL(x11drv);/a\\nstatic BOOL shape_available = FALSE;' dlls/winex11.drv/shape.c
-          
-          # 添加 init_shape_extension 函数
-          sed -i '/WINE_DEFAULT_DEBUG_CHANNEL(x11drv);/a\\nvoid init_shape_extension(Display *display)\n{\n    int event_base, error_base;\n    \n    if (XShapeQueryExtension(display, &event_base, &error_base)) {\n        shape_available = TRUE;\n        TRACE("SHAPE extension available\\\\n");\n    } else {\n        WARN("SHAPE extension not available, continuing without shaped windows\\\\n");\n        shape_available = FALSE;\n    }\n}' dlls/winex11.drv/shape.c
-          
-          # 修改 X11DRV_SetWindowShape 函数
-          sed -i '/void X11DRV_SetWindowShape( Display \\*display, Window window, HRGN shape_region,/a\\    if (!shape_available) {\n        TRACE("SHAPE extension disabled, skipping window shaping\\\\n");\n        return;\n    }' dlls/winex11.drv/shape.c
-
-          # 4. Seccomp handling 补丁
+          # 3. Seccomp handling 补丁
           echo "应用 Seccomp handling 补丁..."
-          # 在 install_bpf 函数中添加检查
-          sed -i '/int install_bpf(struct sigaction \\*old_act)/a\\    if (are_libs_in_low_addresses()) {\n        static int warned = 0;\n        if (!warned) {\n            WARN("Native libraries loaded in low addresses, disabling seccomp for compatibility\\\\n");\n            warned = 1;\n        }\n        return 0;\n    }' dlls/ntdll/unix/signal_x86_64.c
+          if [ -f "dlls/ntdll/unix/signal_x86_64.c" ]; then
+            # 在 install_bpf 函数中添加检查
+            sed -i '/int install_bpf(struct sigaction \\*old_act)/a\\    if (are_libs_in_low_addresses()) {\n        static int warned = 0;\n        if (!warned) {\n            WARN("Native libraries loaded in low addresses, disabling seccomp for compatibility\\\\n");\n            warned = 1;\n        }\n        return 0;\n    }' dlls/ntdll/unix/signal_x86_64.c
+            echo "✅ Seccomp handling 补丁应用成功"
+          else
+            echo "⚠️  dlls/ntdll/unix/signal_x86_64.c 文件不存在，跳过 Seccomp 补丁"
+          fi
 
-          # 5. Non-critical drivers 补丁
+          # 4. Non-critical drivers 补丁
           echo "应用 Non-critical drivers 补丁..."
-          # 在 server.c 中添加辅助函数
-          sed -i '/static BOOL is_non_critical_driver( const WCHAR \\*name )/i\\static BOOL is_non_critical_driver( const WCHAR *name )\n{\n    static const WCHAR *non_critical_drivers[] = {\n        L"winebus",\n        L"SharedGpuResources", \n        L"winebth",\n        NULL\n    };\n    \n    for (int i = 0; non_critical_drivers[i]; i++) {\n        if (strcmpW(name, non_critical_drivers[i]) == 0)\n            return TRUE;\n    }\n    return FALSE;\n}' dlls/ntdll/unix/server.c
-          
-          # 添加 load_driver_with_fallback 函数
-          sed -i '/static BOOL is_non_critical_driver( const WCHAR \\*name )/a\\static NTSTATUS load_driver_with_fallback( const WCHAR *name )\n{\n    NTSTATUS status = orig_load_driver(name);\n    \n    if (!NT_SUCCESS(status)) {\n        if (is_non_critical_driver(name)) {\n            WARN("Failed to load non-critical driver %s: %x, continuing...\\\\n", debugstr_w(name), status);\n            return STATUS_SUCCESS;\n        }\n    }\n    \n    return status;\n}' dlls/ntdll/unix/server.c
+          if [ -f "dlls/ntdll/unix/server.c" ]; then
+            # 在 server.c 中添加辅助函数
+            sed -i '/static BOOL is_non_critical_driver( const WCHAR \\*name )/i\\static BOOL is_non_critical_driver( const WCHAR *name )\n{\n    static const WCHAR *non_critical_drivers[] = {\n        L"winebus",\n        L"SharedGpuResources", \n        L"winebth",\n        NULL\n    };\n    \n    for (int i = 0; non_critical_drivers[i]; i++) {\n        if (strcmpW(name, non_critical_drivers[i]) == 0)\n            return TRUE;\n    }\n    return FALSE;\n}' dlls/ntdll/unix/server.c
+            
+            # 添加 load_driver_with_fallback 函数
+            sed -i '/static BOOL is_non_critical_driver( const WCHAR \\*name )/a\\static NTSTATUS load_driver_with_fallback( const WCHAR *name )\n{\n    NTSTATUS status = orig_load_driver(name);\n    \n    if (!NT_SUCCESS(status)) {\n        if (is_non_critical_driver(name)) {\n            WARN("Failed to load non-critical driver %s: %x, continuing...\\\\n", debugstr_w(name), status);\n            return STATUS_SUCCESS;\n        }\n    }\n    \n    return status;\n}' dlls/ntdll/unix/server.c
+            echo "✅ Non-critical drivers 补丁应用成功"
+          else
+            echo "⚠️  dlls/ntdll/unix/server.c 文件不存在，跳过 Non-critical drivers 补丁"
+          fi
 
-          # 6. Mobile environment detection 补丁
+          # 5. Mobile environment detection 补丁
           echo "应用 Mobile environment detection 补丁..."
-          # 在 unix_private.h 中添加检测函数
-          sed -i '/extern void CDECL set_signal_handler( int signal, void (\\*handler)(int) );/a\\nstatic inline BOOL is_mobile_environment(void)\n{\n    static int mobile_env = -1;\n    \n    if (mobile_env == -1) {\n        const char *android_env = getenv("ANDROID_ROOT");\n        mobile_env = (android_env != NULL);\n    }\n    \n    return mobile_env;\n}' dlls/ntdll/unix/unix_private.h
+          if [ -f "dlls/ntdll/unix/unix_private.h" ]; then
+            # 在 unix_private.h 中添加检测函数
+            sed -i '/extern void CDECL set_signal_handler( int signal, void (\\*handler)(int) );/a\\nstatic inline BOOL is_mobile_environment(void)\n{\n    static int mobile_env = -1;\n    \n    if (mobile_env == -1) {\n        const char *android_env = getenv("ANDROID_ROOT");\n        mobile_env = (android_env != NULL);\n    }\n    \n    return mobile_env;\n}' dlls/ntdll/unix/unix_private.h
+            echo "✅ Mobile environment detection 补丁应用成功"
+          else
+            echo "⚠️  dlls/ntdll/unix/unix_private.h 文件不存在，跳过 Mobile environment detection 补丁"
+          fi
 
           echo "所有兼容性补丁应用完成"
         else
