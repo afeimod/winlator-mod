@@ -1,0 +1,111 @@
+diff -u b/server/esync.c b/server/esync.c
+--- b/server/esync.c	2025-08-28 16:34:42.185047242 +0800
++++ b/server/esync.c	2025-08-27 13:37:33.298372725 +0800
+@@ -23,6 +23,7 @@
+ 
+ #include <fcntl.h>
+ #include <stdio.h>
++#include <stdint.h>
+ #include <stdarg.h>
+ #ifdef HAVE_SYS_EVENTFD_H
+ # include <sys/eventfd.h>
+@@ -58,7 +59,7 @@
+ #endif
+ }
+ 
+-static char shm_name[29];
++static char shm_name[200];
+ static int shm_fd;
+ static off_t shm_size;
+ static void **shm_addrs;
+@@ -68,7 +69,7 @@
+ static void shm_cleanup(void)
+ {
+     close( shm_fd );
+-    if (shm_unlink( shm_name ) == -1)
++    if (unlink( shm_name ) == -1)
+         perror( "shm_unlink" );
+ }
+ 
+@@ -80,13 +81,13 @@
+         fatal_error( "cannot stat config dir\n" );
+ 
+     if (st.st_ino != (unsigned long)st.st_ino)
+-        sprintf( shm_name, "/wine-%lx%08lx-esync", (unsigned long)((unsigned long long)st.st_ino >> 32), (unsigned long)st.st_ino );
++        sprintf( shm_name, "/data/data/com.winlator/files/rootfs/tmp/wine-%lx%08lx-esync", (unsigned long)((unsigned long long)st.st_ino >> 32), (unsigned long)st.st_ino );
+     else
+-        sprintf( shm_name, "/wine-%lx-esync", (unsigned long)st.st_ino );
++        sprintf( shm_name, "/data/data/com.winlator/files/rootfs/tmp/wine-%lx-esync", (unsigned long)st.st_ino );
+ 
+-    shm_unlink( shm_name );
++    unlink( shm_name );
+ 
+-    shm_fd = shm_open( shm_name, O_RDWR | O_CREAT | O_EXCL, 0644 );
++    shm_fd = open( shm_name, O_RDWR | O_CREAT | O_EXCL, 0644 );
+     if (shm_fd == -1)
+         perror( "shm_open" );
+ 
+only in patch2:
+unchanged:
+--- ValveSoftware-winegit/dlls/ntdll/unix/esync.c	2025-08-27 13:09:14.000000000 +0800
++++ b/dlls/ntdll/unix/esync.c	2025-08-27 13:46:52.361055541 +0800
+@@ -96,7 +96,7 @@
+ };
+ C_ASSERT(sizeof(struct event) == 8);
+ 
+-static char shm_name[29];
++static char shm_name[200];
+ static int shm_fd;
+ static void **shm_addrs;
+ static int shm_addrs_size;  /* length of the allocated shm_addrs array */
+@@ -1333,11 +1333,11 @@
+         ERR("Cannot stat %s\n", config_dir);
+ 
+     if (st.st_ino != (unsigned long)st.st_ino)
+-        sprintf( shm_name, "/wine-%lx%08lx-esync", (unsigned long)((unsigned long long)st.st_ino >> 32), (unsigned long)st.st_ino );
++        sprintf( shm_name, "/data/data/com.winlator/files/rootfs/tmp/wine-%lx%08lx-esync", (unsigned long)((unsigned long long)st.st_ino >> 32), (unsigned long)st.st_ino );
+     else
+-        sprintf( shm_name, "/wine-%lx-esync", (unsigned long)st.st_ino );
++        sprintf( shm_name, "/data/data/com.winlator/files/rootfs/tmp/wine-%lx-esync", (unsigned long)st.st_ino );
+ 
+-    if ((shm_fd = shm_open( shm_name, O_RDWR, 0644 )) == -1)
++    if ((shm_fd = open( shm_name, O_RDWR, 0644 )) == -1)
+     {
+         /* probably the server isn't running with WINEESYNC, tell the user and bail */
+         if (errno == ENOENT)
+only in patch2:
+unchanged:
+--- ValveSoftware-winegit/programs/winebrowser/main.c	2025-08-27 13:09:17.000000000 +0800
++++ b/programs/winebrowser/main.c	2025-08-27 14:31:13.480864623 +0800
+@@ -116,7 +116,8 @@
+ {
+     static const WCHAR defaultbrowsers[] =
+         L"xdg-open\0"
+-        "/usr/bin/open\0"
++        "termux-open\0"
++        "/data/data/com.winlator/files/rootfs/usr/bin/open\0"
+         "firefox\0"
+         "konqueror\0"
+         "mozilla\0"
+@@ -141,7 +142,7 @@
+ static int open_mailto_url( const WCHAR *url )
+ {
+     static const WCHAR defaultmailers[] =
+-        L"/usr/bin/open\0"
++        L"/data/data/com.winlator/files/rootfs/usr/bin/open\0"
+         "xdg-email\0"
+         "mozilla-thunderbird\0"
+         "thunderbird\0"
+only in patch2:
+unchanged:
+--- ValveSoftware-winegit/server/unicode.c	2025-08-27 13:08:56.000000000 +0800
++++ b/server/unicode.c	2025-08-27 14:28:03.649303231 +0800
+@@ -313,7 +313,7 @@
+ /* load the case mapping table */
+ struct fd *load_intl_file(void)
+ {
+-    static const char *nls_dirs[] = { NULL, DATADIR "/wine/nls", "/usr/local/share/wine/nls", "/usr/share/wine/nls" };
++    static const char *nls_dirs[] = { NULL, DATADIR "/data/data/com.winlator/files/rootfs/usr/wine/nls", "/data/data/com.winlator/files/rootfs/usr/local/share/wine/nls", "/data/data/com.winlator/files/rootfs/usr/share/wine/nls" };
+     static const WCHAR nt_pathW[] = {'C',':','\\','w','i','n','d','o','w','s','\\',
+         's','y','s','t','e','m','3','2','\\','l','_','i','n','t','l','.','n','l','s',0};
+     static const struct unicode_str nt_name = { nt_pathW, sizeof(nt_pathW) };
