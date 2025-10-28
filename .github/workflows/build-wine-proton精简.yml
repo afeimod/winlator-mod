@@ -401,6 +401,8 @@ jobs:
           --without-sane \
           --without-pcap \
           --without-pcsclite \
+          --without-xinerama \
+          --without-shape \
           --without-udev \
           --without-unwind \
           --without-usb \
