@@ -14,6 +14,8 @@ env:
   LAST_COMMIT_FILE: last_gst_commit.txt
   INSTALL_ROOT: /data/data/com.winlator/files/rootfs/usr
   CROSS_FILE: cross-file.txt
+  NDK_VERSION: r25b
+  NDK_DIR: /opt/android-ndk
 
 jobs:
   build:
@@ -24,21 +26,30 @@ jobs:
       - name: 检出 workflow 仓库
         uses: actions/checkout@v4
 
-      # 📦 安装基础依赖和交叉编译工具链
-      - name: 安装基础依赖和交叉编译工具链
+      # 📦 安装基础依赖
+      - name: 安装基础依赖
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential python3-pip git pkg-config nasm \
             libglib2.0-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
             liborc-0.4-dev libxv-dev libx11-dev libasound2-dev libpulse-dev patchelf \
             libtheora-dev libx264-dev libx265-dev libvpx-dev \
-            gcc-arm-linux-androideabi g++-arm-linux-androideabi
+            wget unzip
 
       # ⚙️ 升级 Meson 和 Ninja
       - name: 升级 Meson 和 Ninja
         run: |
           pip install --upgrade pip
           pip install --upgrade meson ninja
+
+      # 🔧 安装 Android NDK
+      - name: 安装 Android NDK
+        run: |
+          echo "📦 下载 Android NDK ${{ env.NDK_VERSION }}..."
+          wget -q https://dl.google.com/android/repository/android-ndk-${{ env.NDK_VERSION }}-linux.zip
+          sudo unzip -q android-ndk-${{ env.NDK_VERSION }}-linux.zip -d /opt
+          sudo mv /opt/android-ndk-${{ env.NDK_VERSION }} ${{ env.NDK_DIR }}
+          echo "✅ Android NDK 安装完成"
 
       # 📝 创建交叉编译配置文件
       - name: 创建交叉编译配置文件
@@ -52,14 +63,14 @@ jobs:
 
           [properties]
           prefix = '/data/data/com.winlator/files/rootfs/usr'
-          libdir = 'lib/gstreamer-1.0'
+          libdir = 'lib'
           pkg_config_libdir = '/data/data/com.winlator/files/rootfs/usr/lib/pkgconfig'
 
           [binaries]
-          c = 'arm-linux-androideabi-gcc'
-          cpp = 'arm-linux-androideabi-g++'
-          ar = 'arm-linux-androideabi-ar'
-          strip = 'arm-linux-androideabi-strip'
+          c = '${{ env.NDK_DIR }}/toolchains/llvm/prebuilt/linux-x86_64/bin/armv7a-linux-androideabi21-clang'
+          cpp = '${{ env.NDK_DIR }}/toolchains/llvm/prebuilt/linux-x86_64/bin/armv7a-linux-androideabi21-clang++'
+          ar = '${{ env.NDK_DIR }}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ar'
+          strip = '${{ env.NDK_DIR }}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip'
           pkgconfig = 'pkg-config'
           EOF
 
@@ -125,11 +136,12 @@ jobs:
           cd libvpx
           git checkout v1.14.0
           
-          # 设置交叉编译环境变量
-          export CC=arm-linux-androideabi-gcc
-          export CXX=arm-linux-androideabi-g++
-          export AR=arm-linux-androideabi-ar
-          export STRIP=arm-linux-androideabi-strip
+          # 设置 Android NDK 工具链路径
+          export TOOLCHAIN=${{ env.NDK_DIR }}/toolchains/llvm/prebuilt/linux-x86_64
+          export CC=$TOOLCHAIN/bin/armv7a-linux-androideabi21-clang
+          export CXX=$TOOLCHAIN/bin/armv7a-linux-androideabi21-clang++
+          export AR=$TOOLCHAIN/bin/llvm-ar
+          export STRIP=$TOOLCHAIN/bin/llvm-strip
           
           ./configure \
             --prefix=${{ env.INSTALL_ROOT }} \
@@ -142,7 +154,9 @@ jobs:
             --as=nasm \
             --disable-examples \
             --disable-docs \
-            --disable-unit-tests
+            --disable-unit-tests \
+            --extra-cflags="-fPIC" \
+            --extra-cxxflags="-fPIC"
           
           make -j$(nproc)
           sudo mkdir -p ${{ env.INSTALL_ROOT }}/lib
@@ -158,13 +172,13 @@ jobs:
           sudo mkdir -p $INSTALL_ROOT
           sudo chmod -R 777 /data
           
-          # 设置交叉编译环境变量
-          export CC=arm-linux-androideabi-gcc
-          export CXX=arm-linux-androideabi-g++
-          export AR=arm-linux-androideabi-ar
-          export STRIP=arm-linux-androideabi-strip
+          # 设置环境变量
+          export TOOLCHAIN=${{ env.NDK_DIR }}/toolchains/llvm/prebuilt/linux-x86_64
+          export PATH=$TOOLCHAIN/bin:$PATH
           export PKG_CONFIG_LIBDIR=${{ env.INSTALL_ROOT }}/lib/pkgconfig
           export PKG_CONFIG_PATH=${{ env.INSTALL_ROOT }}/lib/pkgconfig
+          export CC=$TOOLCHAIN/bin/armv7a-linux-androideabi21-clang
+          export CXX=$TOOLCHAIN/bin/armv7a-linux-androideabi21-clang++
           
           meson setup build \
             --cross-file ../${{ env.CROSS_FILE }} \
@@ -176,8 +190,12 @@ jobs:
             -Dpython=disabled -Dgst-plugins-good:vpx=enabled \
             -Dgst-plugins-bad:hip=disabled -Dgst-plugins-bad:nvcodec=disabled \
             -Dgst-plugins-base:gl=disabled -Dintrospection=disabled \
-            -Dgst-full=enabled -Dgst-full-plugins='*' \
-            -Ddevtools=enabled -Drtsp_server=disabled \
+            -Dgst-full-library-type=shared \
+            -Ddevtools=disabled -Drtsp_server=disabled \
+            -Dgst-plugins-base:opus=disabled \
+            -Dgst-plugins-base:ogg=disabled \
+            -Dgst-plugins-base:vorbis=disabled \
+            -Dgst-plugins-base:theora=disabled \
             --buildtype=release
           
           ninja -C build -j$(nproc)
@@ -189,7 +207,7 @@ jobs:
         run: |
           INTERP=$INSTALL_ROOT/lib/ld-linux-armhf.so.3
           echo "🔧 修补 ELF 解释器: $INTERP"
-          for DIR in bin libexec/gstreamer-1.0; do
+          for DIR in bin lib; do
             if [ -d "$INSTALL_ROOT/$DIR" ]; then
               echo "📁 修补 $DIR ..."
               find "$INSTALL_ROOT/$DIR" -type f -exec file {} \; | grep ELF | cut -d: -f1 | while read f; do
@@ -239,7 +257,7 @@ jobs:
             - **版本**: `${{ env.VERSION }}`
             - **架构**: armv7
             - **环境**: winlator glibc
-            - **工具链**: arm-linux-androideabi
+            - **工具链**: Android NDK ${{ env.NDK_VERSION }} (clang)
             - **提交**: [`${{ env.COMMIT_SHORT }}`](https://gitlab.freedesktop.org/gstreamer/gstreamer/-/commit/${{ env.LATEST_COMMIT }})
             - **提交日期**: ${{ env.COMMIT_DATE }}
             - **作者**: `${{ env.AUTHOR }}`
@@ -252,7 +270,6 @@ jobs:
             - ✅ **不良插件** (bad)
             - ✅ **LibAV 支持**
             - ✅ **VP8/VP9 解码** (libvpx v1.14.0)
-            - ✅ **开发工具**
             - ❌ **RTSP 服务器** (已禁用)
             - ❌ **GPU 加速** (已禁用)
             - 🏗️ **构建类型**: release
@@ -264,8 +281,8 @@ jobs:
             ### ⚠️ 注意事项
             - 此为开发版本，可能包含未稳定的特性
             - 针对 armv7 架构交叉编译
+            - 使用 Android NDK clang 工具链
             - 建议仅用于测试和开发目的
-            - 生产环境请使用稳定版本
             
           files: /home/runner/${{ env.TAR_NAME }}
         env:
