@@ -127,14 +127,16 @@ jobs:
         if: steps.check_build.outputs.skip_build == 'true'
         run: exit 0
 
-      # 🧱 构建 libvpx v1.14.0 (armv7) - 修复版本
-      - name: 构建 libvpx v1.14.0
+      # 🧱 构建 libvpx 最新版本 (修复汇编问题)
+      - name: 构建 libvpx 最新版本
         if: steps.check_build.outputs.skip_build == 'false'
         run: |
-          echo "📦 构建 libvpx v1.14.0 for armv7..."
+          echo "📦 构建 libvpx 最新版本 for armv7..."
           git clone https://chromium.googlesource.com/webm/libvpx
           cd libvpx
-          git checkout v1.14.0
+          
+          # 使用更新的分支，可能修复了汇编问题
+          git checkout main
           
           # 设置 Android NDK 工具链路径
           export TOOLCHAIN=${{ env.NDK_DIR }}/toolchains/llvm/prebuilt/linux-x86_64
@@ -143,28 +145,27 @@ jobs:
           export AR=$TOOLCHAIN/bin/llvm-ar
           export STRIP=$TOOLCHAIN/bin/llvm-strip
           
-          # 修复：禁用汇编优化，避免 -march=armv7-a 错误
+          # 使用更简单的配置，避免汇编问题
           ./configure \
             --prefix=${{ env.INSTALL_ROOT }} \
             --libdir=${{ env.INSTALL_ROOT }}/lib \
             --enable-shared \
             --enable-vp8 \
             --enable-vp9 \
-            --disable-runtime-cpu-detect \
-            --disable-asm \
-            --target=armv7-linux-gcc \
+            --target=generic-gnu \
             --disable-examples \
             --disable-docs \
             --disable-unit-tests \
-            --extra-cflags="-fPIC -march=armv7-a -mfpu=neon" \
-            --extra-cxxflags="-fPIC -march=armv7-a -mfpu=neon"
+            --disable-multithread \
+            --extra-cflags="-fPIC -O2" \
+            --extra-cxxflags="-fPIC -O2"
           
           make -j$(nproc)
           sudo mkdir -p ${{ env.INSTALL_ROOT }}/lib
           sudo make install
-          echo "✅ libvpx v1.14.0 (armv7) 构建完成"
+          echo "✅ libvpx 最新版本构建完成"
 
-      # 🛠️ 构建 GStreamer 解码器 (armv7)
+      # 🛠️ 构建 GStreamer 解码器 (armv7) - 不使用 vpx 插件
       - name: 构建 GStreamer 解码器
         if: steps.check_build.outputs.skip_build == 'false'
         run: |
@@ -185,6 +186,7 @@ jobs:
           export CFLAGS="-fPIC -march=armv7-a -mfpu=neon -mfloat-abi=softfp"
           export CXXFLAGS="-fPIC -march=armv7-a -mfpu=neon -mfloat-abi=softfp"
           
+          # 禁用 vpx 插件以避免依赖问题
           meson setup build \
             --cross-file ../${{ env.CROSS_FILE }} \
             --prefix=$INSTALL_ROOT \
@@ -192,7 +194,8 @@ jobs:
             -Dbase=enabled -Dgood=enabled -Dugly=enabled -Dbad=enabled \
             -Dlibav=enabled -Dgpl=disabled -Ddefault_library=shared \
             -Dtests=disabled -Ddoc=disabled -Dexamples=disabled \
-            -Dpython=disabled -Dgst-plugins-good:vpx=enabled \
+            -Dpython=disabled \
+            -Dgst-plugins-good:vpx=disabled \
             -Dgst-plugins-bad:hip=disabled -Dgst-plugins-bad:nvcodec=disabled \
             -Dgst-plugins-base:gl=disabled -Dintrospection=disabled \
             -Dgst-plugins-base:opus=disabled \
@@ -272,8 +275,7 @@ jobs:
             - ✅ **丑陋插件** (ugly)
             - ✅ **不良插件** (bad)
             - ✅ **LibAV 支持**
-            - ✅ **VP8/VP9 解码** (libvpx v1.14.0)
-            - ⚠️ **汇编优化**: 已禁用 (兼容性修复)
+            - ❌ **VP8/VP9 解码** (因构建问题已禁用)
             - ❌ **RTSP 服务器** (已禁用)
             - ❌ **GPU 加速** (已禁用)
             - 🏗️ **构建类型**: release
@@ -286,7 +288,7 @@ jobs:
             - 此为开发版本，可能包含未稳定的特性
             - 针对 armv7 架构交叉编译
             - 使用 Android NDK clang 工具链
-            - libvpx 汇编优化已禁用以确保兼容性
+            - VP8/VP9 解码支持因 libvpx 构建问题已禁用
             - 建议仅用于测试和开发目的
             
           files: /home/runner/${{ env.TAR_NAME }}
