@@ -1,4 +1,4 @@
-name: Build GStreamer Decoders (aarch64, Dev + libvpx)
+name: Build GStreamer Decoders (armv7, Dev + libvpx)
 
 on:
   workflow_dispatch:
@@ -13,33 +13,61 @@ permissions:
 env:
   LAST_COMMIT_FILE: last_gst_commit.txt
   INSTALL_ROOT: /data/data/com.winlator/files/rootfs/usr
+  CROSS_FILE: cross-file.txt
 
 jobs:
   build:
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-24.04
 
     steps:
       # 🧩 检出 workflow 仓库
       - name: 检出 workflow 仓库
         uses: actions/checkout@v4
 
-      # 📦 安装基础依赖
-      - name: 安装基础依赖
+      # 📦 安装基础依赖和交叉编译工具链
+      - name: 安装基础依赖和交叉编译工具链
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential python3-pip git pkg-config nasm \
             libglib2.0-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
             liborc-0.4-dev libxv-dev libx11-dev libasound2-dev libpulse-dev patchelf \
-            libtheora-dev libx264-dev libx265-dev libvpx-dev
+            libtheora-dev libx264-dev libx265-dev libvpx-dev \
+            gcc-arm-linux-androideabi g++-arm-linux-androideabi
+
       # ⚙️ 升级 Meson 和 Ninja
       - name: 升级 Meson 和 Ninja
         run: |
           pip install --upgrade pip
           pip install --upgrade meson ninja
+
+      # 📝 创建交叉编译配置文件
+      - name: 创建交叉编译配置文件
+        run: |
+          cat > ${{ env.CROSS_FILE }} << 'EOF'
+          [host_machine]
+          system = 'linux'
+          cpu_family = 'arm'
+          cpu = 'armv7'
+          endian = 'little'
+
+          [properties]
+          prefix = '/data/data/com.winlator/files/rootfs/usr'
+          libdir = 'lib/gstreamer-1.0'
+          pkg_config_libdir = '/data/data/com.winlator/files/rootfs/usr/lib/pkgconfig'
+
+          [binaries]
+          c = 'arm-linux-androideabi-gcc'
+          cpp = 'arm-linux-androideabi-g++'
+          ar = 'arm-linux-androideabi-ar'
+          strip = 'arm-linux-androideabi-strip'
+          pkgconfig = 'pkg-config'
+          EOF
+
       # 🧬 克隆 GStreamer 开发版本
       - name: 克隆 GStreamer 开发版本
         run: |
           git clone --depth=1 https://gitlab.freedesktop.org/gstreamer/gstreamer.git
+
       # 🔍 获取开发版本信息
       - name: 获取开发版本信息
         id: get_dev_info
@@ -57,6 +85,7 @@ jobs:
           echo "AUTHOR=$AUTHOR" >> $GITHUB_ENV
           echo "BUILD_DATE=$DATE" >> $GITHUB_ENV
           echo "COMMIT_DATE=$COMMIT_DATE" >> $GITHUB_ENV
+
       # 💾 获取上次构建提交
       - name: 获取上次构建提交
         id: get_last_commit
@@ -69,6 +98,7 @@ jobs:
             LAST_COMMIT="none"
           fi
           echo "LAST_COMMIT=$LAST_COMMIT" >> $GITHUB_ENV
+
       # 🔍 判断是否需要构建
       - name: 判断是否需要构建
         id: check_build
@@ -80,19 +110,27 @@ jobs:
             echo "skip_build=false" >> $GITHUB_OUTPUT
             echo "✅ 发现新提交: $LATEST_COMMIT"
           fi
+
       # ⏭️ 跳过无更新构建
       - name: 跳过无更新构建
         if: steps.check_build.outputs.skip_build == 'true'
         run: exit 0
 
-      # 🧱 构建 libvpx v1.14.0
+      # 🧱 构建 libvpx v1.14.0 (armv7)
       - name: 构建 libvpx v1.14.0
         if: steps.check_build.outputs.skip_build == 'false'
         run: |
-          echo "📦 构建 libvpx v1.14.0..."
+          echo "📦 构建 libvpx v1.14.0 for armv7..."
           git clone https://chromium.googlesource.com/webm/libvpx
           cd libvpx
           git checkout v1.14.0
+          
+          # 设置交叉编译环境变量
+          export CC=arm-linux-androideabi-gcc
+          export CXX=arm-linux-androideabi-g++
+          export AR=arm-linux-androideabi-ar
+          export STRIP=arm-linux-androideabi-strip
+          
           ./configure \
             --prefix=${{ env.INSTALL_ROOT }} \
             --libdir=${{ env.INSTALL_ROOT }}/lib \
@@ -100,15 +138,18 @@ jobs:
             --enable-vp8 \
             --enable-vp9 \
             --enable-runtime-cpu-detect \
-            --target=arm64-linux-gcc \
+            --target=armv7-linux-gcc \
             --as=nasm \
             --disable-examples \
-            --disable-docs
+            --disable-docs \
+            --disable-unit-tests
+          
           make -j$(nproc)
-          sudo mkdir -p ${{ env.INSTALL_ROOT }}/lib/gstreamer-1.0
+          sudo mkdir -p ${{ env.INSTALL_ROOT }}/lib
           sudo make install
-          echo "✅ libvpx v1.14.0 构建完成并安装到 GStreamer 插件目录"
-      # 🛠️ 构建 GStreamer 解码器
+          echo "✅ libvpx v1.14.0 (armv7) 构建完成"
+
+      # 🛠️ 构建 GStreamer 解码器 (armv7)
       - name: 构建 GStreamer 解码器
         if: steps.check_build.outputs.skip_build == 'false'
         run: |
@@ -116,7 +157,17 @@ jobs:
           git submodule update --init --recursive
           sudo mkdir -p $INSTALL_ROOT
           sudo chmod -R 777 /data
+          
+          # 设置交叉编译环境变量
+          export CC=arm-linux-androideabi-gcc
+          export CXX=arm-linux-androideabi-g++
+          export AR=arm-linux-androideabi-ar
+          export STRIP=arm-linux-androideabi-strip
+          export PKG_CONFIG_LIBDIR=${{ env.INSTALL_ROOT }}/lib/pkgconfig
+          export PKG_CONFIG_PATH=${{ env.INSTALL_ROOT }}/lib/pkgconfig
+          
           meson setup build \
+            --cross-file ../${{ env.CROSS_FILE }} \
             --prefix=$INSTALL_ROOT \
             --libdir=lib \
             -Dbase=enabled -Dgood=enabled -Dugly=enabled -Dbad=enabled \
@@ -128,13 +179,15 @@ jobs:
             -Dgst-full=enabled -Dgst-full-plugins='*' \
             -Ddevtools=enabled -Drtsp_server=disabled \
             --buildtype=release
+          
           ninja -C build -j$(nproc)
           ninja -C build install
-      # 🧩 修补 ELF 解释器
+
+      # 🧩 修补 ELF 解释器 (armv7)
       - name: 修补 ELF 可执行文件
         if: steps.check_build.outputs.skip_build == 'false'
         run: |
-          INTERP=$INSTALL_ROOT/lib/ld-linux-aarch64.so.1
+          INTERP=$INSTALL_ROOT/lib/ld-linux-armhf.so.3
           echo "🔧 修补 ELF 解释器: $INTERP"
           for DIR in bin libexec/gstreamer-1.0; do
             if [ -d "$INSTALL_ROOT/$DIR" ]; then
@@ -144,15 +197,17 @@ jobs:
               done
             fi
           done
+
       # 🧱 打包构建结果
       - name: 打包 glibc 目录
         if: steps.check_build.outputs.skip_build == 'false'
         run: |
           cd /data/data/com.winlator/files/rootfs
-          TAR_NAME="winlator-glibc-gst-decoders-${VERSION}.tar.gz"
+          TAR_NAME="winlator-glibc-gst-decoders-armv7-${VERSION}.tar.gz"
           tar -czvf /home/runner/$TAR_NAME usr
           echo "$LATEST_COMMIT" > ${{ env.LAST_COMMIT_FILE }}
           echo "TAR_NAME=$TAR_NAME" >> $GITHUB_ENV
+
       # ⬆️ 上传构建产物
       - name: 上传构建产物
         if: steps.check_build.outputs.skip_build == 'false'
@@ -170,20 +225,21 @@ jobs:
           path: ${{ env.LAST_COMMIT_FILE }}
           retention-days: 365
 
-      # 🚀 发布到 GitHub Release（整合详细信息）
+      # 🚀 发布到 GitHub Release
       - name: 发布到 GitHub Release
         if: steps.check_build.outputs.skip_build == 'false'
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ env.VERSION }}
-          name: "GStreamer Decoders ${{ env.VERSION }} (aarch64, winlatot glibc)"
+          tag_name: ${{ env.VERSION }}-armv7
+          name: "GStreamer Decoders ${{ env.VERSION }} (armv7, winlator glibc)"
           body: |
-            ## 🎯 GStreamer 开发版本构建
+            ## 🎯 GStreamer 开发版本构建 (armv7)
             
             ### 📋 构建信息
             - **版本**: `${{ env.VERSION }}`
-            - **架构**: aarch64
+            - **架构**: armv7
             - **环境**: winlator glibc
+            - **工具链**: arm-linux-androideabi
             - **提交**: [`${{ env.COMMIT_SHORT }}`](https://gitlab.freedesktop.org/gstreamer/gstreamer/-/commit/${{ env.LATEST_COMMIT }})
             - **提交日期**: ${{ env.COMMIT_DATE }}
             - **作者**: `${{ env.AUTHOR }}`
@@ -195,17 +251,19 @@ jobs:
             - ✅ **丑陋插件** (ugly)
             - ✅ **不良插件** (bad)
             - ✅ **LibAV 支持**
-            - ✅ **GPL 插件**
+            - ✅ **VP8/VP9 解码** (libvpx v1.14.0)
             - ✅ **开发工具**
             - ❌ **RTSP 服务器** (已禁用)
+            - ❌ **GPU 加速** (已禁用)
             - 🏗️ **构建类型**: release
             
             ### 📦 文件信息
             - **文件名**: `${{ env.TAR_NAME }}`
-            - **包含**: 完整的 GStreamer 开发版本安装
+            - **包含**: 完整的 GStreamer 开发版本安装 (armv7)
             
             ### ⚠️ 注意事项
             - 此为开发版本，可能包含未稳定的特性
+            - 针对 armv7 架构交叉编译
             - 建议仅用于测试和开发目的
             - 生产环境请使用稳定版本
             
