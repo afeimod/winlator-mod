@@ -321,7 +321,6 @@ jobs:
             -Dgst-plugins-bad:neon=disabled \
             -Dgst-plugins-bad:openal=disabled \
             -Dgst-plugins-bad:openexr=disabled \
-            -Dgst-plugins-bad:opengl=disabled \
             -Dgst-plugins-bad:openmpt=disabled \
             -Dgst-plugins-bad:openni2=disabled \
             -Dgst-plugins-bad:python=disabled \
