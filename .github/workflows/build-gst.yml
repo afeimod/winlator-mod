@@ -282,7 +282,6 @@ jobs:
             -Ddoc=disabled \
             -Dexamples=disabled \
             -Dpython=disabled \
-            # 禁用 libnice 和网络相关功能以解决 OpenSSL 依赖问题
             -Dlibnice=disabled \
             -Dgst-plugins-good:vpx=disabled \
             -Dgst-plugins-bad:hip=disabled \
