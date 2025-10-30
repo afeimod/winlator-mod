@@ -296,8 +296,6 @@ jobs:
             -Dgst-plugins-base:x11=disabled \
             -Dgst-plugins-base:xvideo=disabled \
             -Dgst-plugins-base:xshm=disabled \
-            -Dcairo=disabled \
-            -Dgst-plugins-base:cairo=disabled \
             -Dgst-plugins-bad:closedcaption=disabled \
             --buildtype=release
           
