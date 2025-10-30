@@ -315,7 +315,6 @@ jobs:
             -Dgst-plugins-bad:gme=disabled \
             -Dgst-plugins-bad:gsm=disabled \
             -Dgst-plugins-bad:iqa=disabled \
-            -Dgst-plugins-bad:kate=disabled \
             -Dgst-plugins-bad:ladspa=disabled \
             -Dgst-plugins-bad:lv2=disabled \
             -Dgst-plugins-bad:msdk=disabled \
