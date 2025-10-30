@@ -195,6 +195,46 @@ jobs:
           sudo make install
           echo "✅ gettext 核心库构建完成"
 
+      # 🔧 构建 pixman (解决 cpu-features.h 问题)
+      - name: 构建 pixman
+        if: steps.check_build.outputs.skip_build == 'false'
+        run: |
+          echo "📦 构建 pixman for Android..."
+          wget -q https://www.cairographics.org/releases/pixman-0.42.2.tar.gz
+          tar -xzf pixman-0.42.2.tar.gz
+          cd pixman-0.42.2
+          
+          # 设置 Android NDK 工具链路径
+          export TOOLCHAIN=${{ env.NDK_DIR }}/toolchains/llvm/prebuilt/linux-x86_64
+          export CC=$TOOLCHAIN/bin/armv7a-linux-androideabi21-clang
+          export CXX=$TOOLCHAIN/bin/armv7a-linux-androideabi21-clang++
+          export AR=$TOOLCHAIN/bin/llvm-ar
+          export STRIP=$TOOLCHAIN/bin/llvm-strip
+          export RANLIB=$TOOLCHAIN/bin/llvm-ranlib
+          
+          # 设置编译标志
+          export CFLAGS="-fPIC -march=armv7-a -mfpu=neon -mfloat-abi=softfp -I${{ env.INSTALL_ROOT }}/include"
+          export LDFLAGS="-L${{ env.INSTALL_ROOT }}/lib"
+          
+          # 禁用 ARM 优化以避免 cpu-features.h 依赖
+          ./configure \
+            --host=arm-linux-androideabi \
+            --prefix=${{ env.INSTALL_ROOT }} \
+            --enable-static=no \
+            --enable-shared=yes \
+            --disable-arm-iwmmxt \
+            --disable-arm-simd \
+            --disable-arm-neon \
+            --disable-mmx \
+            --disable-sse2 \
+            --disable-ssse3 \
+            --disable-vmx \
+            --disable-arm-a64-neon
+          
+          make -j$(nproc)
+          sudo make install
+          echo "✅ pixman 构建完成"
+
       # 🛠️ 构建 GStreamer 解码器 (armv7)
       - name: 构建 GStreamer 解码器
         if: steps.check_build.outputs.skip_build == 'false'
@@ -212,12 +252,20 @@ jobs:
           export CC=$TOOLCHAIN/bin/armv7a-linux-androideabi21-clang
           export CXX=$TOOLCHAIN/bin/armv7a-linux-androideabi21-clang++
           
-          # 设置架构特定的编译标志
-          export CFLAGS="-fPIC -march=armv7-a -mfpu=neon -mfloat-abi=softfp -I${{ env.INSTALL_ROOT }}/include"
-          export CXXFLAGS="-fPIC -march=armv7-a -mfpu=neon -mfloat-abi=softfp -I${{ env.INSTALL_ROOT }}/include"
+          # 设置架构特定的编译标志 - 修复 cpu-features.h 问题
+          export NDK_SYSROOT=$TOOLCHAIN/sysroot
+          export NDK_INCLUDE=$TOOLCHAIN/sysroot/usr/include
+          export NDK_ARCH_INCLUDE=$TOOLCHAIN/sysroot/usr/include/arm-linux-androideabi
+          
+          export CFLAGS="-fPIC -march=armv7-a -mfpu=neon -mfloat-abi=softfp -I${{ env.INSTALL_ROOT }}/include -I$NDK_INCLUDE -I$NDK_ARCH_INCLUDE -Wno-unsupported-floating-point-opt"
+          export CXXFLAGS="-fPIC -march=armv7-a -mfpu=neon -mfloat-abi=softfp -I${{ env.INSTALL_ROOT }}/include -I$NDK_INCLUDE -I$NDK_ARCH_INCLUDE -Wno-unsupported-floating-point-opt"
           export LDFLAGS="-L${{ env.INSTALL_ROOT }}/lib"
           
-          # 配置 GStreamer 构建
+          # 检查 cpu-features.h 是否存在
+          echo "🔍 检查 NDK 头文件..."
+          find $TOOLCHAIN -name "cpu-features.h" 2>/dev/null | head -5
+          
+          # 配置 GStreamer 构建 - 禁用有问题的组件
           meson setup build \
             --cross-file ../${{ env.CROSS_FILE }} \
             --prefix=$INSTALL_ROOT \
@@ -248,6 +296,9 @@ jobs:
             -Dgst-plugins-base:x11=disabled \
             -Dgst-plugins-base:xvideo=disabled \
             -Dgst-plugins-base:xshm=disabled \
+            -Dcairo=disabled \
+            -Dgst-plugins-base:cairo=disabled \
+            -Dgst-plugins-bad:closedcaption=disabled \
             --buildtype=release
           
           ninja -C build -j$(nproc)
@@ -322,9 +373,11 @@ jobs:
             - ✅ **不良插件** (bad)
             - ✅ **LibAV 支持**
             - ✅ **字符编码支持** (libiconv + gettext)
+            - ✅ **Pixman 支持** (预编译解决 cpu-features.h 问题)
             - ❌ **VP8/VP9 解码** (因构建问题已禁用)
             - ❌ **ALSA 音频** (已禁用)
             - ❌ **X11 显示** (已禁用)
+            - ❌ **Cairo 支持** (已禁用)
             - 🏗️ **构建类型**: release
             
             ### 📦 文件信息
@@ -335,7 +388,8 @@ jobs:
             - 此为开发版本，可能包含未稳定的特性
             - 针对 armv7 架构交叉编译
             - 使用 Android NDK clang 工具链
-            - 包含手动编译的 libiconv 和 gettext 核心库
+            - 包含手动编译的 libiconv、gettext 和 pixman 库
+            - 已解决 cpu-features.h 找不到的问题
             - 建议仅用于测试和开发目的
             
           files: /home/runner/$TAR_NAME
