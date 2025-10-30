@@ -127,36 +127,7 @@ jobs:
         if: steps.check_build.outputs.skip_build == 'true'
         run: exit 0
 
-      # 🔤 构建 libiconv (简化版本)
-      - name: 构建 libiconv
-        if: steps.check_build.outputs.skip_build == 'false'
-        run: |
-          echo "📦 构建 libiconv for Android..."
-          wget -q https://ftp.gnu.org/pub/gnu/libiconv/libiconv-1.17.tar.gz
-          tar -xzf libiconv-1.17.tar.gz
-          cd libiconv-1.17
-          
-          # 设置 Android NDK 工具链路径
-          export TOOLCHAIN=${{ env.NDK_DIR }}/toolchains/llvm/prebuilt/linux-x86_64
-          export CC=$TOOLCHAIN/bin/armv7a-linux-androideabi21-clang
-          export CXX=$TOOLCHAIN/bin/armv7a-linux-androideabi21-clang++
-          export AR=$TOOLCHAIN/bin/llvm-ar
-          export STRIP=$TOOLCHAIN/bin/llvm-strip
-          export RANLIB=$TOOLCHAIN/bin/llvm-ranlib
-          
-          # 配置和构建
-          ./configure \
-            --host=arm-linux-androideabi \
-            --prefix=${{ env.INSTALL_ROOT }} \
-            --enable-static=no \
-            --enable-shared=yes \
-            --disable-nls
-          
-          make -j$(nproc)
-          sudo make install
-          echo "✅ libiconv 构建完成"
-
-      # 🛠️ 构建 GStreamer 解码器 (armv7) - 使用内置 iconv
+      # 🛠️ 构建 GStreamer 解码器 (armv7) - 简化版本
       - name: 构建 GStreamer 解码器
         if: steps.check_build.outputs.skip_build == 'false'
         run: |
@@ -174,11 +145,11 @@ jobs:
           export CXX=$TOOLCHAIN/bin/armv7a-linux-androideabi21-clang++
           
           # 设置架构特定的编译标志
-          export CFLAGS="-fPIC -march=armv7-a -mfpu=neon -mfloat-abi=softfp -I${{ env.INSTALL_ROOT }}/include"
-          export CXXFLAGS="-fPIC -march=armv7-a -mfpu=neon -mfloat-abi=softfp -I${{ env.INSTALL_ROOT }}/include"
+          export CFLAGS="-fPIC -march=armv7-a -mfpu=neon -mfloat-abi=softfp"
+          export CXXFLAGS="-fPIC -march=armv7-a -mfpu=neon -mfloat-abi=softfp"
           export LDFLAGS="-L${{ env.INSTALL_ROOT }}/lib"
           
-          # 使用 glib 内置的 iconv 实现，避免外部依赖
+          # 使用子项目构建，允许回退到内部依赖
           meson setup build \
             --cross-file ../${{ env.CROSS_FILE }} \
             --prefix=$INSTALL_ROOT \
@@ -203,16 +174,12 @@ jobs:
             -Dgst-plugins-base:ogg=disabled \
             -Dgst-plugins-base:vorbis=disabled \
             -Dgst-plugins-base:theora=disabled \
-            -Dglib:libmount=disabled \
-            -Dglib:selinux=disabled \
-            -Dglib:iconv=builtin \
-            -Dglib:internal_pcre=true \
             -Dgst-plugins-base:alsa=disabled \
             -Dgst-plugins-base:x11=disabled \
             -Dgst-plugins-base:xvideo=disabled \
             -Dgst-plugins-base:xshm=disabled \
             --buildtype=release \
-            --wrap-mode=nofallback
+            --wrap-mode=forcefallback
           
           ninja -C build -j$(nproc)
           ninja -C build install
@@ -285,11 +252,11 @@ jobs:
             - ✅ **丑陋插件** (ugly)
             - ✅ **不良插件** (bad)
             - ✅ **LibAV 支持**
-            - ✅ **字符编码支持** (glib 内置 iconv)
             - ❌ **VP8/VP9 解码** (因构建问题已禁用)
             - ❌ **ALSA 音频** (已禁用)
             - ❌ **X11 显示** (已禁用)
             - 🏗️ **构建类型**: release
+            - 🔄 **依赖模式**: 强制使用子项目回退
             
             ### 📦 文件信息
             - **文件名**: `${{ env.TAR_NAME }}`
@@ -299,9 +266,9 @@ jobs:
             - 此为开发版本，可能包含未稳定的特性
             - 针对 armv7 架构交叉编译
             - 使用 Android NDK clang 工具链
-            - 使用 glib 内置的 iconv 实现
+            - 使用子项目回退模式构建依赖
             - 建议仅用于测试和开发目的
             
-          files: /home/runner/${{ env.TAR_NAME }}
+          files: /home/runner/$TAR_NAME
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
