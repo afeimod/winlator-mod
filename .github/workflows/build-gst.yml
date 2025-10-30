@@ -244,8 +244,6 @@ jobs:
             -Dgst-plugins-base:theora=disabled \
             -Dglib:libmount=disabled \
             -Dglib:selinux=disabled \
-            -Dglib:iconv=external \
-            -Dglib:internal_pcre=true \
             -Dgst-plugins-base:alsa=disabled \
             -Dgst-plugins-base:x11=disabled \
             -Dgst-plugins-base:xvideo=disabled \
