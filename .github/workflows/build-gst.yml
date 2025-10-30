@@ -127,7 +127,7 @@ jobs:
         if: steps.check_build.outputs.skip_build == 'true'
         run: exit 0
 
-      # 🔤 构建 libiconv
+      # 🔤 构建 libiconv (简化版本)
       - name: 构建 libiconv
         if: steps.check_build.outputs.skip_build == 'false'
         run: |
@@ -150,45 +150,13 @@ jobs:
             --prefix=${{ env.INSTALL_ROOT }} \
             --enable-static=no \
             --enable-shared=yes \
-            --disable-rpath
+            --disable-nls
           
           make -j$(nproc)
           sudo make install
           echo "✅ libiconv 构建完成"
 
-      # 🔤 构建 gettext (提供 libintl)
-      - name: 构建 gettext
-        if: steps.check_build.outputs.skip_build == 'false'
-        run: |
-          echo "📦 构建 gettext for Android..."
-          wget -q https://ftp.gnu.org/pub/gnu/gettext/gettext-0.21.tar.gz
-          tar -xzf gettext-0.21.tar.gz
-          cd gettext-0.21
-          
-          # 设置 Android NDK 工具链路径
-          export TOOLCHAIN=${{ env.NDK_DIR }}/toolchains/llvm/prebuilt/linux-x86_64
-          export CC=$TOOLCHAIN/bin/armv7a-linux-androideabi21-clang
-          export CXX=$TOOLCHAIN/bin/armv7a-linux-androideabi21-clang++
-          export AR=$TOOLCHAIN/bin/llvm-ar
-          export STRIP=$TOOLCHAIN/bin/llvm-strip
-          export RANLIB=$TOOLCHAIN/bin/llvm-ranlib
-          
-          # 配置和构建
-          ./configure \
-            --host=arm-linux-androideabi \
-            --prefix=${{ env.INSTALL_ROOT }} \
-            --enable-static=no \
-            --enable-shared=yes \
-            --disable-java \
-            --disable-curses \
-            --with-libiconv-prefix=${{ env.INSTALL_ROOT }} \
-            --disable-rpath
-          
-          make -j$(nproc)
-          sudo make install
-          echo "✅ gettext 构建完成"
-
-      # 🛠️ 构建 GStreamer 解码器 (armv7)
+      # 🛠️ 构建 GStreamer 解码器 (armv7) - 使用内置 iconv
       - name: 构建 GStreamer 解码器
         if: steps.check_build.outputs.skip_build == 'false'
         run: |
@@ -210,7 +178,7 @@ jobs:
           export CXXFLAGS="-fPIC -march=armv7-a -mfpu=neon -mfloat-abi=softfp -I${{ env.INSTALL_ROOT }}/include"
           export LDFLAGS="-L${{ env.INSTALL_ROOT }}/lib"
           
-          # 禁用需要复杂依赖的组件
+          # 使用 glib 内置的 iconv 实现，避免外部依赖
           meson setup build \
             --cross-file ../${{ env.CROSS_FILE }} \
             --prefix=$INSTALL_ROOT \
@@ -237,7 +205,7 @@ jobs:
             -Dgst-plugins-base:theora=disabled \
             -Dglib:libmount=disabled \
             -Dglib:selinux=disabled \
-            -Dglib:iconv=external \
+            -Dglib:iconv=builtin \
             -Dglib:internal_pcre=true \
             -Dgst-plugins-base:alsa=disabled \
             -Dgst-plugins-base:x11=disabled \
@@ -280,7 +248,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.TAR_NAME }}
-          path: /home/runner/${{ env.TAR_NAME }}
+          path: /home/runner/$TAR_NAME
 
       # 💾 上传提交记录
       - name: 上传提交记录
@@ -317,7 +285,7 @@ jobs:
             - ✅ **丑陋插件** (ugly)
             - ✅ **不良插件** (bad)
             - ✅ **LibAV 支持**
-            - ✅ **字符编码支持** (libiconv + gettext)
+            - ✅ **字符编码支持** (glib 内置 iconv)
             - ❌ **VP8/VP9 解码** (因构建问题已禁用)
             - ❌ **ALSA 音频** (已禁用)
             - ❌ **X11 显示** (已禁用)
@@ -331,7 +299,7 @@ jobs:
             - 此为开发版本，可能包含未稳定的特性
             - 针对 armv7 架构交叉编译
             - 使用 Android NDK clang 工具链
-            - 包含手动编译的 libiconv 和 gettext 库
+            - 使用 glib 内置的 iconv 实现
             - 建议仅用于测试和开发目的
             
           files: /home/runner/${{ env.TAR_NAME }}
