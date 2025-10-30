@@ -34,7 +34,7 @@ jobs:
             libglib2.0-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
             liborc-0.4-dev libxv-dev libx11-dev libasound2-dev libpulse-dev patchelf \
             libtheora-dev libx264-dev libx265-dev libvpx-dev \
-            wget unzip
+            wget unzip autoconf automake libtool
 
       # ⚙️ 升级 Meson 和 Ninja
       - name: 升级 Meson 和 Ninja
@@ -127,16 +127,14 @@ jobs:
         if: steps.check_build.outputs.skip_build == 'true'
         run: exit 0
 
-      # 🧱 构建 libvpx 最新版本 (修复汇编问题)
-      - name: 构建 libvpx 最新版本
+      # 🔤 构建 libiconv
+      - name: 构建 libiconv
         if: steps.check_build.outputs.skip_build == 'false'
         run: |
-          echo "📦 构建 libvpx 最新版本 for armv7..."
-          git clone https://chromium.googlesource.com/webm/libvpx
-          cd libvpx
-          
-          # 使用更新的分支，可能修复了汇编问题
-          git checkout main
+          echo "📦 构建 libiconv for Android..."
+          wget -q https://ftp.gnu.org/pub/gnu/libiconv/libiconv-1.17.tar.gz
+          tar -xzf libiconv-1.17.tar.gz
+          cd libiconv-1.17
           
           # 设置 Android NDK 工具链路径
           export TOOLCHAIN=${{ env.NDK_DIR }}/toolchains/llvm/prebuilt/linux-x86_64
@@ -144,28 +142,53 @@ jobs:
           export CXX=$TOOLCHAIN/bin/armv7a-linux-androideabi21-clang++
           export AR=$TOOLCHAIN/bin/llvm-ar
           export STRIP=$TOOLCHAIN/bin/llvm-strip
+          export RANLIB=$TOOLCHAIN/bin/llvm-ranlib
           
-          # 使用更简单的配置，避免汇编问题
+          # 配置和构建
           ./configure \
+            --host=arm-linux-androideabi \
             --prefix=${{ env.INSTALL_ROOT }} \
-            --libdir=${{ env.INSTALL_ROOT }}/lib \
-            --enable-shared \
-            --enable-vp8 \
-            --enable-vp9 \
-            --target=generic-gnu \
-            --disable-examples \
-            --disable-docs \
-            --disable-unit-tests \
-            --disable-multithread \
-            --extra-cflags="-fPIC -O2" \
-            --extra-cxxflags="-fPIC -O2"
+            --enable-static=no \
+            --enable-shared=yes \
+            --disable-rpath
           
           make -j$(nproc)
-          sudo mkdir -p ${{ env.INSTALL_ROOT }}/lib
           sudo make install
-          echo "✅ libvpx 最新版本构建完成"
+          echo "✅ libiconv 构建完成"
 
-      # 🛠️ 构建 GStreamer 解码器 (armv7) - 不使用 vpx 插件
+      # 🔤 构建 gettext (提供 libintl)
+      - name: 构建 gettext
+        if: steps.check_build.outputs.skip_build == 'false'
+        run: |
+          echo "📦 构建 gettext for Android..."
+          wget -q https://ftp.gnu.org/pub/gnu/gettext/gettext-0.21.tar.gz
+          tar -xzf gettext-0.21.tar.gz
+          cd gettext-0.21
+          
+          # 设置 Android NDK 工具链路径
+          export TOOLCHAIN=${{ env.NDK_DIR }}/toolchains/llvm/prebuilt/linux-x86_64
+          export CC=$TOOLCHAIN/bin/armv7a-linux-androideabi21-clang
+          export CXX=$TOOLCHAIN/bin/armv7a-linux-androideabi21-clang++
+          export AR=$TOOLCHAIN/bin/llvm-ar
+          export STRIP=$TOOLCHAIN/bin/llvm-strip
+          export RANLIB=$TOOLCHAIN/bin/llvm-ranlib
+          
+          # 配置和构建
+          ./configure \
+            --host=arm-linux-androideabi \
+            --prefix=${{ env.INSTALL_ROOT }} \
+            --enable-static=no \
+            --enable-shared=yes \
+            --disable-java \
+            --disable-curses \
+            --with-libiconv-prefix=${{ env.INSTALL_ROOT }} \
+            --disable-rpath
+          
+          make -j$(nproc)
+          sudo make install
+          echo "✅ gettext 构建完成"
+
+      # 🛠️ 构建 GStreamer 解码器 (armv7)
       - name: 构建 GStreamer 解码器
         if: steps.check_build.outputs.skip_build == 'false'
         run: |
@@ -183,26 +206,45 @@ jobs:
           export CXX=$TOOLCHAIN/bin/armv7a-linux-androideabi21-clang++
           
           # 设置架构特定的编译标志
-          export CFLAGS="-fPIC -march=armv7-a -mfpu=neon -mfloat-abi=softfp"
-          export CXXFLAGS="-fPIC -march=armv7-a -mfpu=neon -mfloat-abi=softfp"
+          export CFLAGS="-fPIC -march=armv7-a -mfpu=neon -mfloat-abi=softfp -I${{ env.INSTALL_ROOT }}/include"
+          export CXXFLAGS="-fPIC -march=armv7-a -mfpu=neon -mfloat-abi=softfp -I${{ env.INSTALL_ROOT }}/include"
+          export LDFLAGS="-L${{ env.INSTALL_ROOT }}/lib"
           
-          # 禁用 vpx 插件以避免依赖问题
+          # 禁用需要复杂依赖的组件
           meson setup build \
             --cross-file ../${{ env.CROSS_FILE }} \
             --prefix=$INSTALL_ROOT \
             --libdir=lib \
-            -Dbase=enabled -Dgood=enabled -Dugly=enabled -Dbad=enabled \
-            -Dlibav=enabled -Dgpl=disabled -Ddefault_library=shared \
-            -Dtests=disabled -Ddoc=disabled -Dexamples=disabled \
+            -Dbase=enabled \
+            -Dgood=enabled \
+            -Dugly=enabled \
+            -Dbad=enabled \
+            -Dlibav=enabled \
+            -Dgpl=disabled \
+            -Ddefault_library=shared \
+            -Dtests=disabled \
+            -Ddoc=disabled \
+            -Dexamples=disabled \
             -Dpython=disabled \
             -Dgst-plugins-good:vpx=disabled \
-            -Dgst-plugins-bad:hip=disabled -Dgst-plugins-bad:nvcodec=disabled \
-            -Dgst-plugins-base:gl=disabled -Dintrospection=disabled \
+            -Dgst-plugins-bad:hip=disabled \
+            -Dgst-plugins-bad:nvcodec=disabled \
+            -Dgst-plugins-base:gl=disabled \
+            -Dintrospection=disabled \
             -Dgst-plugins-base:opus=disabled \
             -Dgst-plugins-base:ogg=disabled \
             -Dgst-plugins-base:vorbis=disabled \
             -Dgst-plugins-base:theora=disabled \
-            --buildtype=release
+            -Dglib:libmount=disabled \
+            -Dglib:selinux=disabled \
+            -Dglib:iconv=external \
+            -Dglib:internal_pcre=true \
+            -Dgst-plugins-base:alsa=disabled \
+            -Dgst-plugins-base:x11=disabled \
+            -Dgst-plugins-base:xvideo=disabled \
+            -Dgst-plugins-base:xshm=disabled \
+            --buildtype=release \
+            --wrap-mode=nofallback
           
           ninja -C build -j$(nproc)
           ninja -C build install
@@ -275,9 +317,10 @@ jobs:
             - ✅ **丑陋插件** (ugly)
             - ✅ **不良插件** (bad)
             - ✅ **LibAV 支持**
+            - ✅ **字符编码支持** (libiconv + gettext)
             - ❌ **VP8/VP9 解码** (因构建问题已禁用)
-            - ❌ **RTSP 服务器** (已禁用)
-            - ❌ **GPU 加速** (已禁用)
+            - ❌ **ALSA 音频** (已禁用)
+            - ❌ **X11 显示** (已禁用)
             - 🏗️ **构建类型**: release
             
             ### 📦 文件信息
@@ -288,7 +331,7 @@ jobs:
             - 此为开发版本，可能包含未稳定的特性
             - 针对 armv7 架构交叉编译
             - 使用 Android NDK clang 工具链
-            - VP8/VP9 解码支持因 libvpx 构建问题已禁用
+            - 包含手动编译的 libiconv 和 gettext 库
             - 建议仅用于测试和开发目的
             
           files: /home/runner/${{ env.TAR_NAME }}
