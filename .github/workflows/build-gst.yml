@@ -282,6 +282,8 @@ jobs:
             -Ddoc=disabled \
             -Dexamples=disabled \
             -Dpython=disabled \
+            # 禁用 libnice 和网络相关功能以解决 OpenSSL 依赖问题
+            -Dlibnice=disabled \
             -Dgst-plugins-good:vpx=disabled \
             -Dgst-plugins-bad:hip=disabled \
             -Dgst-plugins-bad:nvcodec=disabled \
@@ -298,7 +300,6 @@ jobs:
             -Dgst-plugins-base:xvideo=disabled \
             -Dgst-plugins-base:xshm=disabled \
             -Dgst-plugins-bad:closedcaption=disabled \
-            -Dgst-plugins-bad:libdrm=disabled \
             -Dgst-plugins-bad:wayland=disabled \
             -Dgst-plugins-bad:opensles=disabled \
             -Dgst-plugins-bad:tinyalsa=disabled \
@@ -325,7 +326,6 @@ jobs:
             -Dgst-plugins-bad:opengl=disabled \
             -Dgst-plugins-bad:openmpt=disabled \
             -Dgst-plugins-bad:openni2=disabled \
-            -Dgst-plugins-bad:opensles=disabled \
             -Dgst-plugins-bad:python=disabled \
             -Dgst-plugins-bad:qsv=disabled \
             -Dgst-plugins-bad:rsvg=disabled \
@@ -338,9 +338,7 @@ jobs:
             -Dgst-plugins-bad:spandsp=disabled \
             -Dgst-plugins-bad:srtp=disabled \
             -Dgst-plugins-bad:teletext=disabled \
-            -Dgst-plugins-bad:tinyalsa=disabled \
             -Dgst-plugins-bad:vdpau=disabled \
-            -Dgst-plugins-bad:voamrwbenc=disabled \
             -Dgst-plugins-bad:wasapi=disabled \
             -Dgst-plugins-bad:webp=disabled \
             -Dgst-plugins-bad:webrtc=disabled \
@@ -421,11 +419,12 @@ jobs:
             - ✅ **LibAV 支持**
             - ✅ **字符编码支持** (libiconv + gettext)
             - ✅ **Pixman 支持** (预编译解决 cpu-features.h 问题)
+            - ❌ **网络流媒体** (因 OpenSSL 依赖已禁用)
+            - ❌ **WebRTC/RTMP** (已禁用)
             - ❌ **VP8/VP9 解码** (因构建问题已禁用)
             - ❌ **ALSA 音频** (已禁用)
             - ❌ **X11 显示** (已禁用)
             - ❌ **Cairo 支持** (已禁用)
-            - ❌ **DRM 支持** (解决 open_memstream 问题)
             - ❌ **Wayland 支持** (已禁用)
             - 🏗️ **构建类型**: release
             
@@ -433,6 +432,8 @@ jobs:
             - ✅ **cpu-features.h 缺失** - 通过预编译 pixman 并禁用 ARM 优化解决
             - ✅ **open_memstream 不支持** - 通过禁用 DRM 相关功能和添加编译器标志解决
             - ✅ **隐式函数声明错误** - 通过添加 `-Wno-implicit-function-declaration` 解决
+            - ✅ **libnice OpenSSL 依赖问题** - 通过禁用 libnice 和网络相关功能解决
+            - ✅ **Meson 选项语法错误** - 修复了错误的选项格式
             
             ### 📦 文件信息
             - **文件名**: `${{ env.TAR_NAME }}`
