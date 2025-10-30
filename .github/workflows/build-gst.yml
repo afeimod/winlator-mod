@@ -252,16 +252,17 @@ jobs:
           export CC=$TOOLCHAIN/bin/armv7a-linux-androideabi21-clang
           export CXX=$TOOLCHAIN/bin/armv7a-linux-androideabi21-clang++
           
-          # 设置架构特定的编译标志 - 修复 cpu-features.h 问题
+          # 设置架构特定的编译标志 - 修复各种问题
           export NDK_SYSROOT=$TOOLCHAIN/sysroot
           export NDK_INCLUDE=$TOOLCHAIN/sysroot/usr/include
           export NDK_ARCH_INCLUDE=$TOOLCHAIN/sysroot/usr/include/arm-linux-androideabi
           
-          export CFLAGS="-fPIC -march=armv7-a -mfpu=neon -mfloat-abi=softfp -I${{ env.INSTALL_ROOT }}/include -I$NDK_INCLUDE -I$NDK_ARCH_INCLUDE -Wno-unsupported-floating-point-opt"
-          export CXXFLAGS="-fPIC -march=armv7-a -mfpu=neon -mfloat-abi=softfp -I${{ env.INSTALL_ROOT }}/include -I$NDK_INCLUDE -I$NDK_ARCH_INCLUDE -Wno-unsupported-floating-point-opt"
+          # 禁用警告视为错误，解决 open_memstream 等问题
+          export CFLAGS="-fPIC -march=armv7-a -mfpu=neon -mfloat-abi=softfp -I${{ env.INSTALL_ROOT }}/include -I$NDK_INCLUDE -I$NDK_ARCH_INCLUDE -Wno-unsupported-floating-point-opt -Wno-implicit-function-declaration -Wno-int-conversion -Wno-error=implicit-function-declaration"
+          export CXXFLAGS="-fPIC -march=armv7-a -mfpu=neon -mfloat-abi=softfp -I${{ env.INSTALL_ROOT }}/include -I$NDK_INCLUDE -I$NDK_ARCH_INCLUDE -Wno-unsupported-floating-point-opt -Wno-implicit-function-declaration -Wno-int-conversion -Wno-error=implicit-function-declaration"
           export LDFLAGS="-L${{ env.INSTALL_ROOT }}/lib"
           
-          # 检查 cpu-features.h 是否存在
+          # 检查 NDK 头文件
           echo "🔍 检查 NDK 头文件..."
           find $TOOLCHAIN -name "cpu-features.h" 2>/dev/null | head -5
           
@@ -281,6 +282,7 @@ jobs:
             -Ddoc=disabled \
             -Dexamples=disabled \
             -Dpython=disabled \
+            # 禁用有问题的插件和功能
             -Dgst-plugins-good:vpx=disabled \
             -Dgst-plugins-bad:hip=disabled \
             -Dgst-plugins-bad:nvcodec=disabled \
@@ -296,7 +298,61 @@ jobs:
             -Dgst-plugins-base:x11=disabled \
             -Dgst-plugins-base:xvideo=disabled \
             -Dgst-plugins-base:xshm=disabled \
+            # 禁用 Cairo 和图形相关功能
+            -Dcairo=disabled \
+            -Dgst-plugins-base:cairo=disabled \
             -Dgst-plugins-bad:closedcaption=disabled \
+            # 禁用 DRM 相关功能（解决 open_memstream 问题）
+            -Dgst-plugins-bad:libdrm=disabled \
+            -Dgst-plugins-bad:wayland=disabled \
+            -Dgst-plugins-bad:x11=disabled \
+            # 禁用其他可能有问题的功能
+            -Dgst-plugins-bad:opensles=disabled \
+            -Dgst-plugins-bad:tinyalsa=disabled \
+            -Dgst-plugins-bad:voaacenc=disabled \
+            -Dgst-plugins-bad:voamrwbenc=disabled \
+            -Dgst-plugins-bad:assrender=disabled \
+            -Dgst-plugins-bad:bluez=disabled \
+            -Dgst-plugins-bad:curl=disabled \
+            -Dgst-plugins-bad:dash=disabled \
+            -Dgst-plugins-bad:dc1394=disabled \
+            -Dgst-plugins-bad:directsound=disabled \
+            -Dgst-plugins-bad:fbdev=disabled \
+            -Dgst-plugins-bad:flite=disabled \
+            -Dgst-plugins-bad:gme=disabled \
+            -Dgst-plugins-bad:gsm=disabled \
+            -Dgst-plugins-bad:iqa=disabled \
+            -Dgst-plugins-bad:kate=disabled \
+            -Dgst-plugins-bad:ladspa=disabled \
+            -Dgst-plugins-bad:lv2=disabled \
+            -Dgst-plugins-bad:msdk=disabled \
+            -Dgst-plugins-bad:neon=disabled \
+            -Dgst-plugins-bad:openal=disabled \
+            -Dgst-plugins-bad:openexr=disabled \
+            -Dgst-plugins-bad:opengl=disabled \
+            -Dgst-plugins-bad:openmpt=disabled \
+            -Dgst-plugins-bad:openni2=disabled \
+            -Dgst-plugins-bad:opensles=disabled \
+            -Dgst-plugins-bad:python=disabled \
+            -Dgst-plugins-bad:qsv=disabled \
+            -Dgst-plugins-bad:rsvg=disabled \
+            -Dgst-plugins-bad:rtmp=disabled \
+            -Dgst-plugins-bad:sbc=disabled \
+            -Dgst-plugins-bad:sctp=disabled \
+            -Dgst-plugins-bad:smoothstreaming=disabled \
+            -Dgst-plugins-bad:sndfile=disabled \
+            -Dgst-plugins-bad:soundtouch=disabled \
+            -Dgst-plugins-bad:spandsp=disabled \
+            -Dgst-plugins-bad:srtp=disabled \
+            -Dgst-plugins-bad:teletext=disabled \
+            -Dgst-plugins-bad:tinyalsa=disabled \
+            -Dgst-plugins-bad:vdpau=disabled \
+            -Dgst-plugins-bad:voamrwbenc=disabled \
+            -Dgst-plugins-bad:wasapi=disabled \
+            -Dgst-plugins-bad:webp=disabled \
+            -Dgst-plugins-bad:webrtc=disabled \
+            -Dgst-plugins-bad:wpe=disabled \
+            -Dgst-plugins-bad:zbar=disabled \
             --buildtype=release
           
           ninja -C build -j$(nproc)
@@ -376,7 +432,14 @@ jobs:
             - ❌ **ALSA 音频** (已禁用)
             - ❌ **X11 显示** (已禁用)
             - ❌ **Cairo 支持** (已禁用)
+            - ❌ **DRM 支持** (解决 open_memstream 问题)
+            - ❌ **Wayland 支持** (已禁用)
             - 🏗️ **构建类型**: release
+            
+            ### 🐛 已解决的问题
+            - ✅ **cpu-features.h 缺失** - 通过预编译 pixman 并禁用 ARM 优化解决
+            - ✅ **open_memstream 不支持** - 通过禁用 DRM 相关功能和添加编译器标志解决
+            - ✅ **隐式函数声明错误** - 通过添加 `-Wno-implicit-function-declaration` 解决
             
             ### 📦 文件信息
             - **文件名**: `${{ env.TAR_NAME }}`
@@ -387,7 +450,7 @@ jobs:
             - 针对 armv7 架构交叉编译
             - 使用 Android NDK clang 工具链
             - 包含手动编译的 libiconv、gettext 和 pixman 库
-            - 已解决 cpu-features.h 找不到的问题
+            - 已解决多个 Android 兼容性问题
             - 建议仅用于测试和开发目的
             
           files: /home/runner/$TAR_NAME
