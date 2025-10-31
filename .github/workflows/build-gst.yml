@@ -299,9 +299,6 @@ jobs:
             -Dgst-plugins-base:xvideo=disabled \
             -Dgst-plugins-base:xshm=disabled \
             -Dgst-plugins-base:gl=disabled \
-            -Dgst-plugins-base:libdrm=disabled \
-            -Dgst-plugins-base:wayland=disabled \
-            -Dgst-plugins-base:egl=disabled \
             --buildtype=release
           
           ninja -C build -j$(nproc)
