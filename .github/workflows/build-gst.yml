@@ -274,7 +274,6 @@ jobs:
             -Dbase=enabled \
             -Dgood=enabled \
             -Dugly=enabled \
-            -Dbad=enabled \
             -Dlibav=enabled \
             -Dgpl=disabled \
             -Ddefault_library=shared \
