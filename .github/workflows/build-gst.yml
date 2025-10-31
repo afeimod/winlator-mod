@@ -328,6 +328,7 @@ jobs:
             -Dgst-plugins-bad:rtmp=disabled \
             -Dgst-plugins-bad:sbc=disabled \
             -Dgst-plugins-bad:sctp=disabled \
+            -Dgst-plugins-bad:libdrm=disabled \
             -Dgst-plugins-bad:smoothstreaming=disabled \
             -Dgst-plugins-bad:sndfile=disabled \
             -Dgst-plugins-bad:soundtouch=disabled \
