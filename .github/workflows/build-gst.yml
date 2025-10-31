@@ -323,7 +323,6 @@ jobs:
             -Dgst-plugins-bad:openexr=disabled \
             -Dgst-plugins-bad:openmpt=disabled \
             -Dgst-plugins-bad:openni2=disabled \
-            -Dgst-plugins-bad:python=disabled \
             -Dgst-plugins-bad:qsv=disabled \
             -Dgst-plugins-bad:rsvg=disabled \
             -Dgst-plugins-bad:rtmp=disabled \
