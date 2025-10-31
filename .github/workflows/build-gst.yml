@@ -258,8 +258,9 @@ jobs:
           export NDK_ARCH_INCLUDE=$TOOLCHAIN/sysroot/usr/include/arm-linux-androideabi
           
           # 禁用警告视为错误，解决 open_memstream 等问题
-          export CFLAGS="-fPIC -march=armv7-a -mfpu=neon -mfloat-abi=softfp -I${{ env.INSTALL_ROOT }}/include -I$NDK_INCLUDE -I$NDK_ARCH_INCLUDE -Wno-unsupported-floating-point-opt -Wno-implicit-function-declaration -Wno-int-conversion -Wno-error=implicit-function-declaration"
-          export CXXFLAGS="-fPIC -march=armv7-a -mfpu=neon -mfloat-abi=softfp -I${{ env.INSTALL_ROOT }}/include -I$NDK_INCLUDE -I$NDK_ARCH_INCLUDE -Wno-unsupported-floating-point-opt -Wno-implicit-function-declaration -Wno-int-conversion -Wno-error=implicit-function-declaration"
+          # 添加 -D_GNU_SOURCE 来启用 GNU 扩展，包括 open_memstream
+          export CFLAGS="-fPIC -march=armv7-a -mfpu=neon -mfloat-abi=softfp -I${{ env.INSTALL_ROOT }}/include -I$NDK_INCLUDE -I$NDK_ARCH_INCLUDE -Wno-unsupported-floating-point-opt -Wno-implicit-function-declaration -Wno-int-conversion -Wno-error=implicit-function-declaration -D_GNU_SOURCE"
+          export CXXFLAGS="-fPIC -march=armv7-a -mfpu=neon -mfloat-abi=softfp -I${{ env.INSTALL_ROOT }}/include -I$NDK_INCLUDE -I$NDK_ARCH_INCLUDE -Wno-unsupported-floating-point-opt -Wno-implicit-function-declaration -Wno-int-conversion -Wno-error=implicit-function-declaration -D_GNU_SOURCE"
           export LDFLAGS="-L${{ env.INSTALL_ROOT }}/lib"
           
           # 检查 NDK 头文件
@@ -267,6 +268,7 @@ jobs:
           find $TOOLCHAIN -name "cpu-features.h" 2>/dev/null | head -5
           
           # 配置 GStreamer 构建 - 禁用有问题的组件
+          # 特别注意禁用所有需要 DRM 的功能
           meson setup build \
             --cross-file ../${{ env.CROSS_FILE }} \
             --prefix=$INSTALL_ROOT \
@@ -296,6 +298,11 @@ jobs:
             -Dgst-plugins-base:x11=disabled \
             -Dgst-plugins-base:xvideo=disabled \
             -Dgst-plugins-base:xshm=disabled \
+            -Dgst-plugins-base:gl=disabled \
+            -Dgst-plugins-base:graphene=disabled \
+            -Dgst-plugins-base:libdrm=disabled \
+            -Dgst-plugins-base:wayland=disabled \
+            -Dgst-plugins-base:egl=disabled \
             --buildtype=release
           
           ninja -C build -j$(nproc)
@@ -367,10 +374,11 @@ jobs:
             - ✅ **基础插件** (base)
             - ✅ **优质插件** (good) 
             - ✅ **丑陋插件** (ugly)
-            - ✅ **不良插件** (bad)
+            - ❌ **不良插件** (bad) - 因 open_memstream 问题已禁用
             - ✅ **LibAV 支持**
             - ✅ **字符编码支持** (libiconv + gettext)
             - ✅ **Pixman 支持** (预编译解决 cpu-features.h 问题)
+            - ❌ **DRM 相关功能** (因 open_memstream 问题已禁用)
             - ❌ **网络流媒体** (因 OpenSSL 依赖已禁用)
             - ❌ **WebRTC/RTMP** (已禁用)
             - ❌ **VP8/VP9 解码** (因构建问题已禁用)
@@ -382,7 +390,7 @@ jobs:
             
             ### 🐛 已解决的问题
             - ✅ **cpu-features.h 缺失** - 通过预编译 pixman 并禁用 ARM 优化解决
-            - ✅ **open_memstream 不支持** - 通过禁用 DRM 相关功能和添加编译器标志解决
+            - ✅ **open_memstream 不支持** - 通过禁用 DRM 相关功能和添加 `-D_GNU_SOURCE` 解决
             - ✅ **隐式函数声明错误** - 通过添加 `-Wno-implicit-function-declaration` 解决
             - ✅ **libnice OpenSSL 依赖问题** - 通过禁用 libnice 和网络相关功能解决
             - ✅ **Meson 选项语法错误** - 修复了错误的选项格式
