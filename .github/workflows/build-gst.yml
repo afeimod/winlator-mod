@@ -334,7 +334,6 @@ jobs:
             -Dgst-plugins-bad:spandsp=disabled \
             -Dgst-plugins-bad:srtp=disabled \
             -Dgst-plugins-bad:teletext=disabled \
-            -Dgst-plugins-bad:vdpau=disabled \
             -Dgst-plugins-bad:wasapi=disabled \
             -Dgst-plugins-bad:webp=disabled \
             -Dgst-plugins-bad:webrtc=disabled \
