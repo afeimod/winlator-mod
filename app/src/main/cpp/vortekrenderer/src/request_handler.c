@@ -145,10 +145,7 @@ void vt_handle_vkGetPhysicalDeviceImageFormatProperties(VkContext* context) {
 
     VkImageFormatProperties imageFormatProperties = {0};
     VkResult result = vulkanWrapper.vkGetPhysicalDeviceImageFormatProperties(physicalDevice, format, type, tiling, usage, flags, &imageFormatProperties);
-
-    if (result == VK_ERROR_FORMAT_NOT_SUPPORTED && isCompressedFormat(format)) {
-        result = getCompressedImageFormatProperties(format, &imageFormatProperties);
-    }
+    checkImageFormatProperties(format, type, tiling, usage, flags, &imageFormatProperties, &result);
 
     VT_SERIALIZE_CMD(VkImageFormatProperties, &imageFormatProperties);
     vt_send(context->clientRing, result, outputBuffer, bufferSize);
@@ -2147,10 +2144,7 @@ void vt_handle_vkGetPhysicalDeviceImageFormatProperties2(VkContext* context) {
     VkPhysicalDevice physicalDevice = VkObject_fromId(physicalDeviceId);
 
     VkResult result = vulkanWrapper.vkGetPhysicalDeviceImageFormatProperties2(physicalDevice, &imageFormatInfo, &imageFormatProperties);
-
-    if (result == VK_ERROR_FORMAT_NOT_SUPPORTED && isCompressedFormat(imageFormatInfo.format)) {
-        result = getCompressedImageFormatProperties(imageFormatInfo.format, &imageFormatProperties.imageFormatProperties);
-    }
+    checkImageFormatProperties(imageFormatInfo.format, imageFormatInfo.type, imageFormatInfo.tiling, imageFormatInfo.usage, imageFormatInfo.flags, &imageFormatProperties.imageFormatProperties, &result);
 
     VT_SERIALIZE_CMD(VkImageFormatProperties2, &imageFormatProperties);
     vt_send(context->clientRing, result, outputBuffer, bufferSize);

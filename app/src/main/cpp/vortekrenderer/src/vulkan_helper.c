@@ -355,6 +355,18 @@ void checkFormatProperties(VkPhysicalDevice physicalDevice, VkFormat format, VkF
     }
 }
 
+void checkImageFormatProperties(VkFormat format, VkImageType type, VkImageTiling tiling, VkImageUsageFlags usage, VkImageCreateFlags flags, VkImageFormatProperties* imageFormatProperties, VkResult* result) {
+    if (tiling == VK_IMAGE_TILING_LINEAR && type == VK_IMAGE_TYPE_2D && format == VK_FORMAT_R8G8B8A8_UNORM &&
+        usage == (VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)) {
+        imageFormatProperties->sampleCounts = VK_SAMPLE_COUNT_8_BIT;
+        *result = VK_SUCCESS;
+    }
+
+    if (*result == VK_ERROR_FORMAT_NOT_SUPPORTED && isCompressedFormat(format)) {
+        *result = getCompressedImageFormatProperties(format, imageFormatProperties);
+    }
+}
+
 void checkDeviceProperties(VkContext* context, VkPhysicalDeviceProperties* properties, void* pNext) {
     char deviceName[VK_MAX_PHYSICAL_DEVICE_NAME_SIZE] = {0};
     sprintf(deviceName, DEVICE_NAME, properties->deviceName);

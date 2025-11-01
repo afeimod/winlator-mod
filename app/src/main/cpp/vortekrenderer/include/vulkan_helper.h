@@ -31,6 +31,7 @@ extern void checkDeviceMemoryProperties(VkContext* context, VkPhysicalDeviceMemo
 extern void disableUnsupportedDeviceFeatures(VkPhysicalDevice physicalDevice, VkDeviceCreateInfo* createInfo);
 extern VkExtensionProperties* getExposedDeviceExtensionProperties(VkContext* context, VkPhysicalDevice physicalDevice, uint32_t* propertyCount);
 extern void checkFormatProperties(VkPhysicalDevice physicalDevice, VkFormat format, VkFormatProperties* formatProperties);
+extern void checkImageFormatProperties(VkFormat format, VkImageType type, VkImageTiling tiling, VkImageUsageFlags usage, VkImageCreateFlags flags, VkImageFormatProperties* imageFormatProperties, VkResult* result);
 extern void checkDeviceProperties(VkContext* context, VkPhysicalDeviceProperties* properties, void* pNext);
 extern void checkDeviceFeatures(VkPhysicalDeviceFeatures* features, void* pNext);
 extern void destroyVkObject(VkObjectType type, VkDevice device, void* handle);
