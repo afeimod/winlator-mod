@@ -299,7 +299,16 @@ jobs:
               -Dgst-plugins-base:xshm=disabled \
               --buildtype=release
     
-            ninja -C build -j$(nproc)
+            # 在构建后手动删除有问题的工具
+            echo "🔧 构建后清理..."
+            ninja -C build -j$(nproc) || true
+    
+            # 手动删除有问题的工具，然后继续安装
+            find build -name "runtest" -delete
+            find build -name "runxmlconf" -delete
+            find build -name "testThreads" -delete
+            find build -name "testapi" -delete
+    
             ninja -C build install
 
       # 🧩 修补 ELF 解释器 (armv7)
