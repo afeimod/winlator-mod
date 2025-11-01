@@ -319,7 +319,7 @@
     <string name="adrenotools_driver" translatable="false">Adrenotools Driver</string>
     <string name="resource_memory_type">Resource Memory Type</string>
     <string name="zero_no_limit">0 (No limit)</string>
-    <string name="custom">Personalizado</string>
+    <string name="custom">Custom</string>
     <string name="minimal">Minimal</string>
     <string name="trace">Trace</string>
     <string name="builtin_wine">Builtin (Wine)</string>

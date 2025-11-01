@@ -262,7 +262,7 @@
     <string name="pip_mode">Modo PiP</string>
     <string name="resource_memory_type">Tipo de Memória de Recurso</string>
     <string name="zero_no_limit">0 (Sem limite)</string>
-    <string name="custom">Custom</string>
+    <string name="custom">Personalizado</string>
     <string name="minimal">Mínimo</string>
     <string name="trace">Trace</string>
     <string name="builtin_wine">Embutido (Wine)</string>
