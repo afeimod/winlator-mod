@@ -235,74 +235,72 @@ jobs:
           sudo make install
           echo "✅ pixman 构建完成"
 
-      # 🛠️ 构建 GStreamer 解码器 (armv7)
+      # 🛠️ 构建 GStreamer 解码器 (armv7) - 替代方案
       - name: 构建 GStreamer 解码器
         if: steps.check_build.outputs.skip_build == 'false'
         run: |
-          cd gstreamer
-          git submodule update --init --recursive
-          sudo mkdir -p $INSTALL_ROOT
-          sudo chmod -R 777 /data
-          
-          # 设置环境变量
-          export TOOLCHAIN=${{ env.NDK_DIR }}/toolchains/llvm/prebuilt/linux-x86_64
-          export PATH=$TOOLCHAIN/bin:$PATH
-          export PKG_CONFIG_LIBDIR=${{ env.INSTALL_ROOT }}/lib/pkgconfig
-          export PKG_CONFIG_PATH=${{ env.INSTALL_ROOT }}/lib/pkgconfig
-          export CC=$TOOLCHAIN/bin/armv7a-linux-androideabi21-clang
-          export CXX=$TOOLCHAIN/bin/armv7a-linux-androideabi21-clang++
-          
-          # 设置架构特定的编译标志 - 修复各种问题
-          export NDK_SYSROOT=$TOOLCHAIN/sysroot
-          export NDK_INCLUDE=$TOOLCHAIN/sysroot/usr/include
-          export NDK_ARCH_INCLUDE=$TOOLCHAIN/sysroot/usr/include/arm-linux-androideabi
-          
-          # 禁用警告视为错误，解决 open_memstream 等问题
-          # 添加 -D_GNU_SOURCE 来启用 GNU 扩展，包括 open_memstream
-          export CFLAGS="-fPIC -march=armv7-a -mfpu=neon -mfloat-abi=softfp -I${{ env.INSTALL_ROOT }}/include -I$NDK_INCLUDE -I$NDK_ARCH_INCLUDE -Wno-unsupported-floating-point-opt -Wno-implicit-function-declaration -Wno-int-conversion -Wno-error=implicit-function-declaration -D_GNU_SOURCE"
-          export CXXFLAGS="-fPIC -march=armv7-a -mfpu=neon -mfloat-abi=softfp -I${{ env.INSTALL_ROOT }}/include -I$NDK_INCLUDE -I$NDK_ARCH_INCLUDE -Wno-unsupported-floating-point-opt -Wno-implicit-function-declaration -Wno-int-conversion -Wno-error=implicit-function-declaration -D_GNU_SOURCE"
-          export LDFLAGS="-L${{ env.INSTALL_ROOT }}/lib"
-          
-          # 检查 NDK 头文件
-          echo "🔍 检查 NDK 头文件..."
-          find $TOOLCHAIN -name "cpu-features.h" 2>/dev/null | head -5
-          
-          # 配置 GStreamer 构建 - 禁用有问题的组件
-          # 特别注意禁用所有需要 DRM 的功能
-          meson setup build \
-            --cross-file ../${{ env.CROSS_FILE }} \
-            --prefix=$INSTALL_ROOT \
-            --libdir=lib \
-            -Dbase=enabled \
-            -Dgood=enabled \
-            -Dugly=enabled \
-            -Dlibav=enabled \
-            -Dgpl=disabled \
-            -Ddefault_library=shared \
-            -Dtests=disabled \
-            -Ddoc=disabled \
-            -Dexamples=disabled \
-            -Dpython=disabled \
-            -Dlibnice=disabled \
-            -Dgst-plugins-good:vpx=disabled \
-            -Dbad=disabled \
-            -Dgst-plugins-base:gl=disabled \
-            -Dintrospection=disabled \
-            -Dgst-plugins-base:opus=disabled \
-            -Dgst-plugins-base:ogg=disabled \
-            -Dgst-plugins-base:vorbis=disabled \
-            -Dgst-plugins-base:theora=disabled \
-            -Dglib:libmount=disabled \
-            -Dglib:selinux=disabled \
-            -Dgst-plugins-base:alsa=disabled \
-            -Dgst-plugins-base:x11=disabled \
-            -Dgst-plugins-base:xvideo=disabled \
-            -Dgst-plugins-base:xshm=disabled \
-            -Dgst-plugins-base:gl=disabled \
-            --buildtype=release
-          
-          ninja -C build -j$(nproc)
-          ninja -C build install
+            cd gstreamer
+            git submodule update --init --recursive
+            sudo mkdir -p $INSTALL_ROOT
+            sudo chmod -R 777 /data
+    
+            # 完全移除有问题的子项目
+            echo "🗑️ 移除有问题的子项目..."
+            rm -rf subprojects/libdrm*
+            rm -rf subprojects/libpsl*
+    
+            # 设置环境变量
+            export TOOLCHAIN=${{ env.NDK_DIR }}/toolchains/llvm/prebuilt/linux-x86_64
+            export PATH=$TOOLCHAIN/bin:$PATH
+            export PKG_CONFIG_LIBDIR=${{ env.INSTALL_ROOT }}/lib/pkgconfig
+            export PKG_CONFIG_PATH=${{ env.INSTALL_ROOT }}/lib/pkgconfig
+            export CC=$TOOLCHAIN/bin/armv7a-linux-androideabi21-clang
+            export CXX=$TOOLCHAIN/bin/armv7a-linux-androideabi21-clang++
+    
+            # 设置架构特定的编译标志
+            export NDK_SYSROOT=$TOOLCHAIN/sysroot
+            export NDK_INCLUDE=$TOOLCHAIN/sysroot/usr/include
+            export NDK_ARCH_INCLUDE=$TOOLCHAIN/sysroot/usr/include/arm-linux-androideabi
+    
+            # 编译标志
+            export CFLAGS="-fPIC -march=armv7-a -mfpu=neon -mfloat-abi=softfp -I${{ env.INSTALL_ROOT }}/include -I$NDK_INCLUDE -I$NDK_ARCH_INCLUDE -Wno-unsupported-floating-point-opt -Wno-implicit-function-declaration -Wno-int-conversion -Wno-error=implicit-function-declaration -D_GNU_SOURCE"
+            export CXXFLAGS="-fPIC -march=armv7-a -mfpu=neon -mfloat-abi=softfp -I${{ env.INSTALL_ROOT }}/include -I$NDK_INCLUDE -I$NDK_ARCH_INCLUDE -Wno-unsupported-floating-point-opt -Wno-implicit-function-declaration -Wno-int-conversion -Wno-error=implicit-function-declaration -D_GNU_SOURCE"
+            export LDFLAGS="-L${{ env.INSTALL_ROOT }}/lib"
+    
+            # 配置 GStreamer 构建
+            meson setup build \
+              --cross-file ../${{ env.CROSS_FILE }} \
+              --prefix=$INSTALL_ROOT \
+              --libdir=lib \
+              -Dbase=enabled \
+              -Dgood=enabled \
+              -Dugly=enabled \
+              -Dlibav=enabled \
+              -Dgpl=disabled \
+              -Ddefault_library=shared \
+              -Dtests=disabled \
+              -Ddoc=disabled \
+              -Dexamples=disabled \
+              -Dpython=disabled \
+              -Dlibnice=disabled \
+              -Dgst-plugins-good:vpx=disabled \
+              -Dbad=disabled \
+              -Dgst-plugins-base:gl=disabled \
+              -Dintrospection=disabled \
+              -Dgst-plugins-base:opus=disabled \
+              -Dgst-plugins-base:ogg=disabled \
+              -Dgst-plugins-base:vorbis=disabled \
+              -Dgst-plugins-base:theora=disabled \
+              -Dglib:libmount=disabled \
+              -Dglib:selinux=disabled \
+              -Dgst-plugins-base:alsa=disabled \
+              -Dgst-plugins-base:x11=disabled \
+              -Dgst-plugins-base:xvideo=disabled \
+              -Dgst-plugins-base:xshm=disabled \
+              --buildtype=release
+    
+            ninja -C build -j$(nproc)
+            ninja -C build install
 
       # 🧩 修补 ELF 解释器 (armv7)
       - name: 修补 ELF 可执行文件
