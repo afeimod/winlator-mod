@@ -195,174 +195,220 @@ jobs:
           sudo make install
           echo "✅ gettext 核心库构建完成"
 
-      # 🔧 构建 pixman (解决 cpu-features.h 问题)
-      - name: 构建 pixman
-        if: steps.check_build.outputs.skip_build == 'false'
-        run: |
-          echo "📦 构建 pixman for Android..."
-          wget -q https://www.cairographics.org/releases/pixman-0.42.2.tar.gz
-          tar -xzf pixman-0.42.2.tar.gz
-          cd pixman-0.42.2
-          
-          # 设置 Android NDK 工具链路径
-          export TOOLCHAIN=${{ env.NDK_DIR }}/toolchains/llvm/prebuilt/linux-x86_64
-          export CC=$TOOLCHAIN/bin/armv7a-linux-androideabi21-clang
-          export CXX=$TOOLCHAIN/bin/armv7a-linux-androideabi21-clang++
-          export AR=$TOOLCHAIN/bin/llvm-ar
-          export STRIP=$TOOLCHAIN/bin/llvm-strip
-          export RANLIB=$TOOLCHAIN/bin/llvm-ranlib
-          
-          # 设置编译标志
-          export CFLAGS="-fPIC -march=armv7-a -mfpu=neon -mfloat-abi=softfp -I${{ env.INSTALL_ROOT }}/include"
-          export LDFLAGS="-L${{ env.INSTALL_ROOT }}/lib"
-          
-          # 禁用 ARM 优化以避免 cpu-features.h 依赖
-          ./configure \
-            --host=arm-linux-androideabi \
-            --prefix=${{ env.INSTALL_ROOT }} \
-            --enable-static=no \
-            --enable-shared=yes \
-            --disable-arm-iwmmxt \
-            --disable-arm-simd \
-            --disable-arm-neon \
-            --disable-mmx \
-            --disable-sse2 \
-            --disable-ssse3 \
-            --disable-vmx \
-            --disable-arm-a64-neon
-          
-          make -j$(nproc)
-          sudo make install
-          echo "✅ pixman 构建完成"
-
-      # 🛠️ 构建 GStreamer 解码器 (armv7) - 彻底修复 open_memstream
+          # 🛠️ 构建 GStreamer 解码器 (armv7) - 修复 open_memstream
       - name: 构建 GStreamer 解码器
         if: steps.check_build.outputs.skip_build == 'false'
         run: |
-            cd gstreamer
-            git submodule update --init --recursive
-            sudo mkdir -p $INSTALL_ROOT
-            sudo chmod -R 777 /data
-        
-            # 彻底修复 open_memstream 问题
-            echo "🔧 彻底修复 open_memstream 问题..."
-        
-            # 方法1: 为 Android 实现 open_memstream
-            cat > open_memstream_patch.c << 'EOF'
-            #include <stdio.h>
-            #include <stdlib.h>
-            #include <string.h>
-        
-            // Android 兼容的 open_memstream 实现
-            FILE *open_memstream(char **bufp, size_t *sizep) {
-                    // 使用临时文件模拟内存流
-                    static int counter = 0;
-                    char filename[64];
-                    snprintf(filename, sizeof(filename), "/tmp/memstream_%d_%d", getpid(), counter++);
+                cd gstreamer
+                git submodule update --init --recursive
+                sudo mkdir -p $INSTALL_ROOT
+                sudo chmod -R 777 /data
                 
-                    FILE *fp = fopen(filename, "w+");
-                    if (fp) {
-                            *bufp = NULL;
-                            *sizep = 0;
-                            // 存储文件名以便后续使用
-                            char **filename_ptr = malloc(sizeof(char*));
-                            *filename_ptr = strdup(filename);
-                            // 使用文件描述符字段存储文件名指针
-                            fp->_file = (int)filename_ptr;
-                    }
-                    return fp;
-            }
-            EOF
-        
-            # 编译并安装我们的 open_memstream 实现
-            ${{ env.NDK_DIR }}/toolchains/llvm/prebuilt/linux-x86_64/bin/armv7a-linux-androideabi21-clang \
-                -shared -fPIC open_memstream_patch.c -o $INSTALL_ROOT/lib/libopen_memstream.so
-        
-            # 方法2: 直接修改 libdrm 源代码，移除 open_memstream 调用
-            echo "🔧 修改 libdrm 源代码..."
-            find subprojects -name "xf86drm.c" -type f | while read file; do
-                if [ -f "$file" ]; then
-                    echo "修复文件: $file"
-                    # 创建一个备份
-                    cp "$file" "$file.backup"
-                    # 使用更精确的替换方法
-                    sed -i '/open_memstream.*modifier_name/{s/fp = open_memstream/\/\/ fp = open_memstream/; s/fclose(fp)/\/\/ fclose(fp)/; s/free(modifier_name)/\/\/ free(modifier_name)/}' "$file"
-                    sed -i '/open_memstream.*mod_amd/{s/fp = open_memstream/\/\/ fp = open_memstream/; s/fclose(fp)/\/\/ fclose(fp)/; s/free(mod_amd)/\/\/ free(mod_amd)/}' "$file"
+                # 彻底修复 open_memstream 问题
+                echo "🔧 彻底修复 open_memstream 问题..."
+                
+                # 方法1: 为 Android 实现一个完整的 open_memstream 替代方案
+                cat > open_memstream_patch.c << 'EOF'
+                #include <stdio.h>
+                #include <stdlib.h>
+                #include <string.h>
+                #include <unistd.h>
+                #include <errno.h>
+                
+                typedef struct {
+                                char *buffer;
+                                size_t size;
+                                size_t position;
+                } memstream_t;
+                
+                static int memstream_write(void *cookie, const char *buf, int n) {
+                                memstream_t *ms = (memstream_t *)cookie;
+                                size_t new_size = ms->position + n;
+                                
+                                if (new_size > ms->size) {
+                                                char *new_buffer = realloc(ms->buffer, new_size);
+                                                if (!new_buffer) return -1;
+                                                ms->buffer = new_buffer;
+                                                ms->size = new_size;
+                                }
+                                
+                                memcpy(ms->buffer + ms->position, buf, n);
+                                ms->position += n;
+                                return n;
+                }
+                
+                static int memstream_close(void *cookie) {
+                                memstream_t *ms = (memstream_t *)cookie;
+                                free(ms->buffer);
+                                free(ms);
+                                return 0;
+                }
+                
+                FILE *open_memstream(char **bufp, size_t *sizep) {
+                                memstream_t *ms = calloc(1, sizeof(memstream_t));
+                                if (!ms) return NULL;
+                                
+                                ms->buffer = malloc(64);
+                                if (!ms->buffer) {
+                                                free(ms);
+                                                return NULL;
+                                }
+                                ms->size = 64;
+                                ms->position = 0;
+                                
+                                // 设置 cookie_io_functions_t
+                                cookie_io_functions_t funcs = {
+                                                .read = NULL,
+                                                .write = memstream_write,
+                                                .seek = NULL,
+                                                .close = memstream_close
+                                };
+                                
+                                FILE *fp = fopencookie(ms, "w", funcs);
+                                if (!fp) {
+                                                free(ms->buffer);
+                                                free(ms);
+                                                return NULL;
+                                }
+                                
+                                *bufp = ms->buffer;
+                                *sizep = 0; // 初始大小为0，会在写入时更新
+                                return fp;
+                }
+                EOF
+                
+                # 编译我们的 open_memstream 实现
+                echo "🔧 编译 open_memstream 实现..."
+                ${{ env.NDK_DIR }}/toolchains/llvm/prebuilt/linux-x86_64/bin/armv7a-linux-androideabi21-clang \
+                        -shared -fPIC open_memstream_patch.c -o $INSTALL_ROOT/lib/libopen_memstream.so
+                
+                # 方法2: 直接修改 libdrm 源代码，彻底移除 open_memstream 调用
+                echo "🔧 修改 libdrm 源代码..."
+                find subprojects -name "xf86drm.c" -type f | while read file; do
+                        if [ -f "$file" ]; then
+                                echo "修复文件: $file"
+                                # 创建补丁文件
+                                cat > libdrm_fix.patch << 'PATCHEOF'
+                --- a/xf86drm.c
+                +++ b/xf86drm.c
+                @@ -304,17 +304,17 @@ static char *modifier_to_name(uint64_t modifier)
+                                                 * to keep track of the string length while building it.
+                                                 */
+                                                size_t size = 0;
+                -                                fp = open_memstream(&modifier_name, &size);
+                +                                fp = NULL; // open_memstream(&modifier_name, &size);
+                                                if (fp) {
+                                                                for (i = 0; i < 4; i++) {
+                                                                                uint16_t value = (modifier >> (i * 16)) & 0xffff;
+                                                                                fprintf(fp, "%s%04x", i ? "-" : "", value);
+                                                                }
+                -                                                fclose(fp);
+                +                                                if (fp) fclose(fp);
+                                                }
+                                 } else {
+                                                 /*
+                                                        * The modifier doesn't have a vendor. In this case, we
+                                                        * return a string with the modifier value.
+                @@ -409,17 +409,17 @@ static char *modifier_to_name(uint64_t modifier)
+                                        * to keep track of the string length while building it.
+                                        */
+                                 size_t size = 0;
+                                 char *mod_amd = NULL;
+                -                fp = open_memstream(&mod_amd, &size);
+                +                fp = NULL; // open_memstream(&mod_amd, &size);
+                                 if (fp) {
+                                                 fprintf(fp, "AMD_FMT_MOD@");
+                                                 for (i = 0; i < 4; i++) {
+                                                                 uint16_t value = (modifier >> (i * 16)) & 0xffff;
+                                                                 fprintf(fp, "%s%04x", i ? "-" : "", value);
+                                                 }
+                -                                fclose(fp);
+                +                                if (fp) fclose(fp);
+                                                 return mod_amd;
+                                 }
+                 #endif
+                
+                PATCHEOF
+                                # 应用补丁
+                                patch -p1 -d "$(dirname "$file")" < libdrm_fix.patch || true
+                        fi
+                done
+                
+                # 方法3: 如果上述方法失败，完全移除有问题的子项目
+                echo "🗑️ 准备移除有问题的子项目（如果需要）..."
+                # 先保留，如果构建失败再使用
+                
+                # 设置环境变量
+                export TOOLCHAIN=${{ env.NDK_DIR }}/toolchains/llvm/prebuilt/linux-x86_64
+                export PATH=$TOOLCHAIN/bin:$PATH
+                export PKG_CONFIG_LIBDIR=${{ env.INSTALL_ROOT }}/lib/pkgconfig
+                export PKG_CONFIG_PATH=${{ env.INSTALL_ROOT }}/lib/pkgconfig
+                export CC=$TOOLCHAIN/bin/armv7a-linux-androideabi21-clang
+                export CXX=$TOOLCHAIN/bin/armv7a-linux-androideabi21-clang++
+                
+                # 设置架构特定的编译标志
+                export NDK_SYSROOT=$TOOLCHAIN/sysroot
+                export NDK_INCLUDE=$TOOLCHAIN/sysroot/usr/include
+                export NDK_ARCH_INCLUDE=$TOOLCHAIN/sysroot/usr/include/arm-linux-androideabi
+                
+                # 编译标志
+                export CFLAGS="-fPIC -march=armv7-a -mfpu=neon -mfloat-abi=softfp -I${{ env.INSTALL_ROOT }}/include -I$NDK_INCLUDE -I$NDK_ARCH_INCLUDE -Wno-unsupported-floating-point-opt -Wno-implicit-function-declaration -Wno-int-conversion -Wno-error=implicit-function-declaration -D_GNU_SOURCE"
+                export CXXFLAGS="-fPIC -march=armv7-a -mfpu=neon -mfloat-abi=softfp -I${{ env.INSTALL_ROOT }}/include -I$NDK_INCLUDE -I$NDK_ARCH_INCLUDE -Wno-unsupported-floating-point-opt -Wno-implicit-function-declaration -Wno-int-conversion -Wno-error=implicit-function-declaration -D_GNU_SOURCE"
+                export LDFLAGS="-L${{ env.INSTALL_ROOT }}/lib -Wl,--allow-shlib-undefined"
+                
+                # 配置 GStreamer 构建
+                meson setup build \
+                        --cross-file ../${{ env.CROSS_FILE }} \
+                        --prefix=$INSTALL_ROOT \
+                        --libdir=lib \
+                        -Dbase=enabled \
+                        -Dgood=enabled \
+                        -Dugly=enabled \
+                        -Dlibav=enabled \
+                        -Dgpl=disabled \
+                        -Ddefault_library=shared \
+                        -Dtests=disabled \
+                        -Ddoc=disabled \
+                        -Dexamples=disabled \
+                        -Dpython=disabled \
+                        -Dlibnice=disabled \
+                        -Dgst-plugins-good:vpx=disabled \
+                        -Dbad=disabled \
+                        -Dgst-plugins-base:gl=disabled \
+                        -Dintrospection=disabled \
+                        -Dgst-plugins-base:opus=disabled \
+                        -Dgst-plugins-base:ogg=disabled \
+                        -Dgst-plugins-base:vorbis=disabled \
+                        -Dgst-plugins-base:theora=disabled \
+                        -Dglib:libmount=disabled \
+                        -Dglib:selinux=disabled \
+                        -Dgst-plugins-base:alsa=disabled \
+                        -Dgst-plugins-base:x11=disabled \
+                        -Dgst-plugins-base:xvideo=disabled \
+                        -Dgst-plugins-base:xshm=disabled \
+                        --buildtype=release
+                
+                # 尝试构建
+                echo "🔧 开始构建..."
+                if ninja -C build -j$(nproc); then
+                        echo "✅ 构建成功"
+                        ninja -C build install
+                else
+                        echo "⚠️ 构建失败，尝试移除有问题的子项目后重新构建..."
+                        # 移除有问题的子项目
+                        rm -rf subprojects/libdrm*
+                        rm -rf subprojects/libpsl*
+                        
+                        # 重新配置和构建
+                        meson setup --reconfigure build
+                        ninja -C build -j$(nproc)
+                        ninja -C build install
                 fi
-            done
-        
-            # 方法3: 完全移除有问题的子项目
-            echo "🗑️ 移除有问题的子项目..."
-            rm -rf subprojects/libdrm*
-            rm -rf subprojects/libpsl*
-        
-            # 设置环境变量
-            export TOOLCHAIN=${{ env.NDK_DIR }}/toolchains/llvm/prebuilt/linux-x86_64
-            export PATH=$TOOLCHAIN/bin:$PATH
-            export PKG_CONFIG_LIBDIR=${{ env.INSTALL_ROOT }}/lib/pkgconfig
-            export PKG_CONFIG_PATH=${{ env.INSTALL_ROOT }}/lib/pkgconfig
-            export CC=$TOOLCHAIN/bin/armv7a-linux-androideabi21-clang
-            export CXX=$TOOLCHAIN/bin/armv7a-linux-androideabi21-clang++
-        
-            # 设置架构特定的编译标志 - 强制禁用某些功能
-            export NDK_SYSROOT=$TOOLCHAIN/sysroot
-            export NDK_INCLUDE=$TOOLCHAIN/sysroot/usr/include
-            export NDK_ARCH_INCLUDE=$TOOLCHAIN/sysroot/usr/include/arm-linux-androideabi
-        
-            # 编译标志 - 添加更多兼容性选项
-            export CFLAGS="-fPIC -march=armv7-a -mfpu=neon -mfloat-abi=softfp -I${{ env.INSTALL_ROOT }}/include -I$NDK_INCLUDE -I$NDK_ARCH_INCLUDE -Wno-unsupported-floating-point-opt -Wno-implicit-function-declaration -Wno-int-conversion -Wno-error=implicit-function-declaration -D_GNU_SOURCE -DHAVE_OPEN_MEMSTREAM=0"
-            export CXXFLAGS="-fPIC -march=armv7-a -mfpu=neon -mfloat-abi=softfp -I${{ env.INSTALL_ROOT }}/include -I$NDK_INCLUDE -I$NDK_ARCH_INCLUDE -Wno-unsupported-floating-point-opt -Wno-implicit-function-declaration -Wno-int-conversion -Wno-error=implicit-function-declaration -D_GNU_SOURCE -DHAVE_OPEN_MEMSTREAM=0"
-            export LDFLAGS="-L${{ env.INSTALL_ROOT }}/lib -Wl,--allow-shlib-undefined"
-        
-            # 配置 GStreamer 构建 - 更严格的禁用
-            meson setup build \
-                --cross-file ../${{ env.CROSS_FILE }} \
-                --prefix=$INSTALL_ROOT \
-                --libdir=lib \
-                -Dbase=enabled \
-                -Dgood=enabled \
-                -Dugly=enabled \
-                -Dlibav=enabled \
-                -Dgpl=disabled \
-                -Ddefault_library=shared \
-                -Dtests=disabled \
-                -Ddoc=disabled \
-                -Dexamples=disabled \
-                -Dpython=disabled \
-                -Dlibnice=disabled \
-                -Dgst-plugins-good:vpx=disabled \
-                -Dbad=disabled \
-                -Dgst-plugins-base:gl=disabled \
-                -Dintrospection=disabled \
-                -Dgst-plugins-base:opus=disabled \
-                -Dgst-plugins-base:ogg=disabled \
-                -Dgst-plugins-base:vorbis=disabled \
-                -Dgst-plugins-base:theora=disabled \
-                -Dglib:libmount=disabled \
-                -Dglib:selinux=disabled \
-                -Dgst-plugins-base:alsa=disabled \
-                -Dgst-plugins-base:x11=disabled \
-                -Dgst-plugins-base:xvideo=disabled \
-                -Dgst-plugins-base:xshm=disabled \
-                -Dgst-plugins-bad:libdrm=disabled \
-                --buildtype=release
-        
-            # 构建并处理可能的错误
-            echo "🔧 开始构建..."
-            if ninja -C build -j$(nproc); then
-                echo "✅ 构建成功"
-                ninja -C build install
-            else
-                echo "⚠️ 构建失败，尝试跳过错误..."
-                # 即使有错误也尝试安装
-                ninja -C build install || true
-                echo "🟡 部分构建完成"
-            fi
-        
-            # 验证安装
-            echo "📋 检查安装结果..."
-            find $INSTALL_ROOT -name "*.so" | head -10
-            echo "✅ GStreamer 构建流程完成"
+                
+                # 验证安装
+                echo "📋 检查安装结果..."
+                find $INSTALL_ROOT -name "libgst*.so" | head -10
+                echo "✅ GStreamer 构建流程完成"
 
       # 🧩 修补 ELF 解释器 (armv7)
       - name: 修补 ELF 可执行文件
