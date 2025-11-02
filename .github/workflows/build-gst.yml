@@ -141,7 +141,6 @@ jobs:
             -Dprefix=/data/data/com.winlator/files/rootfs/usr \
             --libdir=lib \
             -Dbase=enabled \
-            -Dpackage-origin="gstreamer-winlator" \
             -Dgood=enabled -Dugly=enabled -Dbad=enabled \
             -Dlibav=enabled -Dgpl=enabled -Ddefault_library=shared \
             -Dtests=disabled -Ddoc=disabled -Dexamples=disabled \
