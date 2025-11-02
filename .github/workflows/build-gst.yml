@@ -130,7 +130,7 @@ jobs:
           sudo make install
           echo "✅ libvpx v1.14.0 已安装到 ${{ env.WINLATOR_LIB }}"
 
-      # 🛠️ 构建 GStreamer 解码器（绝对路径）
+      # 🛠️ 构建 GStreamer 解码器（修正版）
       - name: 构建 GStreamer 解码器
         if: steps.check_build.outputs.skip_build == 'false'
         run: |
@@ -139,104 +139,110 @@ jobs:
           sudo mkdir -p ${{ env.WINLATOR_PREFIX }}
           sudo chmod -R 777 ${{ env.WINLATOR_ROOT }}
           
-          # 配置 meson 构建
+          echo "🔧 配置 Meson 构建系统..."
+          # 配置 meson 构建 - 只使用有效的选项
           meson setup build \
             -Dprefix=${{ env.WINLATOR_PREFIX }} \
             --libdir=lib \
             -Dbase=enabled \
             -Dpackage-origin="gstreamer-winlator" \
-            -Dgood=enabled -Dugly=enabled -Dbad=enabled \
-            -Dlibav=enabled -Dgpl=enabled -Ddefault_library=shared \
-            -Dtests=disabled -Ddoc=disabled -Dexamples=disabled \
-            -Dpython=disabled -Dnls=disabled \
+            -Dgood=enabled \
+            -Dugly=enabled \
+            -Dbad=enabled \
+            -Dlibav=enabled \
+            -Dgpl=enabled \
+            -Ddefault_library=shared \
+            -Dtests=disabled \
+            -Ddoc=disabled \
+            -Dexamples=disabled \
+            -Dpython=disabled \
+            -Dnls=disabled \
             -Dgst-plugins-libav:aac=disabled \
             -Dgst-plugins-good:vpx=enabled \
-            -Dgst-plugins-bad:hip=disabled -Dgst-plugins-bad:nvcodec=disabled \
-            -Dgst-plugins-base:gl=disabled -Dintrospection=disabled \
-            -Dgst-full=enabled -Dgst-full-plugins='*' \
-            -Ddevtools=disabled -Dtools=disabled -Drtsp_server=disabled \
-            -Dgst-plugins-path=${{ env.GST_PLUGINS_PATH }} \
-            -Dpluginscoreelementspath=${{ env.GST_PLUGINS_PATH }} \
-            -Dpluginscoretracerspath=${{ env.GST_PLUGINS_PATH }} \
+            -Dgst-plugins-bad:hip=disabled \
+            -Dgst-plugins-bad:nvcodec=disabled \
+            -Dgst-plugins-base:gl=disabled \
+            -Dintrospection=disabled \
+            -Dgst-full=enabled \
+            -Ddevtools=disabled \
+            -Dtools=disabled \
+            -Drtsp_server=disabled \
             --buildtype=release
           
+          echo "🏗️ 开始编译..."
           ninja -C build -j$(nproc)
+          
+          echo "📦 安装到目标目录..."
           ninja -C build install
+          
+          echo "✅ GStreamer 构建完成"
 
-      # 🔧 修正 ELF 文件 RPATH（绝对路径）
+      # 🔧 修正 ELF 文件 RPATH
       - name: 修正 ELF 文件 RPATH
         if: steps.check_build.outputs.skip_build == 'false'
         shell: bash
         run: |
-          echo "🔧 开始修正 ELF 文件 RPATH（绝对路径）..."
+          echo "🔧 开始修正 ELF 文件 RPATH..."
           
           # 创建修正脚本
-          FIX_SCRIPT=$(mktemp)
-          cat <<'EOF' > "$FIX_SCRIPT"
-          fix_elf_file() {
-            local file="$1"
-            local winlator_lib="$2"
-            local gst_plugins_path="$3"
-            
-            if file "$file" | grep -q "ELF.*dynamically linked"; then
+          cat > fix_elf_files.sh << 'EOF'
+          #!/bin/bash
+          WINLATOR_LIB="$1"
+          GST_PLUGINS_PATH="$2"
+          
+          echo "📦 扫描 ELF 文件..."
+          find "$WINLATOR_LIB" -type f -name "*.so" -o -name "*.so.*" | while read -r file; do
+            if file "$file" | grep -q "ELF.*shared object"; then
               echo "🔧 修正: $file"
-              
               # 设置 RPATH
-              patchelf --set-rpath "${winlator_lib}:${gst_plugins_path}" "$file" 2>/dev/null || true
-              
-              # 设置动态链接器
-              patchelf --set-interpreter "${winlator_lib}/ld-linux-aarch64.so.1" "$file" 2>/dev/null || true
-              
-              # 对于可执行文件，确保有正确的加载器
-              if patchelf --print-interpreter "$file" 2>/dev/null | grep -q "ld-linux"; then
-                echo "✅ 已设置动态链接器: $file"
-              fi
+              patchelf --set-rpath "${WINLATOR_LIB}:${GST_PLUGINS_PATH}" "$file" 2>/dev/null || true
             fi
-          }
+          done
           
-          export -f fix_elf_file
+          # 修正可执行文件
+          find "$WINLATOR_LIB/../bin" -type f 2>/dev/null | while read -r file; do
+            if file "$file" | grep -q "ELF.*executable"; then
+              echo "🔧 修正可执行文件: $file"
+              patchelf --set-rpath "${WINLATOR_LIB}:${GST_PLUGINS_PATH}" "$file" 2>/dev/null || true
+              patchelf --set-interpreter "${WINLATOR_LIB}/ld-linux-aarch64.so.1" "$file" 2>/dev/null || true
+            fi
+          done
           
-          # 查找所有 ELF 文件并并行处理
-          find "$INSTALL_ROOT" -type f -exec file {} \; | \
-            grep "ELF.*dynamically linked" | \
-            cut -d: -f1 | \
-            xargs -P $(nproc) -I {} bash -c 'fix_elf_file "$@"' _ {} "$WINLATOR_LIB" "$GST_PLUGINS_PATH"
+          # 修正 gstreamer 插件
+          find "$GST_PLUGINS_PATH" -type f -name "*.so" | while read -r file; do
+            if file "$file" | grep -q "ELF.*shared object"; then
+              echo "🔧 修正插件: $file"
+              patchelf --set-rpath "${WINLATOR_LIB}:${GST_PLUGINS_PATH}" "$file" 2>/dev/null || true
+            fi
+          done
           EOF
           
-          chmod +x "$FIX_SCRIPT"
-          bash "$FIX_SCRIPT"
+          chmod +x fix_elf_files.sh
+          ./fix_elf_files.sh "${{ env.WINLATOR_LIB }}" "${{ env.GST_PLUGINS_PATH }}"
           echo "✅ ELF 文件 RPATH 修正完成"
 
-      # 🔄 创建 gstreamer 配置文件（硬编码路径）
-      - name: 创建 gstreamer 配置文件
+      # 🔄 创建 gstreamer 环境配置
+      - name: 创建 gstreamer 环境配置
         if: steps.check_build.outputs.skip_build == 'false'
         run: |
-          echo "📝 创建 GStreamer 配置文件..."
+          echo "📝 创建 GStreamer 环境配置文件..."
           
           # 创建 gstreamer 配置目录
           mkdir -p ${{ env.WINLATOR_PREFIX }}/etc/gstreamer-1.0
           
           # 创建 gst-env 环境配置文件
           cat > ${{ env.WINLATOR_PREFIX }}/etc/gstreamer-1.0/gst-env << EOF
-          # GStreamer Winlator 环境配置
-          export GST_PLUGIN_PATH="${{ env.GST_PLUGINS_PATH }}"
-          export GST_PLUGIN_SYSTEM_PATH="${{ env.GST_PLUGINS_PATH }}"
-          export LD_LIBRARY_PATH="${{ env.WINLATOR_LIB }}:${{ env.GST_PLUGINS_PATH }}:\$LD_LIBRARY_PATH"
-          export PATH="${{ env.WINLATOR_PREFIX }}/bin:\$PATH"
-          export PKG_CONFIG_PATH="${{ env.WINLATOR_LIB }}/pkgconfig:\$PKG_CONFIG_PATH"
+            #!/bin/bash
+            # GStreamer Winlator 环境配置
+            export GST_PLUGIN_PATH="${{ env.GST_PLUGINS_PATH }}"
+            export GST_PLUGIN_SYSTEM_PATH="${{ env.GST_PLUGINS_PATH }}"
+            export LD_LIBRARY_PATH="${{ env.WINLATOR_LIB }}:${{ env.GST_PLUGINS_PATH }}:\$LD_LIBRARY_PATH"
+            export PATH="${{ env.WINLATOR_PREFIX }}/bin:\$PATH"
+            export PKG_CONFIG_PATH="${{ env.WINLATOR_LIB }}/pkgconfig:\$PKG_CONFIG_PATH"
           EOF
           
-          # 创建 gst-plugin-scanner 包装脚本
-          cat > ${{ env.WINLATOR_PREFIX }}/bin/gst-plugin-scanner-wrapper << 'EOF'
-          #!/bin/bash
-          export GST_PLUGIN_PATH="${{ env.GST_PLUGINS_PATH }}"
-          export GST_PLUGIN_SYSTEM_PATH="${{ env.GST_PLUGINS_PATH }}"
-          export LD_LIBRARY_PATH="${{ env.WINLATOR_LIB }}:${{ env.GST_PLUGINS_PATH }}:$LD_LIBRARY_PATH"
-          exec ${{ env.WINLATOR_PREFIX }}/lib/gstreamer-1.0/gst-plugin-scanner "$@"
-          EOF
-          
-          chmod +x ${{ env.WINLATOR_PREFIX }}/bin/gst-plugin-scanner-wrapper
-          echo "✅ GStreamer 配置文件创建完成"
+          chmod +x ${{ env.WINLATOR_PREFIX }}/etc/gstreamer-1.0/gst-env
+          echo "✅ GStreamer 环境配置文件创建完成"
 
       # 🧱 打包构建结果
       - name: 打包 usr 目录
@@ -286,6 +292,7 @@ jobs:
 
             ### 🛠️ 构建特性
             - ✅ Base / Good / Ugly / Bad / LibAV / GPL 全启用
+            - ✅ VP8/VP9 解码支持
             - ❌ RTSP Server / Devtools / Tools 已禁用
             - 🏗️ 构建类型: Release
 
@@ -311,8 +318,10 @@ jobs:
 
             ### 🔧 测试命令
             ```bash
+            source /data/data/com.winlator/files/rootfs/usr/etc/gstreamer-1.0/gst-env
             gst-inspect-1.0 --version
-            gst-inspect-1.0 --plugin-path=${{ env.GST_PLUGINS_PATH }} vp8dec
+            gst-inspect-1.0 vp8dec
+            gst-inspect-1.0 vp9dec
             ```
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
