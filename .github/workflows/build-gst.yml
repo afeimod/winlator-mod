@@ -1,4 +1,4 @@
-name: Build GStreamer Decoders (armv7, Dev + libvpx)
+name: winlator GStreamer Decoders (aarch64, Dev + libvpx)
 
 on:
   workflow_dispatch:
@@ -9,22 +9,22 @@ on:
 permissions:
   contents: write
   packages: write
-  actions: write
-  checks: write
 
 env:
   LAST_COMMIT_FILE: last_gst_commit.txt
   INSTALL_ROOT: /data/data/com.winlator/files/rootfs/usr
-  CROSS_FILE: cross-file.txt
-  NDK_VERSION: r25b
-  NDK_DIR: /opt/android-ndk
+  WINLATOR_ROOT: /data/data/com.winlator/files/rootfs
+  WINLATOR_PREFIX: /data/data/com.winlator/files/rootfs/usr
+  WINLATOR_LIB: /data/data/com.winlator/files/rootfs/usr/lib
+  WINLATOR_INC: /data/data/com.winlator/files/rootfs/usr/include
+  GST_PLUGINS_PATH: /data/data/com.winlator/files/rootfs/usr/lib/gstreamer-1.0
 
 jobs:
   build:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-24.04-arm
 
-    steps:
-      # 🧩 检出 workflow 仓库
+    steps: 
+      # 🧩 检出仓库
       - name: 检出 workflow 仓库
         uses: actions/checkout@v4
 
@@ -35,8 +35,7 @@ jobs:
           sudo apt-get install -y build-essential python3-pip git pkg-config nasm \
             libglib2.0-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
             liborc-0.4-dev libxv-dev libx11-dev libasound2-dev libpulse-dev patchelf \
-            libtheora-dev libx264-dev libx265-dev libvpx-dev \
-            wget unzip autoconf automake libtool
+            libtheora-dev libx264-dev libx265-dev libvpx-dev
 
       # ⚙️ 升级 Meson 和 Ninja
       - name: 升级 Meson 和 Ninja
@@ -44,42 +43,22 @@ jobs:
           pip install --upgrade pip
           pip install --upgrade meson ninja
 
-      # 🔧 安装 Android NDK
-      - name: 安装 Android NDK
+      # 🔧 设置 Winlator 编译与链接路径
+      - name: 设置 Winlator 编译环境
         run: |
-          echo "📦 下载 Android NDK ${{ env.NDK_VERSION }}..."
-          wget -q https://dl.google.com/android/repository/android-ndk-${{ env.NDK_VERSION }}-linux.zip
-          sudo unzip -q android-ndk-${{ env.NDK_VERSION }}-linux.zip -d /opt
-          sudo mv /opt/android-ndk-${{ env.NDK_VERSION }} ${{ env.NDK_DIR }}
-          echo "✅ Android NDK 安装完成"
+          echo "export LDFLAGS='-L${{ env.WINLATOR_LIB }} -Wl,--dynamic-linker=${{ env.WINLATOR_LIB }}/ld-linux-aarch64.so.1 -Wl,-rpath,${{ env.WINLATOR_LIB }}:${{ env.GST_PLUGINS_PATH }}'" >> $GITHUB_ENV
+          echo "export CFLAGS='-I${{ env.WINLATOR_INC }}'" >> $GITHUB_ENV
+          echo "export CXXFLAGS='-I${{ env.WINLATOR_INC }}'" >> $GITHUB_ENV
+          echo "export LD_LIBRARY_PATH='${{ env.WINLATOR_LIB }}:${{ env.GST_PLUGINS_PATH }}:\$LD_LIBRARY_PATH'" >> $GITHUB_ENV
+          echo "export PKG_CONFIG_PATH='${{ env.WINLATOR_LIB }}/pkgconfig:${{ env.WINLATOR_LIB }}/aarch64-linux-gnu/pkgconfig:\$PKG_CONFIG_PATH'" >> $GITHUB_ENV
+          echo "export GST_PLUGIN_PATH='${{ env.GST_PLUGINS_PATH }}'" >> $GITHUB_ENV
+          echo "export GST_PLUGIN_SYSTEM_PATH='${{ env.GST_PLUGINS_PATH }}'" >> $GITHUB_ENV
 
-      # 📝 创建交叉编译配置文件
-      - name: 创建交叉编译配置文件
-        run: |
-          cat > ${{ env.CROSS_FILE }} << 'EOF'
-          [host_machine]
-          system = 'linux'
-          cpu_family = 'arm'
-          cpu = 'armv7'
-          endian = 'little'
-
-          [properties]
-          prefix = '/data/data/com.winlator/files/rootfs/usr'
-          libdir = 'lib'
-          pkg_config_libdir = '/data/data/com.winlator/files/rootfs/usr/lib/pkgconfig'
-
-          [binaries]
-          c = '${{ env.NDK_DIR }}/toolchains/llvm/prebuilt/linux-x86_64/bin/armv7a-linux-androideabi21-clang'
-          cpp = '${{ env.NDK_DIR }}/toolchains/llvm/prebuilt/linux-x86_64/bin/armv7a-linux-androideabi21-clang++'
-          ar = '${{ env.NDK_DIR }}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ar'
-          strip = '${{ env.NDK_DIR }}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip'
-          pkgconfig = 'pkg-config'
-          EOF
+          echo "✅ 已设置 Winlator 环境变量"
 
       # 🧬 克隆 GStreamer 开发版本
       - name: 克隆 GStreamer 开发版本
-        run: |
-          git clone --depth=1 https://gitlab.freedesktop.org/gstreamer/gstreamer.git
+        run: git clone --depth=1 https://gitlab.freedesktop.org/gstreamer/gstreamer.git
 
       # 🔍 获取开发版本信息
       - name: 获取开发版本信息
@@ -103,7 +82,7 @@ jobs:
       - name: 获取上次构建提交
         id: get_last_commit
         run: |
-          FILE="$GITHUB_WORKSPACE/${{ env.LAST_COMMIT_FILE }}"
+          FILE=${{ env.LAST_COMMIT_FILE }}
           if [ -f "$FILE" ]; then
             LAST_COMMIT=$(cat "$FILE")
           else
@@ -129,369 +108,153 @@ jobs:
         if: steps.check_build.outputs.skip_build == 'true'
         run: exit 0
 
-      # 🔤 构建 libiconv (必需)
-      - name: 构建 libiconv
+      # 🧱 构建 libvpx v1.14.0（绝对路径）
+      - name: 构建 libvpx v1.14.0
         if: steps.check_build.outputs.skip_build == 'false'
         run: |
-          echo "📦 构建 libiconv for Android..."
-          wget -q https://ftp.gnu.org/pub/gnu/libiconv/libiconv-1.17.tar.gz
-          tar -xzf libiconv-1.17.tar.gz
-          cd libiconv-1.17
-          
-          # 设置 Android NDK 工具链路径
-          export TOOLCHAIN=${{ env.NDK_DIR }}/toolchains/llvm/prebuilt/linux-x86_64
-          export CC=$TOOLCHAIN/bin/armv7a-linux-androideabi21-clang
-          export CXX=$TOOLCHAIN/bin/armv7a-linux-androideabi21-clang++
-          export AR=$TOOLCHAIN/bin/llvm-ar
-          export STRIP=$TOOLCHAIN/bin/llvm-strip
-          export RANLIB=$TOOLCHAIN/bin/llvm-ranlib
-          
-          # 确保安装目录权限正确
-          sudo mkdir -p ${{ env.INSTALL_ROOT }}
-          sudo chown -R $USER:$USER ${{ env.INSTALL_ROOT }}
-          
-          # 配置和构建
+          git clone https://chromium.googlesource.com/webm/libvpx
+          cd libvpx
+          git checkout v1.14.0
           ./configure \
-            --host=arm-linux-androideabi \
-            --prefix=${{ env.INSTALL_ROOT }} \
-            --enable-static=no \
-            --enable-shared=yes \
-            --disable-nls
-          
+            --prefix=${{ env.WINLATOR_PREFIX }} \
+            --libdir=${{ env.WINLATOR_LIB }} \
+            --enable-shared \
+            --enable-vp8 \
+            --enable-vp9 \
+            --enable-runtime-cpu-detect \
+            --target=arm64-linux-gcc \
+            --as=nasm \
+            --disable-examples \
+            --disable-docs
           make -j$(nproc)
-          make install
-          echo "✅ libiconv 构建完成"
+          sudo make install
+          echo "✅ libvpx v1.14.0 已安装到 ${{ env.WINLATOR_LIB }}"
 
-      # 🔤 构建 gettext (仅核心库，不构建工具)
-      - name: 构建 gettext 核心库
-        if: steps.check_build.outputs.skip_build == 'false'
-        run: |
-          echo "📦 构建 gettext 核心库 for Android..."
-          wget -q https://ftp.gnu.org/pub/gnu/gettext/gettext-0.21.tar.gz
-          tar -xzf gettext-0.21.tar.gz
-          cd gettext-0.21
-          
-          # 设置 Android NDK 工具链路径
-          export TOOLCHAIN=${{ env.NDK_DIR }}/toolchains/llvm/prebuilt/linux-x86_64
-          export CC=$TOOLCHAIN/bin/armv7a-linux-androideabi21-clang
-          export CXX=$TOOLCHAIN/bin/armv7a-linux-androideabi21-clang++
-          export AR=$TOOLCHAIN/bin/llvm-ar
-          export STRIP=$TOOLCHAIN/bin/llvm-strip
-          export RANLIB=$TOOLCHAIN/bin/llvm-ranlib
-          
-          # 确保安装目录权限正确
-          sudo mkdir -p ${{ env.INSTALL_ROOT }}
-          sudo chown -R $USER:$USER ${{ env.INSTALL_ROOT }}
-          
-          # 仅构建核心库，跳过复杂的工具
-          ./configure \
-            --host=arm-linux-androideabi \
-            --prefix=${{ env.INSTALL_ROOT }} \
-            --enable-static=no \
-            --enable-shared=yes \
-            --disable-java \
-            --disable-curses \
-            --disable-acl \
-            --disable-openmp \
-            --disable-csharp \
-            --disable-libasprintf \
-            --disable-curses \
-            --with-libiconv-prefix=${{ env.INSTALL_ROOT }} \
-            --disable-rpath
-          
-          # 仅构建和安装核心库
-          cd gettext-runtime
-          make -j$(nproc)
-          make install
-          echo "✅ gettext 核心库构建完成"
-
-      # 🔧 构建 pixman (解决 cpu-features.h 问题)
-      - name: 构建 pixman
-        if: steps.check_build.outputs.skip_build == 'false'
-        run: |
-          echo "📦 构建 pixman for Android..."
-          wget -q https://www.cairographics.org/releases/pixman-0.42.2.tar.gz
-          tar -xzf pixman-0.42.2.tar.gz
-          cd pixman-0.42.2
-          
-          # 设置 Android NDK 工具链路径
-          export TOOLCHAIN=${{ env.NDK_DIR }}/toolchains/llvm/prebuilt/linux-x86_64
-          export CC=$TOOLCHAIN/bin/armv7a-linux-androideabi21-clang
-          export CXX=$TOOLCHAIN/bin/armv7a-linux-androideabi21-clang++
-          export AR=$TOOLCHAIN/bin/llvm-ar
-          export STRIP=$TOOLCHAIN/bin/llvm-strip
-          export RANLIB=$TOOLCHAIN/bin/llvm-ranlib
-          
-          # 设置编译标志
-          export CFLAGS="-fPIC -march=armv7-a -mfpu=neon -mfloat-abi=softfp -I${{ env.INSTALL_ROOT }}/include"
-          export LDFLAGS="-L${{ env.INSTALL_ROOT }}/lib"
-          
-          # 确保安装目录权限正确
-          sudo mkdir -p ${{ env.INSTALL_ROOT }}
-          sudo chown -R $USER:$USER ${{ env.INSTALL_ROOT }}
-          
-          # 禁用 ARM 优化以避免 cpu-features.h 依赖
-          ./configure \
-            --host=arm-linux-androideabi \
-            --prefix=${{ env.INSTALL_ROOT }} \
-            --enable-static=no \
-            --enable-shared=yes \
-            --disable-arm-iwmmxt \
-            --disable-arm-simd \
-            --disable-arm-neon \
-            --disable-mmx \
-            --disable-sse2 \
-            --disable-ssse3 \
-            --disable-vmx \
-            --disable-arm-a64-neon
-          
-          make -j$(nproc)
-          make install
-          echo "✅ pixman 构建完成"
-
-      # 🛠️ 构建 GStreamer 解码器 (armv7) - 修复配置选项
+      # 🛠️ 构建 GStreamer 解码器（绝对路径）
       - name: 构建 GStreamer 解码器
         if: steps.check_build.outputs.skip_build == 'false'
         run: |
-          echo "🔧 准备构建 GStreamer..."
           cd gstreamer
           git submodule update --init --recursive
+          sudo mkdir -p ${{ env.WINLATOR_PREFIX }}
+          sudo chmod -R 777 ${{ env.WINLATOR_ROOT }}
           
-          # 彻底清理和准备安装目录
-          echo "🧹 准备安装目录..."
-          sudo mkdir -p ${{ env.INSTALL_ROOT }}
-          sudo chown -R $USER:$USER ${{ env.INSTALL_ROOT }}
-          mkdir -p ${{ env.INSTALL_ROOT }}/lib ${{ env.INSTALL_ROOT }}/include ${{ env.INSTALL_ROOT }}/bin ${{ env.INSTALL_ROOT }}/share
-          
-          # 彻底解决 open_memstream 问题
-          echo "🔧 彻底解决 open_memstream 问题..."
-          find subprojects -name "*.c" -type f -exec grep -l "open_memstream" {} \; | while read file; do
-            echo "修复文件: $file"
-            cp "$file" "$file.bak"
-            sed -i 's/fp = open_memstream([^)]*);/fp = NULL; \/\/ open_memstream disabled for Android/g' "$file"
-          done
-          
-          # 完全移除有问题的子项目
-          echo "🗑️ 移除有问题的子项目..."
-          rm -rf subprojects/libdrm*
-          rm -rf subprojects/libpsl*
-          rm -rf subprojects/cairo*
-          rm -rf subprojects/fontconfig*
-          rm -rf subprojects/freetype2*
-          rm -rf subprojects/harfbuzz*
-          
-          # 设置环境变量
-          export TOOLCHAIN=${{ env.NDK_DIR }}/toolchains/llvm/prebuilt/linux-x86_64
-          export PATH=$TOOLCHAIN/bin:$PATH
-          export PKG_CONFIG_LIBDIR=${{ env.INSTALL_ROOT }}/lib/pkgconfig
-          export PKG_CONFIG_PATH=${{ env.INSTALL_ROOT }}/lib/pkgconfig
-          export CC=$TOOLCHAIN/bin/armv7a-linux-androideabi21-clang
-          export CXX=$TOOLCHAIN/bin/armv7a-linux-androideabi21-clang++
-          
-          # 设置架构特定的编译标志
-          export NDK_SYSROOT=$TOOLCHAIN/sysroot
-          export NDK_INCLUDE=$TOOLCHAIN/sysroot/usr/include
-          export NDK_ARCH_INCLUDE=$TOOLCHAIN/sysroot/usr/include/arm-linux-androideabi
-          
-          export CFLAGS="-fPIC -march=armv7-a -mfpu=neon -mfloat-abi=softfp -I${{ env.INSTALL_ROOT }}/include -I$NDK_INCLUDE -I$NDK_ARCH_INCLUDE"
-          export CXXFLAGS="-fPIC -march=armv7-a -mfpu=neon -mfloat-abi=softfp -I${{ env.INSTALL_ROOT }}/include -I$NDK_INCLUDE -I$NDK_ARCH_INCLUDE"
-          export LDFLAGS="-L${{ env.INSTALL_ROOT }}/lib"
-          
-          # 配置 GStreamer 构建 - 使用有效的选项
-          echo "⚙️ 配置 GStreamer 构建..."
+          # 配置 meson 构建
           meson setup build \
-            --cross-file ../${{ env.CROSS_FILE }} \
-            --prefix=${{ env.INSTALL_ROOT }} \
+            -Dprefix=${{ env.WINLATOR_PREFIX }} \
             --libdir=lib \
             -Dbase=enabled \
-            -Dgood=enabled \
-            -Dugly=enabled \
-            -Dlibav=enabled \
-            -Dgpl=disabled \
-            -Ddefault_library=shared \
-            -Dtests=disabled \
-            -Ddoc=disabled \
-            -Dexamples=disabled \
-            -Dpython=disabled \
-            -Dlibnice=disabled \
-            -Dgst-plugins-good:vpx=disabled \
-            -Dbad=disabled \
-            -Dgst-plugins-base:gl=disabled \
-            -Dintrospection=disabled \
-            -Dgst-plugins-base:opus=disabled \
-            -Dgst-plugins-base:ogg=disabled \
-            -Dgst-plugins-base:vorbis=disabled \
-            -Dgst-plugins-base:theora=disabled \
-            -Dglib:libmount=disabled \
-            -Dglib:selinux=disabled \
-            -Dgst-plugins-base:alsa=disabled \
-            -Dgst-plugins-base:x11=disabled \
-            -Dgst-plugins-base:xvideo=disabled \
-            -Dgst-plugins-base:xshm=disabled \
-            -Dgst-plugins-base:pango=disabled \
-            -Dgst-plugins-good:cairo=disabled \
-            -Dwerror=false \
+            -Dpackage-origin="gstreamer-winlator" \
+            -Dgood=enabled -Dugly=enabled -Dbad=enabled \
+            -Dlibav=enabled -Dgpl=enabled -Ddefault_library=shared \
+            -Dtests=disabled -Ddoc=disabled -Dexamples=disabled \
+            -Dpython=disabled -Dnls=disabled \
+            -Dgst-plugins-libav:aac=disabled \
+            -Dgst-plugins-good:vpx=enabled \
+            -Dgst-plugins-bad:hip=disabled -Dgst-plugins-bad:nvcodec=disabled \
+            -Dgst-plugins-base:gl=disabled -Dintrospection=disabled \
+            -Dgst-full=enabled -Dgst-full-plugins='*' \
+            -Ddevtools=disabled -Dtools=disabled -Drtsp_server=disabled \
+            -Dgst-plugins-path=${{ env.GST_PLUGINS_PATH }} \
+            -Dpluginscoreelementspath=${{ env.GST_PLUGINS_PATH }} \
+            -Dpluginscoretracerspath=${{ env.GST_PLUGINS_PATH }} \
             --buildtype=release
           
-          # 修复 ninja 构建文件中的编译器选项
-          echo "🔧 修复 ninja 构建文件中的编译器选项..."
-          find build -name "*.ninja" -type f -exec sed -i 's/-implicit-function-declaration//g' {} \;
-          find build -name "*.ninja" -type f -exec sed -i 's/-Werror=[^ ]*//g' {} \;
-          find build -name "*.ninja" -type f -exec sed -i 's/-Werror//g' {} \;
-          
-          # 构建 GStreamer
-          echo "🔨 开始构建 GStreamer..."
-          ninja -C build -j$(nproc) -k 0 || true
-          
-          # 强制安装，即使有错误
-          echo "📥 强制安装 GStreamer..."
-          ninja -C build install || true
-          
-          echo "✅ GStreamer 构建完成"
+          ninja -C build -j$(nproc)
+          ninja -C build install
 
-      # 🔍 详细检查安装结果
-      - name: 详细检查安装结果
+      # 🔧 修正 ELF 文件 RPATH（绝对路径）
+      - name: 修正 ELF 文件 RPATH
         if: steps.check_build.outputs.skip_build == 'false'
+        shell: bash
         run: |
-          echo "🔍 详细检查 GStreamer 安装结果..."
-          echo "安装目录: ${{ env.INSTALL_ROOT }}"
+          echo "🔧 开始修正 ELF 文件 RPATH（绝对路径）..."
           
-          echo "📁 完整目录结构:"
-          find ${{ env.INSTALL_ROOT }} -type f -name "*.so" | head -20
-          find ${{ env.INSTALL_ROOT }} -type f -name "gst*" | head -20
-          
-          echo "📊 GStreamer 相关文件:"
-          find ${{ env.INSTALL_ROOT }} -name "*gst*" -type f | head -30
-          find ${{ env.INSTALL_ROOT }} -name "*GStreamer*" -type f | head -30
-          find ${{ env.INSTALL_ROOT }} -name "*gstreamer*" -type f | head -30
-          
-          echo "🔧 检查构建目录内容:"
-          ls -la gstreamer/build/ 2>/dev/null || echo "构建目录不存在"
-          find gstreamer/build -name "*.so" -type f 2>/dev/null | head -10
-          
-          # 检查安装大小
-          echo "💾 安装大小统计:"
-          du -sh ${{ env.INSTALL_ROOT }} 2>/dev/null || echo "安装目录不存在"
-          du -sh ${{ env.INSTALL_ROOT }}/lib 2>/dev/null || echo "lib 目录不存在"
-          du -sh ${{ env.INSTALL_ROOT }}/bin 2>/dev/null || echo "bin 目录不存在"
-
-      # 🧩 手动复制 GStreamer 文件（如果安装失败）
-      - name: 手动复制 GStreamer 文件
-        if: steps.check_build.outputs.skip_build == 'false'
-        run: |
-          echo "🔧 检查是否需要手动复制 GStreamer 文件..."
-          
-          # 检查安装目录中是否有 GStreamer 文件
-          if find ${{ env.INSTALL_ROOT }} -name "*gst*" -type f | grep -q .; then
-            echo "✅ GStreamer 文件已正确安装"
-          else
-            echo "⚠️ GStreamer 文件未安装，尝试手动复制..."
+          # 创建修正脚本
+          FIX_SCRIPT=$(mktemp)
+          cat <<'EOF' > "$FIX_SCRIPT"
+          fix_elf_file() {
+            local file="$1"
+            local winlator_lib="$2"
+            local gst_plugins_path="$3"
             
-            # 检查构建目录中的文件
-            if [ -d "gstreamer/build" ]; then
-              echo "📁 从构建目录复制文件..."
+            if file "$file" | grep -q "ELF.*dynamically linked"; then
+              echo "🔧 修正: $file"
               
-              # 复制库文件
-              find gstreamer/build -name "*.so" -type f | while read file; do
-                dirname=$(dirname "$file")
-                basename=$(basename "$file")
-                # 确定目标目录
-                if echo "$dirname" | grep -q "subprojects"; then
-                  target_dir="${{ env.INSTALL_ROOT }}/lib"
-                else
-                  target_dir="${{ env.INSTALL_ROOT }}/lib"
-                fi
-                mkdir -p "$target_dir"
-                cp "$file" "$target_dir/" 2>/dev/null || true
-                echo "复制: $basename -> $target_dir"
-              done
+              # 设置 RPATH
+              patchelf --set-rpath "${winlator_lib}:${gst_plugins_path}" "$file" 2>/dev/null || true
               
-              # 复制二进制文件
-              find gstreamer/build -name "gst-*" -type f -executable | while read file; do
-                cp "$file" "${{ env.INSTALL_ROOT }}/bin/" 2>/dev/null || true
-                echo "复制二进制文件: $(basename "$file")"
-              done
+              # 设置动态链接器
+              patchelf --set-interpreter "${winlator_lib}/ld-linux-aarch64.so.1" "$file" 2>/dev/null || true
               
-              # 复制插件
-              find gstreamer/build -path "*/gstreamer-1.0/*.so" -type f | while read file; do
-                mkdir -p "${{ env.INSTALL_ROOT }}/lib/gstreamer-1.0"
-                cp "$file" "${{ env.INSTALL_ROOT }}/lib/gstreamer-1.0/" 2>/dev/null || true
-                echo "复制插件: $(basename "$file")"
-              done
+              # 对于可执行文件，确保有正确的加载器
+              if patchelf --print-interpreter "$file" 2>/dev/null | grep -q "ld-linux"; then
+                echo "✅ 已设置动态链接器: $file"
+              fi
             fi
-          fi
+          }
           
-          # 最终检查
-          echo "📋 最终文件检查:"
-          find ${{ env.INSTALL_ROOT }} -name "*gst*" -type f | head -20
+          export -f fix_elf_file
+          
+          # 查找所有 ELF 文件并并行处理
+          find "$INSTALL_ROOT" -type f -exec file {} \; | \
+            grep "ELF.*dynamically linked" | \
+            cut -d: -f1 | \
+            xargs -P $(nproc) -I {} bash -c 'fix_elf_file "$@"' _ {} "$WINLATOR_LIB" "$GST_PLUGINS_PATH"
+          EOF
+          
+          chmod +x "$FIX_SCRIPT"
+          bash "$FIX_SCRIPT"
+          echo "✅ ELF 文件 RPATH 修正完成"
 
-      # 🧩 修补 ELF 解释器 (armv7)
-      - name: 修补 ELF 可执行文件
+      # 🔄 创建 gstreamer 配置文件（硬编码路径）
+      - name: 创建 gstreamer 配置文件
         if: steps.check_build.outputs.skip_build == 'false'
         run: |
-          echo "🔧 修补 ELF 解释器..."
-          INTERP="/data/data/com.winlator/files/rootfs/usr/lib/ld-linux-armhf.so.3"
+          echo "📝 创建 GStreamer 配置文件..."
           
-          # 修补二进制文件
-          if [ -d "${{ env.INSTALL_ROOT }}/bin" ]; then
-            echo "📁 修补 bin 目录..."
-            find "${{ env.INSTALL_ROOT }}/bin" -type f -exec file {} \; | grep ELF | cut -d: -f1 | while read f; do
-              patchelf --set-interpreter "$INTERP" "$f" 2>/dev/null || true
-            done
-          fi
+          # 创建 gstreamer 配置目录
+          mkdir -p ${{ env.WINLATOR_PREFIX }}/etc/gstreamer-1.0
           
-          # 修补库文件
-          if [ -d "${{ env.INSTALL_ROOT }}/lib" ]; then
-            echo "📁 修补 lib 目录..."
-            find "${{ env.INSTALL_ROOT }}/lib" -name "*.so*" -type f -exec file {} \; | grep ELF | cut -d: -f1 | while read f; do
-              patchelf --set-interpreter "$INTERP" "$f" 2>/dev/null || true
-            done
-          fi
+          # 创建 gst-env 环境配置文件
+          cat > ${{ env.WINLATOR_PREFIX }}/etc/gstreamer-1.0/gst-env << EOF
+          # GStreamer Winlator 环境配置
+          export GST_PLUGIN_PATH="${{ env.GST_PLUGINS_PATH }}"
+          export GST_PLUGIN_SYSTEM_PATH="${{ env.GST_PLUGINS_PATH }}"
+          export LD_LIBRARY_PATH="${{ env.WINLATOR_LIB }}:${{ env.GST_PLUGINS_PATH }}:\$LD_LIBRARY_PATH"
+          export PATH="${{ env.WINLATOR_PREFIX }}/bin:\$PATH"
+          export PKG_CONFIG_PATH="${{ env.WINLATOR_LIB }}/pkgconfig:\$PKG_CONFIG_PATH"
+          EOF
+          
+          # 创建 gst-plugin-scanner 包装脚本
+          cat > ${{ env.WINLATOR_PREFIX }}/bin/gst-plugin-scanner-wrapper << 'EOF'
+          #!/bin/bash
+          export GST_PLUGIN_PATH="${{ env.GST_PLUGINS_PATH }}"
+          export GST_PLUGIN_SYSTEM_PATH="${{ env.GST_PLUGINS_PATH }}"
+          export LD_LIBRARY_PATH="${{ env.WINLATOR_LIB }}:${{ env.GST_PLUGINS_PATH }}:$LD_LIBRARY_PATH"
+          exec ${{ env.WINLATOR_PREFIX }}/lib/gstreamer-1.0/gst-plugin-scanner "$@"
+          EOF
+          
+          chmod +x ${{ env.WINLATOR_PREFIX }}/bin/gst-plugin-scanner-wrapper
+          echo "✅ GStreamer 配置文件创建完成"
 
       # 🧱 打包构建结果
-      - name: 打包 glibc 目录
-        id: package
+      - name: 打包 usr 目录
         if: steps.check_build.outputs.skip_build == 'false'
         run: |
-          echo "📦 开始打包..."
-          
-          # 确保在正确的目录
-          cd /data/data/com.winlator/files/rootfs
-          
-          # 最终文件检查
-          echo "📋 打包前最终检查:"
-          find usr -name "*gst*" -type f | head -20
-          find usr -name "*.so" -type f | head -20
-          
-          # 创建打包文件
-          TAR_NAME="winlator-glibc-gst-decoders-armv7-${{ env.VERSION }}-${{ env.COMMIT_SHORT }}.tar.gz"
-          echo "创建打包文件: $TAR_NAME"
-          
-          # 打包
-          tar -czf /tmp/$TAR_NAME usr/
-          mv /tmp/$TAR_NAME $GITHUB_WORKSPACE/
-          
-          # 检查打包文件内容
-          echo "📦 打包文件内容:"
-          tar -tzf $GITHUB_WORKSPACE/$TAR_NAME | grep -E "(gst|GStreamer)" | head -20
-          
-          # 保存提交信息
-          echo "${{ env.LATEST_COMMIT }}" > $GITHUB_WORKSPACE/${{ env.LAST_COMMIT_FILE }}
-          
-          # 设置环境变量
+          cd ${{ env.WINLATOR_ROOT }}
+          TAR_NAME="winlator-gst-decoders-${VERSION}.tar.gz"
+          tar -czvf /home/runner/$TAR_NAME usr
+          echo "$LATEST_COMMIT" > ${{ env.LAST_COMMIT_FILE }}
           echo "TAR_NAME=$TAR_NAME" >> $GITHUB_ENV
-          echo "tar_name=$TAR_NAME" >> $GITHUB_OUTPUT
-          
-          echo "✅ 打包完成: $TAR_NAME"
 
-      # ⬆️ 上传构建产物到 Artifacts
-      - name: 上传构建产物到 Artifacts
+      # ⬆️ 上传构建产物
+      - name: 上传构建产物
         if: steps.check_build.outputs.skip_build == 'false'
         uses: actions/upload-artifact@v4
         with:
-          name: gstreamer-decoders-armv7
-          path: ${{ github.workspace }}/winlator-glibc-gst-decoders-armv7-*.tar.gz
-          retention-days: 30
+          name: ${{ env.TAR_NAME }}
+          path: /home/runner/${{ env.TAR_NAME }}
 
       # 💾 上传提交记录
       - name: 上传提交记录
@@ -499,7 +262,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: last-gst-commit
-          path: ${{ github.workspace }}/${{ env.LAST_COMMIT_FILE }}
+          path: ${{ env.LAST_COMMIT_FILE }}
           retention-days: 365
 
       # 🚀 发布到 GitHub Release
@@ -507,43 +270,49 @@ jobs:
         if: steps.check_build.outputs.skip_build == 'false'
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ env.VERSION }}-armv7
-          name: "GStreamer Decoders ${{ env.VERSION }} (armv7, winlator glibc)"
+          tag_name: ${{ env.VERSION }}
+          name: "GStreamer Decoders ${{ env.VERSION }} (aarch64, Winlator)"
           body: |
-            ## 🎯 GStreamer 开发版本构建 (armv7)
-            
+            ## 🎯 GStreamer 开发版本构建
+
             ### 📋 构建信息
             - **版本**: `${{ env.VERSION }}`
-            - **架构**: armv7
-            - **环境**: winlator glibc
-            - **工具链**: Android NDK ${{ env.NDK_VERSION }} (clang)
+            - **架构**: aarch64
+            - **环境**: Winlator
             - **提交**: [`${{ env.COMMIT_SHORT }}`](https://gitlab.freedesktop.org/gstreamer/gstreamer/-/commit/${{ env.LATEST_COMMIT }})
             - **提交日期**: ${{ env.COMMIT_DATE }}
             - **作者**: `${{ env.AUTHOR }}`
             - **构建时间**: `${{ env.BUILD_DATE }}`
-            
+
             ### 🛠️ 构建特性
-            - ✅ **基础插件** (base)
-            - ✅ **优质插件** (good) 
-            - ✅ **丑陋插件** (ugly)
-            - ❌ **不良插件** (bad) - 因兼容性问题已禁用
-            - ✅ **LibAV 支持**
-            - ✅ **字符编码支持** (libiconv + gettext)
-            - ✅ **Pixman 支持** (预编译解决 cpu-features.h 问题)
-            - ❌ **Cairo 相关功能** - 已移除有问题的子项目
-            
-            ### 🐛 已解决的问题
-            - ✅ **cpu-features.h 缺失** - 通过预编译 pixman 并禁用 ARM 优化解决
-            - ✅ **open_memstream 不支持** - 通过修改源代码解决
-            - ✅ **-implicit-function-declaration 编译器错误** - 通过修复构建文件解决
-            - ✅ **libnice OpenSSL 依赖问题** - 通过禁用 libnice 解决
-            - ✅ **libdrm 和 libpsl 构建问题** - 通过移除有问题的子项目解决
-            - ✅ **Cairo 构建错误** - 通过移除 cairo 子项目解决
-            
+            - ✅ Base / Good / Ugly / Bad / LibAV / GPL 全启用
+            - ❌ RTSP Server / Devtools / Tools 已禁用
+            - 🏗️ 构建类型: Release
+
             ### 📦 文件信息
-            - **文件名**: `winlator-glibc-gst-decoders-armv7-${{ env.VERSION }}-${{ env.COMMIT_SHORT }}.tar.gz`
-            - **包含**: GStreamer 开发版本及依赖库
+            - **文件名**: `${{ env.TAR_NAME }}`
+            - **安装根目录**: `${{ env.WINLATOR_ROOT }}`
+            - **前缀路径**: `${{ env.WINLATOR_PREFIX }}`
+            - **库路径**: `${{ env.WINLATOR_LIB }}`
+            - **插件路径**: `${{ env.GST_PLUGINS_PATH }}`
+            - **动态链接器**: `${{ env.WINLATOR_LIB }}/ld-linux-aarch64.so.1`
+            - **RPATH**: `${{ env.WINLATOR_LIB }}:${{ env.GST_PLUGINS_PATH }}`
+
+            ### 📥 安装说明
+            1. 解压到 Winlator 根目录：
+            ```bash
+            tar -xzvf ${{ env.TAR_NAME }} -C /data/data/com.winlator/files/rootfs
+            ```
             
-          files: ${{ github.workspace }}/winlator-glibc-gst-decoders-armv7-*.tar.gz
+            2. 设置环境变量：
+            ```bash
+            source ${{ env.WINLATOR_PREFIX }}/etc/gstreamer-1.0/gst-env
+            ```
+
+            ### 🔧 测试命令
+            ```bash
+            gst-inspect-1.0 --version
+            gst-inspect-1.0 --plugin-path=${{ env.GST_PLUGINS_PATH }} vp8dec
+            ```
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
