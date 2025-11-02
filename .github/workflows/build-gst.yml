@@ -46,7 +46,7 @@ jobs:
       # 🔧 设置 Winlator 编译与链接路径
       - name: 设置 Winlator 编译环境
         run: |
-          echo "export LDFLAGS='-L${{ env.WINLATOR_LIB }} -Wl,--dynamic-linker=${{ env.WINLATOR_LIB }}/ld-linux-aarch64.so.1 -Wl,-rpath,${{ env.WINLATOR_LIB }}:${{ env.GST_PLUGINS_PATH }}'" >> $GITHUB_ENV
+          echo "export LDFLAGS='-L${{ env.WINLATOR_LIB }} -Wl,--dynamic-linker=${{ env.WINLATOR_LIB }}/ld-linux-aarch64.so.1 -Wl,-rpath,${{ env.WINLATOR_LIB }}:${{ env.GST_PLUGINS_PATH }} -Wl,-rpath-link,${{ env.WINLATOR_LIB }}'" >> $GITHUB_ENV
           echo "export CFLAGS='-I${{ env.WINLATOR_INC }}'" >> $GITHUB_ENV
           echo "export CXXFLAGS='-I${{ env.WINLATOR_INC }}'" >> $GITHUB_ENV
           echo "export LD_LIBRARY_PATH='${{ env.WINLATOR_LIB }}:${{ env.GST_PLUGINS_PATH }}:\$LD_LIBRARY_PATH'" >> $GITHUB_ENV
@@ -108,7 +108,7 @@ jobs:
         if: steps.check_build.outputs.skip_build == 'true'
         run: exit 0
 
-      # 🧱 构建 libvpx v1.14.0（绝对路径）
+      # 🧱 构建 libvpx v1.14.0
       - name: 构建 libvpx v1.14.0
         if: steps.check_build.outputs.skip_build == 'false'
         run: |
@@ -130,7 +130,7 @@ jobs:
           sudo make install
           echo "✅ libvpx v1.14.0 已安装到 ${{ env.WINLATOR_LIB }}"
 
-      # 🛠️ 构建 GStreamer 解码器（修正版）
+      # 🛠️ 构建 GStreamer 解码器（使用 DESTDIR 而非 prefix）
       - name: 构建 GStreamer 解码器
         if: steps.check_build.outputs.skip_build == 'false'
         run: |
@@ -140,9 +140,9 @@ jobs:
           sudo chmod -R 777 ${{ env.WINLATOR_ROOT }}
           
           echo "🔧 配置 Meson 构建系统..."
-          # 配置 meson 构建 - 只使用有效的选项
+          # 使用 DESTDIR 而不是 prefix 来避免硬编码路径
           meson setup build \
-            -Dprefix=${{ env.WINLATOR_PREFIX }} \
+            -Dprefix=/usr \
             --libdir=lib \
             -Dbase=enabled \
             -Dpackage-origin="gstreamer-winlator" \
@@ -173,55 +173,70 @@ jobs:
           ninja -C build -j$(nproc)
           
           echo "📦 安装到目标目录..."
-          ninja -C build install
+          DESTDIR=${{ env.WINLATOR_ROOT }} ninja -C build install
           
           echo "✅ GStreamer 构建完成"
 
-      # 🔧 修正 ELF 文件 RPATH
-      - name: 修正 ELF 文件 RPATH
+      # 🔧 深度清理和修正 ELF 文件
+      - name: 深度清理和修正 ELF 文件
         if: steps.check_build.outputs.skip_build == 'false'
         shell: bash
         run: |
-          echo "🔧 开始修正 ELF 文件 RPATH..."
+          echo "🔧 深度清理 ELF 文件路径..."
           
-          # 创建修正脚本
-          cat > fix_elf_files.sh << 'EOF'
+          # 创建深度清理脚本
+          cat > deep_clean_elf.sh << 'EOF'
           #!/bin/bash
           WINLATOR_LIB="$1"
           GST_PLUGINS_PATH="$2"
           
-          echo "📦 扫描 ELF 文件..."
-          find "$WINLATOR_LIB" -type f -name "*.so" -o -name "*.so.*" | while read -r file; do
+          echo "🗑️ 清理构建路径并设置正确 RPATH..."
+          
+          # 查找所有 ELF 文件并清理路径
+          find "$WINLATOR_LIB" -type f \( -name "*.so" -o -name "*.so.*" \) | while read -r file; do
             if file "$file" | grep -q "ELF.*shared object"; then
-              echo "🔧 修正: $file"
-              # 设置 RPATH
-              patchelf --set-rpath "${WINLATOR_LIB}:${GST_PLUGINS_PATH}" "$file" 2>/dev/null || true
+              echo "🧹 清理: $(basename "$file")"
+              
+              # 首先移除所有 RPATH
+              patchelf --remove-rpath "$file" 2>/dev/null || true
+              
+              # 设置纯净的 RPATH
+              patchelf --set-rpath "$WINLATOR_LIB:$GST_PLUGINS_PATH" "$file" 2>/dev/null || true
+              
+              # 检查并清理依赖项
+              ldd_output=$(ldd "$file" 2>/dev/null || true)
+              if echo "$ldd_output" | grep -q "not found"; then
+                echo "⚠️  发现未解析依赖: $file"
+              fi
             fi
           done
           
-          # 修正可执行文件
+          # 处理可执行文件
           find "$WINLATOR_LIB/../bin" -type f 2>/dev/null | while read -r file; do
             if file "$file" | grep -q "ELF.*executable"; then
-              echo "🔧 修正可执行文件: $file"
-              patchelf --set-rpath "${WINLATOR_LIB}:${GST_PLUGINS_PATH}" "$file" 2>/dev/null || true
-              patchelf --set-interpreter "${WINLATOR_LIB}/ld-linux-aarch64.so.1" "$file" 2>/dev/null || true
+              echo "🔧 修正可执行文件: $(basename "$file")"
+              patchelf --remove-rpath "$file" 2>/dev/null || true
+              patchelf --set-rpath "$WINLATOR_LIB:$GST_PLUGINS_PATH" "$file" 2>/dev/null || true
+              patchelf --set-interpreter "$WINLATOR_LIB/ld-linux-aarch64.so.1" "$file" 2>/dev/null || true
             fi
           done
           
-          # 修正 gstreamer 插件
+          # 特别处理 gstreamer 插件
           find "$GST_PLUGINS_PATH" -type f -name "*.so" | while read -r file; do
             if file "$file" | grep -q "ELF.*shared object"; then
-              echo "🔧 修正插件: $file"
-              patchelf --set-rpath "${WINLATOR_LIB}:${GST_PLUGINS_PATH}" "$file" 2>/dev/null || true
+              echo "🔌 清理插件: $(basename "$file")"
+              patchelf --remove-rpath "$file" 2>/dev/null || true
+              patchelf --set-rpath "$WINLATOR_LIB:$GST_PLUGINS_PATH" "$file" 2>/dev/null || true
             fi
           done
+          
+          echo "✅ 深度清理完成"
           EOF
           
-          chmod +x fix_elf_files.sh
-          ./fix_elf_files.sh "${{ env.WINLATOR_LIB }}" "${{ env.GST_PLUGINS_PATH }}"
-          echo "✅ ELF 文件 RPATH 修正完成"
+          chmod +x deep_clean_elf.sh
+          ./deep_clean_elf.sh "${{ env.WINLATOR_LIB }}" "${{ env.GST_PLUGINS_PATH }}"
 
-      # 🔄 创建 gstreamer 环境配置
+      # 🔄 创建正确的 gstreamer 配置
       - name: 创建 gstreamer 环境配置
         if: steps.check_build.outputs.skip_build == 'false'
         run: |
@@ -231,18 +246,51 @@ jobs:
           mkdir -p ${{ env.WINLATOR_PREFIX }}/etc/gstreamer-1.0
           
           # 创建 gst-env 环境配置文件
-          cat > ${{ env.WINLATOR_PREFIX }}/etc/gstreamer-1.0/gst-env << EOF
+          cat > ${{ env.WINLATOR_PREFIX }}/etc/gstreamer-1.0/gst-env << 'EOF'
             #!/bin/bash
             # GStreamer Winlator 环境配置
-            export GST_PLUGIN_PATH="${{ env.GST_PLUGINS_PATH }}"
-            export GST_PLUGIN_SYSTEM_PATH="${{ env.GST_PLUGINS_PATH }}"
-            export LD_LIBRARY_PATH="${{ env.WINLATOR_LIB }}:${{ env.GST_PLUGINS_PATH }}:\$LD_LIBRARY_PATH"
-            export PATH="${{ env.WINLATOR_PREFIX }}/bin:\$PATH"
-            export PKG_CONFIG_PATH="${{ env.WINLATOR_LIB }}/pkgconfig:\$PKG_CONFIG_PATH"
+            export GST_PLUGIN_PATH="/data/data/com.winlator/files/rootfs/usr/lib/gstreamer-1.0"
+            export GST_PLUGIN_SYSTEM_PATH="/data/data/com.winlator/files/rootfs/usr/lib/gstreamer-1.0"
+            export LD_LIBRARY_PATH="/data/data/com.winlator/files/rootfs/usr/lib:/data/data/com.winlator/files/rootfs/usr/lib/gstreamer-1.0:$LD_LIBRARY_PATH"
+            export PATH="/data/data/com.winlator/files/rootfs/usr/bin:$PATH"
+            export PKG_CONFIG_PATH="/data/data/com.winlator/files/rootfs/usr/lib/pkgconfig:$PKG_CONFIG_PATH"
           EOF
           
           chmod +x ${{ env.WINLATOR_PREFIX }}/etc/gstreamer-1.0/gst-env
+          
+          # 创建 gst-plugin-scanner 包装器
+          cat > ${{ env.WINLATOR_PREFIX }}/bin/gst-plugin-scanner-wrapper << 'EOF'
+#!/bin/bash
+export GST_PLUGIN_PATH="/data/data/com.winlator/files/rootfs/usr/lib/gstreamer-1.0"
+export GST_PLUGIN_SYSTEM_PATH="/data/data/com.winlator/files/rootfs/usr/lib/gstreamer-1.0"
+export LD_LIBRARY_PATH="/data/data/com.winlator/files/rootfs/usr/lib:/data/data/com.winlator/files/rootfs/usr/lib/gstreamer-1.0:$LD_LIBRARY_PATH"
+exec /data/data/com.winlator/files/rootfs/usr/lib/gstreamer-1.0/gst-plugin-scanner "$@"
+EOF
+          
+          chmod +x ${{ env.WINLATOR_PREFIX }}/bin/gst-plugin-scanner-wrapper
           echo "✅ GStreamer 环境配置文件创建完成"
+
+      # 🧪 验证构建结果
+      - name: 验证构建结果
+        if: steps.check_build.outputs.skip_build == 'false'
+        run: |
+          echo "🔍 验证构建结果..."
+          
+          # 检查关键文件
+          echo "📁 检查安装的文件:"
+          find ${{ env.WINLATOR_LIB }} -name "*.so" | head -10
+          
+          # 检查 RPATH 设置
+          echo "🔧 检查 RPATH 设置:"
+          for lib in ${{ env.GST_PLUGINS_PATH }}/*.so; do
+            if [ -f "$lib" ]; then
+              rpath=$(patchelf --print-rpath "$lib" 2>/dev/null || echo "none")
+              echo "  $(basename "$lib"): $rpath"
+            fi
+            break
+          done
+          
+          echo "✅ 验证完成"
 
       # 🧱 打包构建结果
       - name: 打包 usr 目录
@@ -271,12 +319,12 @@ jobs:
           path: ${{ env.LAST_COMMIT_FILE }}
           retention-days: 365
 
-      # 🚀 发布到 GitHub Release
+      # 🚀 发布到 GitHub Release（修正权限）
       - name: 发布到 GitHub Release
         if: steps.check_build.outputs.skip_build == 'false'
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ env.VERSION }}
+          tag_name: gst-${{ env.VERSION }}
           name: "GStreamer Decoders ${{ env.VERSION }} (aarch64, Winlator)"
           body: |
             ## 🎯 GStreamer 开发版本构建
@@ -291,37 +339,27 @@ jobs:
             - **构建时间**: `${{ env.BUILD_DATE }}`
 
             ### 🛠️ 构建特性
-            - ✅ Base / Good / Ugly / Bad / LibAV / GPL 全启用
+            - ✅ 使用 DESTDIR 安装，避免硬编码路径
+            - ✅ 深度清理 ELF 文件 RPATH
+            - ✅ Base / Good / Ugly / Bad / LibAV 全启用
             - ✅ VP8/VP9 解码支持
-            - ❌ RTSP Server / Devtools / Tools 已禁用
-            - 🏗️ 构建类型: Release
 
             ### 📦 文件信息
             - **文件名**: `${{ env.TAR_NAME }}`
-            - **安装根目录**: `${{ env.WINLATOR_ROOT }}`
-            - **前缀路径**: `${{ env.WINLATOR_PREFIX }}`
-            - **库路径**: `${{ env.WINLATOR_LIB }}`
-            - **插件路径**: `${{ env.GST_PLUGINS_PATH }}`
-            - **动态链接器**: `${{ env.WINLATOR_LIB }}/ld-linux-aarch64.so.1`
-            - **RPATH**: `${{ env.WINLATOR_LIB }}:${{ env.GST_PLUGINS_PATH }}`
+            - **安装路径**: `/data/data/com.winlator/files/rootfs/usr`
+            - **库路径**: `/data/data/com.winlator/files/rootfs/usr/lib`
+            - **插件路径**: `/data/data/com.winlator/files/rootfs/usr/lib/gstreamer-1.0`
 
             ### 📥 安装说明
-            1. 解压到 Winlator 根目录：
             ```bash
             tar -xzvf ${{ env.TAR_NAME }} -C /data/data/com.winlator/files/rootfs
-            ```
-            
-            2. 设置环境变量：
-            ```bash
-            source ${{ env.WINLATOR_PREFIX }}/etc/gstreamer-1.0/gst-env
+            source /data/data/com.winlator/files/rootfs/usr/etc/gstreamer-1.0/gst-env
             ```
 
             ### 🔧 测试命令
             ```bash
-            source /data/data/com.winlator/files/rootfs/usr/etc/gstreamer-1.0/gst-env
             gst-inspect-1.0 --version
             gst-inspect-1.0 vp8dec
-            gst-inspect-1.0 vp9dec
             ```
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
