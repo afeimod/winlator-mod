@@ -9,6 +9,8 @@ on:
 permissions:
   contents: write
   packages: write
+  actions: write
+  checks: write
 
 env:
   LAST_COMMIT_FILE: last_gst_commit.txt
@@ -372,6 +374,7 @@ jobs:
 
       # 🧱 打包构建结果
       - name: 打包 glibc 目录
+        id: package
         if: steps.check_build.outputs.skip_build == 'false'
         run: |
           cd /data/data/com.winlator/files/rootfs
@@ -379,14 +382,18 @@ jobs:
           tar -czvf /home/runner/$TAR_NAME usr
           echo "$LATEST_COMMIT" > ${{ env.LAST_COMMIT_FILE }}
           echo "TAR_NAME=$TAR_NAME" >> $GITHUB_ENV
+          # 设置输出供后续步骤使用
+          echo "tar_name=$TAR_NAME" >> $GITHUB_OUTPUT
+          echo "📦 打包完成: $TAR_NAME"
 
-      # ⬆️ 上传构建产物
-      - name: 上传构建产物
+      # ⬆️ 上传构建产物到 Artifacts
+      - name: 上传构建产物到 Artifacts
         if: steps.check_build.outputs.skip_build == 'false'
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ env.TAR_NAME }}
-          path: /home/runner/$TAR_NAME
+          name: gstreamer-decoders-armv7
+          path: /home/runner/winlator-glibc-gst-decoders-armv7-*.tar.gz
+          retention-days: 30
 
       # 💾 上传提交记录
       - name: 上传提交记录
@@ -439,7 +446,7 @@ jobs:
             - ✅ **libdrm 和 libpsl 构建问题** - 通过移除有问题的子项目解决
             
             ### 📦 文件信息
-            - **文件名**: `${{ env.TAR_NAME }}`
+            - **文件名**: `winlator-glibc-gst-decoders-armv7-${{ env.VERSION }}.tar.gz`
             - **包含**: 完整的 GStreamer 开发版本安装 (armv7)
             
             ### ⚠️ 注意事项
@@ -450,6 +457,6 @@ jobs:
             - 已解决多个 Android 兼容性问题
             - 建议仅用于测试和开发目的
             
-          files: /home/runner/$TAR_NAME
+          files: /home/runner/winlator-glibc-gst-decoders-armv7-*.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
