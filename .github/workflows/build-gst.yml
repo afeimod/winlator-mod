@@ -260,12 +260,12 @@ jobs:
           
           # 创建 gst-plugin-scanner 包装器
           cat > ${{ env.WINLATOR_PREFIX }}/bin/gst-plugin-scanner-wrapper << 'EOF'
-#!/bin/bash
-export GST_PLUGIN_PATH="/data/data/com.winlator/files/rootfs/usr/lib/gstreamer-1.0"
-export GST_PLUGIN_SYSTEM_PATH="/data/data/com.winlator/files/rootfs/usr/lib/gstreamer-1.0"
-export LD_LIBRARY_PATH="/data/data/com.winlator/files/rootfs/usr/lib:/data/data/com.winlator/files/rootfs/usr/lib/gstreamer-1.0:$LD_LIBRARY_PATH"
-exec /data/data/com.winlator/files/rootfs/usr/lib/gstreamer-1.0/gst-plugin-scanner "$@"
-EOF
+            #!/bin/bash
+            export GST_PLUGIN_PATH="/data/data/com.winlator/files/rootfs/usr/lib/gstreamer-1.0"
+            export GST_PLUGIN_SYSTEM_PATH="/data/data/com.winlator/files/rootfs/usr/lib/gstreamer-1.0"
+            export LD_LIBRARY_PATH="/data/data/com.winlator/files/rootfs/usr/lib:/data/data/com.winlator/files/rootfs/usr/lib/gstreamer-1.0:$LD_LIBRARY_PATH"
+            exec /data/data/com.winlator/files/rootfs/usr/lib/gstreamer-1.0/gst-plugin-scanner "$@"
+          EOF
           
           chmod +x ${{ env.WINLATOR_PREFIX }}/bin/gst-plugin-scanner-wrapper
           echo "✅ GStreamer 环境配置文件创建完成"
