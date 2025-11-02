@@ -99,21 +99,20 @@ jobs:
           echo "BUILD_DATE=$DATE" >> $GITHUB_ENV
           echo "COMMIT_DATE=$COMMIT_DATE" >> $GITHUB_ENV
 
-      # 💾 获取上次构建提交 - 修复权限问题
+      # 💾 获取上次构建提交 - 使用工作目录避免权限问题
       - name: 获取上次构建提交
         id: get_last_commit
         run: |
-          FILE=${{ env.LAST_COMMIT_FILE }}
-          # 确保文件在当前用户权限下创建
-          if [ -f "$FILE" ]; then
-            # 如果文件存在但权限不对，先修复权限
-            sudo chown $USER:$USER "$FILE" 2>/dev/null || true
-            LAST_COMMIT=$(cat "$FILE")
+          # 在工作目录中创建文件，避免权限问题
+          WORKSPACE_FILE="$GITHUB_WORKSPACE/${{ env.LAST_COMMIT_FILE }}"
+          if [ -f "$WORKSPACE_FILE" ]; then
+            LAST_COMMIT=$(cat "$WORKSPACE_FILE")
           else
-            echo "none" > "$FILE"
+            echo "none" > "$WORKSPACE_FILE"
             LAST_COMMIT="none"
           fi
           echo "LAST_COMMIT=$LAST_COMMIT" >> $GITHUB_ENV
+          echo "WORKSPACE_FILE=$WORKSPACE_FILE" >> $GITHUB_ENV
 
       # 🔍 判断是否需要构建
       - name: 判断是否需要构建
@@ -132,7 +131,7 @@ jobs:
         if: steps.check_build.outputs.skip_build == 'true'
         run: exit 0
 
-      # 🔤 构建 libiconv (必需) - 修复安装路径权限
+      # 🔤 构建 libiconv (必需)
       - name: 构建 libiconv
         if: steps.check_build.outputs.skip_build == 'false'
         run: |
@@ -165,7 +164,7 @@ jobs:
           make install
           echo "✅ libiconv 构建完成"
 
-      # 🔤 构建 gettext (仅核心库，不构建工具) - 修复安装路径权限
+      # 🔤 构建 gettext (仅核心库，不构建工具)
       - name: 构建 gettext 核心库
         if: steps.check_build.outputs.skip_build == 'false'
         run: |
@@ -208,7 +207,7 @@ jobs:
           make install
           echo "✅ gettext 核心库构建完成"
 
-      # 🔧 构建 pixman (解决 cpu-features.h 问题) - 修复安装路径权限
+      # 🔧 构建 pixman (解决 cpu-features.h 问题)
       - name: 构建 pixman
         if: steps.check_build.outputs.skip_build == 'false'
         run: |
@@ -424,7 +423,7 @@ jobs:
             done
           fi
 
-      # 🧱 打包构建结果 - 修复权限和排除不需要的文件
+      # 🧱 打包构建结果 - 修复权限和打包问题
       - name: 打包 glibc 目录
         id: package
         if: steps.check_build.outputs.skip_build == 'false'
@@ -440,6 +439,7 @@ jobs:
           rm -rf usr/share/doc 2>/dev/null || true
           rm -rf usr/share/info 2>/dev/null || true
           rm -rf usr/include 2>/dev/null || true
+          rm -rf usr/share/locale 2>/dev/null || true
           
           # 检查要打包的内容
           echo "📁 检查打包目录内容:"
@@ -449,25 +449,24 @@ jobs:
           echo "二进制文件:"
           find usr/bin -type f | head -10
           
-          # 创建打包文件
+          # 创建打包文件 - 使用绝对路径避免输出错误
           TAR_NAME="winlator-glibc-gst-decoders-armv7-${{ env.VERSION }}-${{ env.COMMIT_SHORT }}.tar.gz"
           echo "创建打包文件: $TAR_NAME"
           
-          # 打包 usr 目录，排除开发文件
-          tar -czvf /home/runner/$TAR_NAME \
-            --exclude='*.la' \
-            --exclude='*.a' \
-            --exclude='pkgconfig' \
-            usr/
+          # 使用更可靠的打包方式
+          tar -czf /tmp/$TAR_NAME usr/
+          
+          # 移动到工作目录
+          mv /tmp/$TAR_NAME $GITHUB_WORKSPACE/
           
           # 检查打包文件
           echo "📦 打包文件信息:"
-          ls -lh /home/runner/$TAR_NAME
-          tar -tzf /home/runner/$TAR_NAME | head -20
+          ls -lh $GITHUB_WORKSPACE/$TAR_NAME
+          echo "文件列表预览:"
+          tar -tzf $GITHUB_WORKSPACE/$TAR_NAME | head -20
           
-          # 保存提交信息 - 修复权限问题
-          echo "${{ env.LATEST_COMMIT }}" > ${{ env.LAST_COMMIT_FILE }}
-          chmod 644 ${{ env.LAST_COMMIT_FILE }}
+          # 保存提交信息 - 使用工作目录避免权限问题
+          echo "${{ env.LATEST_COMMIT }}" > $GITHUB_WORKSPACE/${{ env.LAST_COMMIT_FILE }}
           
           # 设置环境变量
           echo "TAR_NAME=$TAR_NAME" >> $GITHUB_ENV
@@ -481,24 +480,16 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: gstreamer-decoders-armv7
-          path: /home/runner/winlator-glibc-gst-decoders-armv7-*.tar.gz
+          path: ${{ github.workspace }}/winlator-glibc-gst-decoders-armv7-*.tar.gz
           retention-days: 30
 
-      # 💾 上传提交记录 - 修复权限问题
+      # 💾 上传提交记录
       - name: 上传提交记录
-        if: steps.check_build.outputs.skip_build == 'false'
-        run: |
-          # 确保文件权限正确
-          chmod 644 ${{ env.LAST_COMMIT_FILE }}
-          ls -la ${{ env.LAST_COMMIT_FILE }}
-        # 然后使用 upload-artifact
-      
-      - name: 实际上传提交记录
         if: steps.check_build.outputs.skip_build == 'false'
         uses: actions/upload-artifact@v4
         with:
           name: last-gst-commit
-          path: ${{ env.LAST_COMMIT_FILE }}
+          path: ${{ github.workspace }}/${{ env.LAST_COMMIT_FILE }}
           retention-days: 365
 
       # 🚀 发布到 GitHub Release
@@ -555,6 +546,6 @@ jobs:
             - 已解决多个 Android 兼容性问题
             - 建议仅用于测试和开发目的
             
-          files: /home/runner/winlator-glibc-gst-decoders-armv7-*.tar.gz
+          files: ${{ github.workspace }}/winlator-glibc-gst-decoders-armv7-*.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
