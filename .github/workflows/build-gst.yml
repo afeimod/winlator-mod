@@ -99,12 +99,15 @@ jobs:
           echo "BUILD_DATE=$DATE" >> $GITHUB_ENV
           echo "COMMIT_DATE=$COMMIT_DATE" >> $GITHUB_ENV
 
-      # 💾 获取上次构建提交
+      # 💾 获取上次构建提交 - 修复权限问题
       - name: 获取上次构建提交
         id: get_last_commit
         run: |
           FILE=${{ env.LAST_COMMIT_FILE }}
+          # 确保文件在当前用户权限下创建
           if [ -f "$FILE" ]; then
+            # 如果文件存在但权限不对，先修复权限
+            sudo chown $USER:$USER "$FILE" 2>/dev/null || true
             LAST_COMMIT=$(cat "$FILE")
           else
             echo "none" > "$FILE"
@@ -129,7 +132,7 @@ jobs:
         if: steps.check_build.outputs.skip_build == 'true'
         run: exit 0
 
-      # 🔤 构建 libiconv (必需)
+      # 🔤 构建 libiconv (必需) - 修复安装路径权限
       - name: 构建 libiconv
         if: steps.check_build.outputs.skip_build == 'false'
         run: |
@@ -146,6 +149,10 @@ jobs:
           export STRIP=$TOOLCHAIN/bin/llvm-strip
           export RANLIB=$TOOLCHAIN/bin/llvm-ranlib
           
+          # 确保安装目录权限正确
+          sudo mkdir -p ${{ env.INSTALL_ROOT }}
+          sudo chown -R $USER:$USER ${{ env.INSTALL_ROOT }}
+          
           # 配置和构建
           ./configure \
             --host=arm-linux-androideabi \
@@ -155,10 +162,10 @@ jobs:
             --disable-nls
           
           make -j$(nproc)
-          sudo make install
+          make install
           echo "✅ libiconv 构建完成"
 
-      # 🔤 构建 gettext (仅核心库，不构建工具)
+      # 🔤 构建 gettext (仅核心库，不构建工具) - 修复安装路径权限
       - name: 构建 gettext 核心库
         if: steps.check_build.outputs.skip_build == 'false'
         run: |
@@ -174,6 +181,10 @@ jobs:
           export AR=$TOOLCHAIN/bin/llvm-ar
           export STRIP=$TOOLCHAIN/bin/llvm-strip
           export RANLIB=$TOOLCHAIN/bin/llvm-ranlib
+          
+          # 确保安装目录权限正确
+          sudo mkdir -p ${{ env.INSTALL_ROOT }}
+          sudo chown -R $USER:$USER ${{ env.INSTALL_ROOT }}
           
           # 仅构建核心库，跳过复杂的工具
           ./configure \
@@ -194,10 +205,10 @@ jobs:
           # 仅构建和安装核心库
           cd gettext-runtime
           make -j$(nproc)
-          sudo make install
+          make install
           echo "✅ gettext 核心库构建完成"
 
-      # 🔧 构建 pixman (解决 cpu-features.h 问题)
+      # 🔧 构建 pixman (解决 cpu-features.h 问题) - 修复安装路径权限
       - name: 构建 pixman
         if: steps.check_build.outputs.skip_build == 'false'
         run: |
@@ -218,6 +229,10 @@ jobs:
           export CFLAGS="-fPIC -march=armv7-a -mfpu=neon -mfloat-abi=softfp -I${{ env.INSTALL_ROOT }}/include"
           export LDFLAGS="-L${{ env.INSTALL_ROOT }}/lib"
           
+          # 确保安装目录权限正确
+          sudo mkdir -p ${{ env.INSTALL_ROOT }}
+          sudo chown -R $USER:$USER ${{ env.INSTALL_ROOT }}
+          
           # 禁用 ARM 优化以避免 cpu-features.h 依赖
           ./configure \
             --host=arm-linux-androideabi \
@@ -234,7 +249,7 @@ jobs:
             --disable-arm-a64-neon
           
           make -j$(nproc)
-          sudo make install
+          make install
           echo "✅ pixman 构建完成"
 
       # 🛠️ 构建 GStreamer 解码器 (armv7)
@@ -409,7 +424,7 @@ jobs:
             done
           fi
 
-      # 🧱 打包构建结果
+      # 🧱 打包构建结果 - 修复权限和排除不需要的文件
       - name: 打包 glibc 目录
         id: package
         if: steps.check_build.outputs.skip_build == 'false'
@@ -419,24 +434,40 @@ jobs:
           # 确保在正确的目录
           cd /data/data/com.winlator/files/rootfs
           
+          # 清理不需要的文件
+          echo "🧹 清理不需要的文件..."
+          rm -rf usr/share/man 2>/dev/null || true
+          rm -rf usr/share/doc 2>/dev/null || true
+          rm -rf usr/share/info 2>/dev/null || true
+          rm -rf usr/include 2>/dev/null || true
+          
           # 检查要打包的内容
           echo "📁 检查打包目录内容:"
           ls -la usr/ || echo "usr 目录不存在"
-          ls -la usr/lib/ | head -10
-          ls -la usr/bin/ | head -10
+          echo "库文件:"
+          find usr/lib -name "*.so" | head -10
+          echo "二进制文件:"
+          find usr/bin -type f | head -10
           
           # 创建打包文件
           TAR_NAME="winlator-glibc-gst-decoders-armv7-${{ env.VERSION }}-${{ env.COMMIT_SHORT }}.tar.gz"
           echo "创建打包文件: $TAR_NAME"
           
-          # 打包 usr 目录
-          tar -czvf /home/runner/$TAR_NAME usr/
+          # 打包 usr 目录，排除开发文件
+          tar -czvf /home/runner/$TAR_NAME \
+            --exclude='*.la' \
+            --exclude='*.a' \
+            --exclude='pkgconfig' \
+            usr/
           
           # 检查打包文件
+          echo "📦 打包文件信息:"
           ls -lh /home/runner/$TAR_NAME
+          tar -tzf /home/runner/$TAR_NAME | head -20
           
-          # 保存提交信息
+          # 保存提交信息 - 修复权限问题
           echo "${{ env.LATEST_COMMIT }}" > ${{ env.LAST_COMMIT_FILE }}
+          chmod 644 ${{ env.LAST_COMMIT_FILE }}
           
           # 设置环境变量
           echo "TAR_NAME=$TAR_NAME" >> $GITHUB_ENV
@@ -453,8 +484,16 @@ jobs:
           path: /home/runner/winlator-glibc-gst-decoders-armv7-*.tar.gz
           retention-days: 30
 
-      # 💾 上传提交记录
+      # 💾 上传提交记录 - 修复权限问题
       - name: 上传提交记录
+        if: steps.check_build.outputs.skip_build == 'false'
+        run: |
+          # 确保文件权限正确
+          chmod 644 ${{ env.LAST_COMMIT_FILE }}
+          ls -la ${{ env.LAST_COMMIT_FILE }}
+        # 然后使用 upload-artifact
+      
+      - name: 实际上传提交记录
         if: steps.check_build.outputs.skip_build == 'false'
         uses: actions/upload-artifact@v4
         with:
@@ -506,6 +545,7 @@ jobs:
             ### 📦 文件信息
             - **文件名**: `winlator-glibc-gst-decoders-armv7-${{ env.VERSION }}-${{ env.COMMIT_SHORT }}.tar.gz`
             - **包含**: 完整的 GStreamer 开发版本安装 (armv7)
+            - **排除**: 开发文件、文档、静态库等
             
             ### ⚠️ 注意事项
             - 此为开发版本，可能包含未稳定的特性
