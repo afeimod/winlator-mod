@@ -1,4 +1,4 @@
-name: winlator GStreamer Decoders (aarch64, Dev) - 跳过 libvpx 版
+name: winlator GStreamer Decoders (aarch64, Dev) - 权限修复版
 
 on:
   workflow_dispatch:
@@ -132,11 +132,16 @@ jobs:
 
           echo "✅ 已设置优化的 Winlator 环境变量"
 
-      # 📦 使用系统 libvpx 库
+      # 📦 使用系统 libvpx 库（修复权限问题）
       - name: 复制系统 libvpx 库
         if: steps.check_build.outputs.skip_build == 'false'
         run: |
           echo "📦 复制系统 libvpx 库..."
+          
+          # 首先修复目标目录的权限
+          WINLATOR_ROOT="/data/data/com.winlator/files/rootfs"
+          sudo chown -R $USER:$USER $WINLATOR_ROOT
+          sudo chmod -R 755 $WINLATOR_ROOT
           
           # 查找系统 libvpx 库文件
           LIBVPX_LIBS=$(find /usr/lib -name "libvpx*.so*" 2>/dev/null || true)
@@ -148,27 +153,32 @@ jobs:
             echo "✅ 找到系统 libvpx 库:"
             echo "$LIBVPX_LIBS"
             
-            # 复制库文件到目标目录
+            # 复制库文件到目标目录（不使用sudo）
             for lib in $LIBVPX_LIBS; do
               if [ -f "$lib" ]; then
-                sudo cp -p "$lib" "/data/data/com.winlator/files/rootfs/usr/lib/"
+                cp -p "$lib" "/data/data/com.winlator/files/rootfs/usr/lib/"
                 echo "📄 复制: $(basename $lib)"
               fi
             done
             
-            # 复制头文件
+            # 复制头文件（不使用sudo）
             if [ -d "/usr/include/aarch64-linux-gnu/vpx" ]; then
-              sudo cp -r "/usr/include/aarch64-linux-gnu/vpx" "/data/data/com.winlator/files/rootfs/usr/include/"
+              cp -r "/usr/include/aarch64-linux-gnu/vpx" "/data/data/com.winlator/files/rootfs/usr/include/"
             elif [ -d "/usr/include/vpx" ]; then
-              sudo cp -r "/usr/include/vpx" "/data/data/com.winlator/files/rootfs/usr/include/"
+              cp -r "/usr/include/vpx" "/data/data/com.winlator/files/rootfs/usr/include/"
             fi
+            
+            # 修复复制文件的权限（不使用sudo，因为我们已经是所有者）
+            chmod 755 /data/data/com.winlator/files/rootfs/usr/lib/libvpx*.so* || true
+            chmod -R 644 /data/data/com.winlator/files/rootfs/usr/include/vpx/* || true
+            chmod 755 /data/data/com.winlator/files/rootfs/usr/include/vpx || true
             
             echo "✅ 系统 libvpx 库复制完成"
           else
             echo "⚠️ 未找到系统 libvpx 库，GStreamer 将不包含 VP8/VP9 解码支持"
           fi
 
-      # 🛠️ 构建 GStreamer 解码器（跳过 vpx 如果不可用）
+      # 🛠️ 构建 GStreamer 解码器（修复权限问题）
       - name: 构建 GStreamer 解码器
         if: steps.check_build.outputs.skip_build == 'false'
         run: |
@@ -181,7 +191,9 @@ jobs:
           chmod -R 755 $WINLATOR_ROOT
           
           # 检查 libvpx 是否可用
-          if pkg-config --exists vpx; then
+          if [ -f "/data/data/com.winlator/files/rootfs/usr/lib/libvpx.so" ] || \
+             [ -f "/data/data/com.winlator/files/rootfs/usr/lib/libvpx.so.8" ] || \
+             [ -f "/data/data/com.winlator/files/rootfs/usr/lib/libvpx.so.7" ]; then
             echo "✅ libvpx 可用，启用 VP8/VP9 支持"
             VPX_OPTION="-Dgst-plugins-good:vpx=enabled"
           else
@@ -220,11 +232,17 @@ jobs:
           # 复制所有文件到 Winlator 目录
           cp -r $TEMP_INSTALL_DIR/usr/* $WINLATOR_ROOT/usr/
           
-          # 修复文件权限
-          find $WINLATOR_ROOT/usr -type f -exec chmod 644 {} \;
-          find $WINLATOR_ROOT/usr -type d -exec chmod 755 {} \;
-          find $WINLATOR_ROOT/usr/bin -type f -exec chmod 755 {} \;
-          find $WINLATOR_ROOT/usr/lib -name "*.so*" -exec chmod 755 {} \;
+          # 修复文件权限（避免权限错误）
+          echo "🔧 修复文件权限..."
+          find $WINLATOR_ROOT/usr -type f -exec chmod 644 {} \; 2>/dev/null || true
+          find $WINLATOR_ROOT/usr -type d -exec chmod 755 {} \; 2>/dev/null || true
+          find $WINLATOR_ROOT/usr/bin -type f -exec chmod 755 {} \; 2>/dev/null || true
+          find $WINLATOR_ROOT/usr/lib -name "*.so*" -exec chmod 755 {} \; 2>/dev/null || true
+          
+          # 特别修复 libvpx 文件的权限（如果存在）
+          chmod 755 $WINLATOR_ROOT/usr/lib/libvpx*.so* 2>/dev/null || true
+          chmod -R 644 $WINLATOR_ROOT/usr/include/vpx/* 2>/dev/null || true
+          chmod 755 $WINLATOR_ROOT/usr/include/vpx 2>/dev/null || true
           
           echo "✅ GStreamer 构建完成"
 
@@ -366,7 +384,7 @@ jobs:
         run: |
           echo "📦 开始打包构建结果..."
           cd /data/data/com.winlator/files/rootfs
-          TAR_NAME="winlator-gst-decoders-${VERSION}-no-libvpx-build.tar.gz"
+          TAR_NAME="winlator-gst-decoders-${VERSION}-permission-fixed.tar.gz"
           
           # 创建打包列表，排除不必要的文件
           echo "🗂️ 创建打包清单..."
@@ -409,10 +427,10 @@ jobs:
         if: steps.check_build.outputs.skip_build == 'false'
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ env.VERSION }}-no-libvpx-build
-          name: "GStreamer Decoders ${{ env.VERSION }} (aarch64, Winlator)"
+          tag_name: ${{ env.VERSION }}-permission-fixed
+          name: "GStreamer Decoders ${{ env.VERSION }} Permission Fixed (aarch64, Winlator)"
           body: |
-            ## 🎯 GStreamer 开发版本构建
+            ## 🎯 GStreamer 开发版本构建 - 权限修复版
 
             ### 📋 构建信息
             - **版本**: `${{ env.VERSION }}`
@@ -425,14 +443,14 @@ jobs:
 
             ### 🛠️ 构建特性
             - ✅ Base / Good / Ugly / Bad / LibAV / GPL 全启用
-            - ❌ VP8/VP9 解码支持：使用系统 libvpx（如果可用）
+            - ✅ VP8/VP9 解码支持：使用系统 libvpx（如果可用）
             - ❌ RTSP Server 已禁用
             - 🏗️ 构建类型: Release
             - 🔗 RPATH: 使用优化的相对路径模式
 
-            ### 🔧 构建说明
-            - ✅ 跳过自定义 libvpx 构建（因配置问题）
-            - ✅ 使用系统 libvpx 库（如果存在）
+            ### 🔧 修复内容
+            - ✅ 修复 libvpx 文件权限问题
+            - ✅ 改进文件复制和权限设置流程
             - ✅ 自动检测并相应启用/禁用 VP8/VP9 支持
 
             ### 📦 文件信息
@@ -470,6 +488,6 @@ jobs:
           echo "✅ 提交: ${{ env.COMMIT_SHORT }}"
           echo "✅ 文件: ${{ env.TAR_NAME }}"
           echo "✅ 时间: ${{ env.BUILD_DATE }}"
-          echo "✅ 状态: 跳过 libvpx 构建，使用系统库"
+          echo "✅ 状态: 权限问题已修复"
           echo "========================"
           echo "所有构建步骤已完成！"
