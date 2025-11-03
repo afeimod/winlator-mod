@@ -1,4 +1,4 @@
-name: winlator GStreamer Decoders (aarch64, Dev) - 完整修复版
+name: winlator GStreamer Decoders (aarch64, Dev + libvpx)
 
 on:
   workflow_dispatch:
@@ -12,7 +12,7 @@ permissions:
 
 env:
   LAST_COMMIT_FILE: last_gst_commit.txt
-  INSTALL_ROOT: /data/data/com.winlator/files/rootfs/usr
+  INSTALL_ROOT: /data/data/com.winlator/files/rootfs
 
 jobs:
   build:
@@ -27,7 +27,7 @@ jobs:
       - name: 安装基础依赖
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential python3-pip git pkg-config \
+          sudo apt-get install -y build-essential python3-pip git pkg-config nasm \
             libglib2.0-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
             liborc-0.4-dev libxv-dev libx11-dev libasound2-dev libpulse-dev patchelf \
             libtheora-dev libx264-dev libx265-dev libvpx-dev
@@ -38,9 +38,24 @@ jobs:
           pip install --upgrade pip
           pip install --upgrade meson ninja
 
+      # 🔧 设置 Winlator 编译与链接路径
+      - name: 设置 Winlator 编译环境
+        run: |
+          WINLATOR_ROOT="/data/data/com.winlator/files/rootfs"
+          WINLATOR_LIB="${WINLATOR_ROOT}/lib"
+          WINLATOR_INC="${WINLATOR_ROOT}/include"
+
+          echo "export LDFLAGS='-L${WINLATOR_LIB} -Wl,--dynamic-linker=${WINLATOR_LIB}/ld-linux-aarch64.so.1 -Wl,-rpath,${WINLATOR_LIB}'" >> $GITHUB_ENV
+          echo "export CFLAGS='-I${WINLATOR_INC}'" >> $GITHUB_ENV
+          echo "export CXXFLAGS='-I${WINLATOR_INC}'" >> $GITHUB_ENV
+          echo "export LD_LIBRARY_PATH='${WINLATOR_LIB}:\$LD_LIBRARY_PATH'" >> $GITHUB_ENV
+          echo "export PKG_CONFIG_PATH='${WINLATOR_LIB}/pkgconfig:${WINLATOR_LIB}/aarch64-linux-gnu/pkgconfig:\$PKG_CONFIG_PATH'" >> $GITHUB_ENV
+
+          echo "✅ 已设置 Winlator 环境变量"
+
       # 🧬 克隆 GStreamer 开发版本
       - name: 克隆 GStreamer 开发版本
-        run: git clone --depth=1 https://gitlab.freedesktop.org/gstreamer/gstreamer.git
+        run: git clone https://gitlab.freedesktop.org/gstreamer/gstreamer.git
 
       # 🔍 获取开发版本信息
       - name: 获取开发版本信息
@@ -88,180 +103,68 @@ jobs:
       # ⏭️ 跳过无更新构建
       - name: 跳过无更新构建
         if: steps.check_build.outputs.skip_build == 'true'
-        run: |
-          echo "🟡 代码无更新，跳过构建流程"
-          exit 0
+        run: exit 0
 
-      # 🔐 准备安装目录权限
-      - name: 准备安装目录权限
+      # 🧱 构建 libvpx v1.14.0（绝对嵌入）
+      - name: 构建 libvpx v1.14.0
         if: steps.check_build.outputs.skip_build == 'false'
         run: |
-          echo "🔐 准备安装目录权限..."
-          WINLATOR_ROOT="/data/data/com.winlator/files/rootfs"
-          
-          # 创建完整的目录结构
-          sudo mkdir -p $WINLATOR_ROOT/usr/{lib,include,bin,share}
-          sudo mkdir -p $WINLATOR_ROOT/lib
-          
-          # 设置正确的所有权和权限
-          sudo chown -R $USER:$USER $WINLATOR_ROOT
-          sudo chmod -R 755 $WINLATOR_ROOT
-          
-          # 验证权限
-          echo "📁 目录权限:"
-          ls -la $WINLATOR_ROOT/
-          ls -la $WINLATOR_ROOT/usr/
-          echo "✅ 安装目录权限设置完成"
+          git clone https://chromium.googlesource.com/webm/libvpx
+          cd libvpx
+          git checkout v1.14.0
+          ./configure \
+            --prefix=/data/data/com.winlator/files/rootfs \
+            --libdir=/data/data/com.winlator/files/rootfs/lib \
+            --enable-shared \
+            --enable-vp8 \
+            --enable-vp9 \
+            --enable-runtime-cpu-detect \
+            --target=arm64-linux-gcc \
+            --as=nasm \
+            --disable-examples \
+            --disable-docs
+          make -j$(nproc)
+          sudo make install
+          echo "✅ libvpx v1.14.0 已安装到 /data/data/com.winlator/files/rootfs/lib"
 
-      # 🔧 设置 Winlator 编译环境
-      - name: 设置 Winlator 编译环境
-        if: steps.check_build.outputs.skip_build == 'false'
-        run: |
-          WINLATOR_ROOT="/data/data/com.winlator/files/rootfs"
-          WINLATOR_LIB="${WINLATOR_ROOT}/usr/lib"
-          WINLATOR_INC="${WINLATOR_ROOT}/usr/include"
-
-          # 使用混合路径格式的RPATH
-          MIXED_RPATH='/data/data/com.winlator/files/rootfs/lib:$ORIGIN/../../../gst-plugins-base/gst-libs/gst/pbutils:$ORIGIN/../../../gst-plugins-base/gst-libs/gst/video:$ORIGIN/../../../gstreamer/libs/gst/base:$ORIGIN/../../../gstreamer/gst:$ORIGIN/../../../glib-2.82.2/glib:$ORIGIN/../../../glib-2.82.2/gobject:$ORIGIN/../../../libffi/src:$ORIGIN/../../../glib-2.82.2/gmodule:$ORIGIN/../../../gst-plugins-base/gst-libs/gst/audio:$ORIGIN/../../../gst-plugins-base/gst-libs/gst/tag:/data/data/com.winlator/files/rootfs/usr/lib'
-
-          echo "LDFLAGS='-L${WINLATOR_LIB} -Wl,--dynamic-linker=${WINLATOR_LIB}/ld-linux-aarch64.so.1 -Wl,-rpath=${MIXED_RPATH}'" >> $GITHUB_ENV
-          echo "CFLAGS='-I${WINLATOR_INC}'" >> $GITHUB_ENV
-          echo "CXXFLAGS='-I${WINLATOR_INC}'" >> $GITHUB_ENV
-          echo "LD_LIBRARY_PATH='${WINLATOR_LIB}:\$LD_LIBRARY_PATH'" >> $GITHUB_ENV
-          echo "PKG_CONFIG_PATH='${WINLATOR_LIB}/pkgconfig:${WINLATOR_LIB}/aarch64-linux-gnu/pkgconfig:\$PKG_CONFIG_PATH'" >> $GITHUB_ENV
-          echo "MIXED_RPATH=${MIXED_RPATH}" >> $GITHUB_ENV
-
-          echo "✅ 已设置混合路径格式的 Winlator 环境变量"
-
-      # 📦 使用系统 libvpx 库（修复权限问题）
-      - name: 复制系统 libvpx 库
-        if: steps.check_build.outputs.skip_build == 'false'
-        run: |
-          echo "📦 复制系统 libvpx 库..."
-          
-          # 首先修复目标目录的权限
-          WINLATOR_ROOT="/data/data/com.winlator/files/rootfs"
-          sudo chown -R $USER:$USER $WINLATOR_ROOT
-          sudo chmod -R 755 $WINLATOR_ROOT
-          
-          # 查找系统 libvpx 库文件
-          LIBVPX_LIBS=$(find /usr/lib -name "libvpx*.so*" 2>/dev/null || true)
-          if [ -z "$LIBVPX_LIBS" ]; then
-            LIBVPX_LIBS=$(find /usr/lib/aarch64-linux-gnu -name "libvpx*.so*" 2>/dev/null || true)
-          fi
-          
-          if [ -n "$LIBVPX_LIBS" ]; then
-            echo "✅ 找到系统 libvpx 库:"
-            echo "$LIBVPX_LIBS"
-            
-            # 复制库文件到目标目录（不使用sudo）
-            for lib in $LIBVPX_LIBS; do
-              if [ -f "$lib" ]; then
-                cp -p "$lib" "/data/data/com.winlator/files/rootfs/usr/lib/"
-                echo "📄 复制: $(basename $lib)"
-              fi
-            done
-            
-            # 复制头文件（不使用sudo）
-            if [ -d "/usr/include/aarch64-linux-gnu/vpx" ]; then
-              cp -r "/usr/include/aarch64-linux-gnu/vpx" "/data/data/com.winlator/files/rootfs/usr/include/"
-            elif [ -d "/usr/include/vpx" ]; then
-              cp -r "/usr/include/vpx" "/data/data/com.winlator/files/rootfs/usr/include/"
-            fi
-            
-            # 修复复制文件的权限（不使用sudo，因为我们已经是所有者）
-            chmod 755 /data/data/com.winlator/files/rootfs/usr/lib/libvpx*.so* || true
-            chmod -R 644 /data/data/com.winlator/files/rootfs/usr/include/vpx/* || true
-            chmod 755 /data/data/com.winlator/files/rootfs/usr/include/vpx || true
-            
-            echo "✅ 系统 libvpx 库复制完成"
-          else
-            echo "⚠️ 未找到系统 libvpx 库，GStreamer 将不包含 VP8/VP9 解码支持"
-          fi
-
-      # 🛠️ 构建 GStreamer 解码器
+      # 🛠️ 构建 GStreamer 解码器（绝对嵌入）
       - name: 构建 GStreamer 解码器
         if: steps.check_build.outputs.skip_build == 'false'
         run: |
-          echo "🏗️ 开始构建 GStreamer..."
           cd gstreamer
           git submodule update --init --recursive
-          
-          # 再次确保权限正确
-          WINLATOR_ROOT="/data/data/com.winlator/files/rootfs"
-          chmod -R 755 $WINLATOR_ROOT
-          
-          # 检查 libvpx 是否可用
-          if [ -f "/data/data/com.winlator/files/rootfs/usr/lib/libvpx.so" ] || \
-             [ -f "/data/data/com.winlator/files/rootfs/usr/lib/libvpx.so.8" ] || \
-             [ -f "/data/data/com.winlator/files/rootfs/usr/lib/libvpx.so.7" ]; then
-            echo "✅ libvpx 可用，启用 VP8/VP9 支持"
-            VPX_OPTION="-Dgst-plugins-good:vpx=enabled"
-          else
-            echo "⚠️ libvpx 不可用，禁用 VP8/VP9 支持"
-            VPX_OPTION="-Dgst-plugins-good:vpx=disabled"
-          fi
-          
-          # 创建临时安装目录
-          TEMP_INSTALL_DIR="/tmp/gst-install"
-          mkdir -p $TEMP_INSTALL_DIR
-          
-          echo "⚙️ 配置 GStreamer 构建..."
+          sudo mkdir -p /data/data/com.winlator/files/rootfs
+          sudo chmod -R 777 /data
           meson setup build \
-            -Dprefix=/usr \
+            -Dprefix=/data/data/com.winlator/files/rootfs \
             --libdir=lib \
             -Dbase=enabled \
+            -Dpackage-origin="gstreamer-winlator" \
             -Dgood=enabled -Dugly=enabled -Dbad=enabled \
             -Dlibav=enabled -Dgpl=enabled -Ddefault_library=shared \
             -Dtests=disabled -Ddoc=disabled -Dexamples=disabled \
             -Dpython=disabled -Dnls=disabled \
             -Dgst-plugins-libav:aac=disabled \
-            $VPX_OPTION \
+            -Dgst-plugins-good:vpx=enabled \
             -Dgst-plugins-bad:hip=disabled -Dgst-plugins-bad:nvcodec=disabled \
             -Dgst-plugins-base:gl=disabled -Dintrospection=disabled \
-            -Dgst-full=enabled \
+            -Dgst-full=enabled -Dgst-full-plugins='*' \
             -Ddevtools=disabled -Dtools=disabled -Drtsp_server=disabled \
-            -Dbuildtype=release
-          
-          echo "🔨 编译 GStreamer..."
+            --buildtype=release
           ninja -C build -j$(nproc)
-          
-          echo "📥 安装 GStreamer 到临时目录..."
-          DESTDIR="$TEMP_INSTALL_DIR" ninja -C build install
-          
-          echo "📋 复制文件到目标位置..."
-          # 复制所有文件到 Winlator 目录
-          cp -r $TEMP_INSTALL_DIR/usr/* $WINLATOR_ROOT/usr/
-          
-          # 修复文件权限（避免权限错误）
-          echo "🔧 修复文件权限..."
-          find $WINLATOR_ROOT/usr -type f -exec chmod 644 {} \; 2>/dev/null || true
-          find $WINLATOR_ROOT/usr -type d -exec chmod 755 {} \; 2>/dev/null || true
-          find $WINLATOR_ROOT/usr/bin -type f -exec chmod 755 {} \; 2>/dev/null || true
-          find $WINLATOR_ROOT/usr/lib -name "*.so*" -exec chmod 755 {} \; 2>/dev/null || true
-          
-          # 特别修复 libvpx 文件的权限（如果存在）
-          chmod 755 $WINLATOR_ROOT/usr/lib/libvpx*.so* 2>/dev/null || true
-          chmod -R 644 $WINLATOR_ROOT/usr/include/vpx/* 2>/dev/null || true
-          chmod 755 $WINLATOR_ROOT/usr/include/vpx 2>/dev/null || true
-          
-          echo "✅ GStreamer 构建完成"
+          ninja -C build install
 
-      # 🔧 修正 ELF 文件 RPATH（使用混合路径格式）
-      - name: 修正 ELF 文件 RPATH（混合路径格式）
+      # 🔧 修正 ELF 文件 RPATH（并行、绝对路径）
+      - name: 修正 ELF 文件 RPATH（整合版）
         if: steps.check_build.outputs.skip_build == 'false'
         shell: bash
         run: |
-          echo "🔧 开始修正 ELF 文件 RPATH（混合路径格式）..."
-          WINLATOR_ROOT="/data/data/com.winlator/files/rootfs"
-          WINLATOR_LIB="${WINLATOR_ROOT}/usr/lib"
-          GST_PLUGINS_PATH="${WINLATOR_LIB}/gstreamer-1.0"
-
-          # 使用混合路径格式的RPATH
-          MIXED_RPATH='/data/data/com.winlator/files/rootfs/lib:$ORIGIN/../../../gst-plugins-base/gst-libs/gst/pbutils:$ORIGIN/../../../gst-plugins-base/gst-libs/gst/video:$ORIGIN/../../../gstreamer/libs/gst/base:$ORIGIN/../../../gstreamer/gst:$ORIGIN/../../../glib-2.82.2/glib:$ORIGIN/../../../glib-2.82.2/gobject:$ORIGIN/../../../libffi/src:$ORIGIN/../../../glib-2.82.2/gmodule:$ORIGIN/../../../gst-plugins-base/gst-libs/gst/audio:$ORIGIN/../../../gst-plugins-base/gst-libs/gst/tag:/data/data/com.winlator/files/rootfs/usr/lib'
+          echo "🔧 开始修正 ELF 文件 RPATH（绝对路径、并行处理）..."
+          WINLATOR_LIB="/data/data/com.winlator/files/rootfs/lib"
+          GST_PLUGINS_PATH="/data/data/com.winlator/files/rootfs/lib/gstreamer-1.0"
 
           echo "📦 扫描动态 ELF 文件中..."
-          FILES=$(find "$WINLATOR_LIB" -type f -name "*.so*" | while read -r f; do
+          FILES=$(find "$INSTALL_ROOT" -type f | while read -r f; do
               if file "$f" | grep -q "ELF"; then
                   if readelf -l "$f" 2>/dev/null | grep -q 'INTERP'; then
                       echo "$f"
@@ -273,175 +176,26 @@ jobs:
 
           [ "$TOTAL" -eq 0 ] && echo "⚠️ 未找到可修正的动态 ELF 文件，跳过" && exit 0
 
-          # 创建修正脚本
           FIX_SCRIPT=$(mktemp)
           cat <<'EOF' > "$FIX_SCRIPT"
-          f="$1"; MIXED_RPATH="$2"; WINLATOR_LIB="$3"
-          echo "🔧 修正 $f"
-          
-          # 首先移除现有的RPATH
-          patchelf --remove-rpath "$f" 2>/dev/null || true
-          
-          # 设置混合路径格式的RPATH
-          patchelf --set-rpath "$MIXED_RPATH" "$f" 2>/dev/null || true
-          
-          # 设置动态链接器
+          f="$1"; WINLATOR_LIB="$2"; GST_PLUGINS_PATH="$3"
+          echo "✅ 修正 $f"
+          patchelf --set-rpath "${WINLATOR_LIB}:${GST_PLUGINS_PATH}" "$f" 2>/dev/null || true
           patchelf --set-interpreter "${WINLATOR_LIB}/ld-linux-aarch64.so.1" "$f" 2>/dev/null || true
-          
-          # 验证设置
-          echo "✅ 验证 $f 的RPATH:"
-          patchelf --print-rpath "$f" 2>/dev/null || echo "无法读取RPATH"
           EOF
-          
           chmod +x "$FIX_SCRIPT"
-          
-          # 特别处理关键库文件
-          echo "🔧 特别处理关键库文件..."
-          for lib in "libgstpbutils-1.0.so.0" "libgstreamer-1.0.so.0" "libgsttag-1.0.so.0" "libglib-2.0.so.0" "libgobject-2.0.so.0" "libgstapetag.so"; do
-              LIB_PATH=$(find "$WINLATOR_LIB" -name "$lib" | head -1)
-              if [ -n "$LIB_PATH" ]; then
-                  echo "🎯 处理关键库: $lib"
-                  bash "$FIX_SCRIPT" "$LIB_PATH" "$MIXED_RPATH" "$WINLATOR_LIB"
-              else
-                  echo "⚠️ 未找到库: $lib"
-              fi
-          done
-          
-          # 处理前10个文件并显示详细日志
-          echo "🔍 处理前10个文件（详细日志）:"
-          echo "$FILES" | head -10 | while read f; do
-              bash "$FIX_SCRIPT" "$f" "$MIXED_RPATH" "$WINLATOR_LIB"
-          done
-          
-          # 批量处理剩余文件（静默模式）
-          if [ "$TOTAL" -gt 10 ]; then
-              echo "⚡ 批量处理剩余 $(($TOTAL - 10)) 个文件..."
-              echo "$FILES" | tail -n +11 | xargs -P "$(nproc)" -I{} bash -c 'patchelf --remove-rpath "$1" 2>/dev/null || true; patchelf --set-rpath "$2" "$1" 2>/dev/null || true; patchelf --set-interpreter "$3/ld-linux-aarch64.so.1" "$1" 2>/dev/null || true' _ {} "$MIXED_RPATH" "$WINLATOR_LIB"
-          fi
-          
-          echo "✅ ELF 文件 RPATH 修正完成（混合路径格式）"
-          
-          # 验证关键文件的RPATH
-          echo "🔍 验证关键文件RPATH:"
-          for lib in "libgstpbutils-1.0.so.0" "libgstreamer-1.0.so.0" "libgsttag-1.0.so.0" "libglib-2.0.so.0" "libgobject-2.0.so.0" "libgstapetag.so"; do
-              LIB_PATH=$(find "$WINLATOR_LIB" -name "$lib" | head -1)
-              if [ -n "$LIB_PATH" ]; then
-                  echo "📄 $lib:"
-                  patchelf --print-rpath "$LIB_PATH" 2>/dev/null || echo "无法读取RPATH"
-              fi
-          done
-
-          # 验证插件目录中的文件
-          echo "🔍 验证插件目录RPATH:"
-          find "$GST_PLUGINS_PATH" -name "*.so" | head -3 | while read f; do
-              echo "📄 $(basename $f):"
-              patchelf --print-rpath "$f" 2>/dev/null || echo "无法读取RPATH"
-          done
-
-      # 🧪 验证构建结果
-      - name: 验证构建结果
-        if: steps.check_build.outputs.skip_build == 'false'
-        run: |
-          echo "🧪 验证构建结果..."
-          WINLATOR_LIB="/data/data/com.winlator/files/rootfs/usr/lib"
-          GST_PLUGINS_PATH="/data/data/com.winlator/files/rootfs/usr/lib/gstreamer-1.0"
-          
-          # 检查关键文件是否存在
-          echo "🔍 检查关键文件:"
-          [ -f "$WINLATOR_LIB/ld-linux-aarch64.so.1" ] && echo "✅ 动态链接器存在" || echo "❌ 动态链接器缺失"
-          [ -f "$WINLATOR_LIB/gstreamer-1.0/gst-inspect-1.0" ] && echo "✅ gst-inspect-1.0 存在" || echo "❌ gst-inspect-1.0 缺失"
-          [ -d "$GST_PLUGINS_PATH" ] && echo "✅ GStreamer 插件目录存在" || echo "❌ GStreamer 插件目录缺失"
-          
-          # 检查关键库文件是否存在
-          for lib in "libgstpbutils-1.0.so.0" "libgstreamer-1.0.so.0" "libgsttag-1.0.so.0" "libglib-2.0.so.0" "libgobject-2.0.so.0" "libgstapetag.so"; do
-              if [ -f "$WINLATOR_LIB/$lib" ]; then
-                  echo "✅ $lib 存在"
-              else
-                  # 尝试查找带版本号的库
-                  FOUND=$(find "$WINLATOR_LIB" -name "$lib*" | head -1)
-                  if [ -n "$FOUND" ]; then
-                      echo "✅ $lib 存在 (作为 $(basename $FOUND))"
-                  else
-                      echo "❌ $lib 缺失"
-                  fi
-              fi
-          done
-          
-          # 检查 libvpx 是否存在
-          if [ -f "$WINLATOR_LIB/libvpx.so" ] || [ -f "$WINLATOR_LIB/libvpx.so.8" ] || [ -f "$WINLATOR_LIB/libvpx.so.7" ] || [ -f "$WINLATOR_LIB/libvpx.so.9" ]; then
-            echo "✅ libvpx 存在"
-            VPX_AVAILABLE=true
-          else
-            echo "⚠️ libvpx 不存在，VP8/VP9 解码不可用"
-            VPX_AVAILABLE=false
-          fi
-          
-          # 统计插件数量
-          PLUGIN_COUNT=$(find "$GST_PLUGINS_PATH" -name "*.so" | wc -l)
-          echo "📊 GStreamer 插件数量: $PLUGIN_COUNT"
-          
-          # 验证gst-inspect能否运行
-          echo "🔍 测试 gst-inspect-1.0:"
-          if [ -f "$WINLATOR_LIB/gstreamer-1.0/gst-inspect-1.0" ]; then
-              $WINLATOR_LIB/ld-linux-aarch64.so.1 $WINLATOR_LIB/gstreamer-1.0/gst-inspect-1.0 --version && echo "✅ gst-inspect 版本检查成功" || echo "❌ gst-inspect 版本检查失败"
-          else
-              echo "⚠️ gst-inspect-1.0 不存在，跳过测试"
-          fi
-          
-          # 检查关键插件
-          echo "🔍 检查关键插件:"
-          for plugin in coreelements apetag; do
-              if [ -f "$WINLATOR_LIB/gstreamer-1.0/gst-inspect-1.0" ]; then
-                  if $WINLATOR_LIB/ld-linux-aarch64.so.1 $WINLATOR_LIB/gstreamer-1.0/gst-inspect-1.0 $plugin >/dev/null 2>&1; then
-                      echo "✅ 插件 $plugin 可用"
-                  else
-                      echo "❌ 插件 $plugin 不可用"
-                  fi
-              else
-                  echo "⚠️ 无法检查插件 $plugin (gst-inspect 缺失)"
-              fi
-          done
-          
-          # 如果 libvpx 可用，检查 VP8/VP9 插件
-          if [ "$VPX_AVAILABLE" = "true" ]; then
-            for plugin in vp8dec vp9dec; do
-                if [ -f "$WINLATOR_LIB/gstreamer-1.0/gst-inspect-1.0" ]; then
-                    if $WINLATOR_LIB/ld-linux-aarch64.so.1 $WINLATOR_LIB/gstreamer-1.0/gst-inspect-1.0 $plugin >/dev/null 2>&1; then
-                        echo "✅ 插件 $plugin 可用"
-                    else
-                        echo "❌ 插件 $plugin 不可用"
-                    fi
-                else
-                    echo "⚠️ 无法检查插件 $plugin (gst-inspect 缺失)"
-                fi
-            done
-          fi
+          echo "$FILES" | xargs -P "$(nproc)" -I{} bash "$FIX_SCRIPT" "{}" "$WINLATOR_LIB" "$GST_PLUGINS_PATH"
+          echo "✅ ELF 文件 RPATH 修正完成"
 
       # 🧱 打包构建结果
-      - name: 打包 usr 目录
+      - name: 打包构建结果
         if: steps.check_build.outputs.skip_build == 'false'
         run: |
-          echo "📦 开始打包构建结果..."
           cd /data/data/com.winlator/files/rootfs
-          TAR_NAME="winlator-gst-decoders-${VERSION}-mixed-rpath.tar.gz"
-          
-          # 创建打包列表，排除不必要的文件
-          echo "🗂️ 创建打包清单..."
-          find usr -type f | head -10 > /tmp/file_list.txt
-          echo "... (省略其他文件)" >> /tmp/file_list.txt
-          echo "📄 打包前文件列表样本:"
-          cat /tmp/file_list.txt
-          
-          # 打包
-          tar -czvf /home/runner/$TAR_NAME usr
-          
-          # 记录构建信息
+          TAR_NAME="winlator-gst-decoders-${VERSION}.tar.gz"
+          tar -czvf /home/runner/$TAR_NAME lib include
           echo "$LATEST_COMMIT" > ${{ env.LAST_COMMIT_FILE }}
           echo "TAR_NAME=$TAR_NAME" >> $GITHUB_ENV
-          
-          # 显示打包信息
-          echo "📊 打包完成: $TAR_NAME"
-          du -h /home/runner/$TAR_NAME
 
       # ⬆️ 上传构建产物
       - name: 上传构建产物
@@ -450,7 +204,6 @@ jobs:
         with:
           name: ${{ env.TAR_NAME }}
           path: /home/runner/${{ env.TAR_NAME }}
-          retention-days: 30
 
       # 💾 上传提交记录
       - name: 上传提交记录
@@ -466,10 +219,10 @@ jobs:
         if: steps.check_build.outputs.skip_build == 'false'
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ env.VERSION }}-mixed-rpath
-          name: "GStreamer Decoders ${{ env.VERSION }} Mixed RPATH (aarch64, Winlator)"
+          tag_name: ${{ env.VERSION }}
+          name: "GStreamer Decoders ${{ env.VERSION }} (aarch64, Winlator)"
           body: |
-            ## 🎯 GStreamer 开发版本构建 - 混合 RPATH 格式
+            ## 🎯 GStreamer 开发版本构建
 
             ### 📋 构建信息
             - **版本**: `${{ env.VERSION }}`
@@ -481,53 +234,19 @@ jobs:
             - **构建时间**: `${{ env.BUILD_DATE }}`
 
             ### 🛠️ 构建特性
-            - ✅ Base / Good / Ugly / Bad / LibAV / GPL 全启用
-            - ✅ VP8/VP9 解码支持：使用系统 libvpx（如果可用）
+            - ✅ Base / Good / Ugly / Bad / LibAV / GPL / Devtools 全启用
             - ❌ RTSP Server 已禁用
             - 🏗️ 构建类型: Release
-            - 🔗 RPATH: 使用混合路径格式（绝对路径 + 相对路径）
-
-            ### 🔧 RPATH 格式
-            ```
-            /data/data/com.winlator/files/rootfs/lib:$ORIGIN/../../../gst-plugins-base/gst-libs/gst/pbutils:$ORIGIN/../../../gst-plugins-base/gst-libs/gst/video:$ORIGIN/../../../gstreamer/libs/gst/base:$ORIGIN/../../../gstreamer/gst:$ORIGIN/../../../glib-2.82.2/glib:$ORIGIN/../../../glib-2.82.2/gobject:$ORIGIN/../../../libffi/src:$ORIGIN/../../../glib-2.82.2/gmodule:$ORIGIN/../../../gst-plugins-base/gst-libs/gst/audio:$ORIGIN/../../../gst-plugins-base/gst-libs/gst/tag:/data/data/com.winlator/files/rootfs/usr/lib
-            ```
 
             ### 📦 文件信息
             - 文件名: `${{ env.TAR_NAME }}`
-            - 动态链接器: `/data/data/com.winlator/files/rootfs/usr/lib/ld-linux-aarch64.so.1`
-            - 安装路径: `/data/data/com.winlator/files/rootfs/usr`
+            - 动态链接器: `/data/data/com.winlator/files/rootfs/lib/ld-linux-aarch64.so.1`
+            - RPATH: `/data/data/com.winlator/files/rootfs/lib:/data/data/com.winlator/files/rootfs/lib/gstreamer-1.0`
+            - 安装路径: `/data/data/com.winlator/files/rootfs/lib`
             
-            ### 📥 安装说明
-            1. 解压到 Winlator 的 rootfs 目录：
+            ### 📥 测试命令
             ```bash
-            tar -xzvf ${{ env.TAR_NAME }} -C /data/data/com.winlator/files/rootfs/
-            ```
-            
-            ### 🧪 测试命令
-            ```bash
-            # 设置环境变量
-            export LD_LIBRARY_PATH=/data/data/com.winlator/files/rootfs/usr/lib
-            export PATH=/data/data/com.winlator/files/rootfs/usr/bin:$PATH
-            
-            # 测试 GStreamer
             gst-inspect-1.0 --version
-            gst-inspect-1.0 coreelements
-            gst-inspect-1.0 vp8dec
-            gst-inspect-1.0 vp9dec
             ```
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      # 📊 构建总结
-      - name: 构建总结
-        if: steps.check_build.outputs.skip_build == 'false'
-        run: |
-          echo "🎉 构建完成总结"
-          echo "========================"
-          echo "✅ 版本: ${{ env.VERSION }}"
-          echo "✅ 提交: ${{ env.COMMIT_SHORT }}"
-          echo "✅ 文件: ${{ env.TAR_NAME }}"
-          echo "✅ 时间: ${{ env.BUILD_DATE }}"
-          echo "✅ 状态: 混合 RPATH 格式已应用"
-          echo "========================"
-          echo "所有构建步骤已完成！"
