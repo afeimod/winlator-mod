@@ -179,7 +179,7 @@ jobs:
             -Dgst-plugins-good:vpx=enabled \
             -Dgst-plugins-bad:hip=disabled -Dgst-plugins-bad:nvcodec=disabled \
             -Dgst-plugins-base:gl=disabled -Dintrospection=disabled \
-            -Dgst-full-enabled=true \
+            -Dgst-full=enabled \
             -Ddevtools=disabled -Dtools=disabled -Drtsp_server=disabled \
             -Dbuildtype=release
           
