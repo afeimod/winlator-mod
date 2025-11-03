@@ -1,4 +1,4 @@
-name: winlator GStreamer Decoders (aarch64, Dev + libvpx) - 修复版
+name: winlator GStreamer Decoders (aarch64, Dev + libvpx) - 权限修复版
 
 on:
   workflow_dispatch:
@@ -59,7 +59,7 @@ jobs:
 
       # 🧬 克隆 GStreamer 开发版本
       - name: 克隆 GStreamer 开发版本
-        run: git clone https://gitlab.freedesktop.org/gstreamer/gstreamer.git
+        run: git clone --depth=1 https://gitlab.freedesktop.org/gstreamer/gstreamer.git
 
       # 🔍 获取开发版本信息
       - name: 获取开发版本信息
@@ -111,6 +111,25 @@ jobs:
           echo "🟡 代码无更新，跳过构建流程"
           exit 0
 
+      # 🔐 准备安装目录权限
+      - name: 准备安装目录权限
+        if: steps.check_build.outputs.skip_build == 'false'
+        run: |
+          echo "🔐 准备安装目录权限..."
+          WINLATOR_ROOT="/data/data/com.winlator/files/rootfs"
+          
+          # 创建目录结构
+          sudo mkdir -p $WINLATOR_ROOT/usr/{lib,include,bin,share}
+          
+          # 设置正确的所有权和权限
+          sudo chown -R $USER:$USER $WINLATOR_ROOT/usr
+          sudo chmod -R 755 $WINLATOR_ROOT/usr
+          
+          # 验证权限
+          echo "📁 目录权限:"
+          ls -la $WINLATOR_ROOT/usr/
+          echo "✅ 安装目录权限设置完成"
+
       # 🧱 构建 libvpx v1.14.0
       - name: 构建 libvpx v1.14.0
         if: steps.check_build.outputs.skip_build == 'false'
@@ -131,22 +150,25 @@ jobs:
             --disable-examples \
             --disable-docs
           make -j$(nproc)
-          sudo make install
-          echo "✅ libvpx v1.14.0 已安装到 /data/data/com.winlator/files/rootfs/usr/lib"
+          make install
+          echo "✅ libvpx v1.14.0 已安装"
 
-      # 🛠️ 构建 GStreamer 解码器（简化配置）
+      # 🛠️ 构建 GStreamer 解码器（修复权限问题）
       - name: 构建 GStreamer 解码器
         if: steps.check_build.outputs.skip_build == 'false'
         run: |
           echo "🏗️ 开始构建 GStreamer..."
           cd gstreamer
           git submodule update --init --recursive
-          sudo mkdir -p /data/data/com.winlator/files/rootfs/usr
-          sudo chmod -R 755 /data/data/com.winlator/files/rootfs/usr
           
-          # 使用简化的Meson配置
+          # 再次确保权限正确
+          WINLATOR_USR="/data/data/com.winlator/files/rootfs/usr"
+          chmod -R 755 $WINLATOR_USR
+          
+          # 使用 DESTDIR 方式安装，避免权限问题
+          echo "⚙️ 配置 GStreamer 构建..."
           meson setup build \
-            -Dprefix=/data/data/com.winlator/files/rootfs/usr \
+            -Dprefix=/usr \
             --libdir=lib \
             -Dbase=enabled \
             -Dgood=enabled -Dugly=enabled -Dbad=enabled \
@@ -157,14 +179,16 @@ jobs:
             -Dgst-plugins-good:vpx=enabled \
             -Dgst-plugins-bad:hip=disabled -Dgst-plugins-bad:nvcodec=disabled \
             -Dgst-plugins-base:gl=disabled -Dintrospection=disabled \
-            -Dgst-full=enabled \
+            -Dgst-full-enabled=true \
             -Ddevtools=disabled -Dtools=disabled -Drtsp_server=disabled \
             -Dbuildtype=release
           
           echo "🔨 编译 GStreamer..."
           ninja -C build -j$(nproc)
-          echo "📥 安装 GStreamer..."
-          ninja -C build install
+          
+          echo "📥 安装 GStreamer (使用 DESTDIR)..."
+          DESTDIR="/data/data/com.winlator/files/rootfs" ninja -C build install
+          
           echo "✅ GStreamer 构建完成"
 
       # 🔧 修正 ELF 文件 RPATH（优化模式）
@@ -281,7 +305,7 @@ jobs:
         run: |
           echo "📦 开始打包构建结果..."
           cd /data/data/com.winlator/files/rootfs
-          TAR_NAME="winlator-gst-decoders-${VERSION}-fixed.tar.gz"
+          TAR_NAME="winlator-gst-decoders-${VERSION}-permission-fixed.tar.gz"
           
           # 创建打包列表，排除不必要的文件
           echo "🗂️ 创建打包清单..."
@@ -324,10 +348,10 @@ jobs:
         if: steps.check_build.outputs.skip_build == 'false'
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ env.VERSION }}-fixed
-          name: "GStreamer Decoders ${{ env.VERSION }} Fixed (aarch64, Winlator)"
+          tag_name: ${{ env.VERSION }}-permission-fixed
+          name: "GStreamer Decoders ${{ env.VERSION }} Permission Fixed (aarch64, Winlator)"
           body: |
-            ## 🎯 GStreamer 开发版本构建 - 修复版
+            ## 🎯 GStreamer 开发版本构建 - 权限修复版
 
             ### 📋 构建信息
             - **版本**: `${{ env.VERSION }}`
@@ -346,10 +370,10 @@ jobs:
             - 🔗 RPATH: 使用优化的相对路径模式
 
             ### 🔧 修复内容
-            - 优化 RPATH 设置，解决动态库加载问题
-            - 简化构建配置，提高兼容性
-            - 改进 ELF 文件修正流程
-            - 添加构建结果验证步骤
+            - ✅ 修复权限问题：使用 DESTDIR 安装方式
+            - ✅ 优化 RPATH 设置，解决动态库加载问题
+            - ✅ 改进目录权限管理
+            - ✅ 添加构建结果验证步骤
 
             ### 📦 文件信息
             - 文件名: `${{ env.TAR_NAME }}`
@@ -387,5 +411,6 @@ jobs:
           echo "✅ 提交: ${{ env.COMMIT_SHORT }}"
           echo "✅ 文件: ${{ env.TAR_NAME }}"
           echo "✅ 时间: ${{ env.BUILD_DATE }}"
+          echo "✅ 状态: 权限问题已修复"
           echo "========================"
           echo "所有构建步骤已完成！"
