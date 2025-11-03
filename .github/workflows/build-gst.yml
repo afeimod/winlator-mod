@@ -1,4 +1,4 @@
-name: winlator GStreamer Decoders (aarch64, Dev + libvpx) - Simplified RPATH
+name: winlator GStreamer Decoders (aarch64, Dev + libvpx)
 
 on:
   workflow_dispatch:
@@ -19,11 +19,11 @@ jobs:
     runs-on: ubuntu-24.04-arm
 
     steps: 
-      # 🧩🧩🧩 检出仓库
+      # 🧩 检出仓库
       - name: 检出 workflow 仓库
         uses: actions/checkout@v4
 
-      # 📦📦 安装基础依赖
+      # 📦 安装基础依赖
       - name: 安装基础依赖
         run: |
           sudo apt-get update
@@ -32,32 +32,32 @@ jobs:
             liborc-0.4-dev libxv-dev libx11-dev libasound2-dev libpulse-dev patchelf \
             libtheora-dev libx264-dev libx265-dev libvpx-dev
 
-      # ⚙⚙⚙️ 升级 Meson 和 Ninja
+      # ⚙️ 升级 Meson 和 Ninja
       - name: 升级 Meson 和 Ninja
         run: |
           pip install --upgrade pip
           pip install --upgrade meson ninja
 
-      # 🔧🔧 设置 Winlator 编译与链接路径（简化版本）
+      # 🔧 设置 Winlator 编译与链接路径
       - name: 设置 Winlator 编译环境
         run: |
           WINLATOR_ROOT="/data/data/com.winlator/files/rootfs"
           WINLATOR_LIB="${WINLATOR_ROOT}/usr/lib"
           WINLATOR_INC="${WINLATOR_ROOT}/usr/include"
 
-          echo "export LDFLAGS='-L${WINLATOR_LIB} -Wl,--dynamic-linker=${WINLATOR_LIB}/ld-linux-aarch64.so.1 -Wl,-rpath=\$ORIGIN:\$ORIGIN/..:\$ORIGIN/../gstreamer-1.0:${WINLATOR_LIB}'" >> $GITHUB_ENV
+          echo "export LDFLAGS='-L${WINLATOR_LIB} -Wl,--dynamic-linker=${WINLATOR_LIB}/ld-linux-aarch64.so.1 -Wl,-rpath=\$ORIGIN:\$ORIGIN/..:\$ORIGIN/../gstreamer-1.0:\$ORIGIN/../../../glib-2.82.2/glib:\$ORIGIN/../../../glib-2.82.2/gobject:\$ORIGIN/../../../libffi/src:\$ORIGIN/../../../glib-2.82.2/gmodule:${WINLATOR_LIB}'" >> $GITHUB_ENV
           echo "export CFLAGS='-I${WINLATOR_INC}'" >> $GITHUB_ENV
           echo "export CXXFLAGS='-I${WINLATOR_INC}'" >> $GITHUB_ENV
           echo "export LD_LIBRARY_PATH='${WINLATOR_LIB}:\$LD_LIBRARY_PATH'" >> $GITHUB_ENV
           echo "export PKG_CONFIG_PATH='${WINLATOR_LIB}/pkgconfig:${WINLATOR_LIB}/aarch64-linux-gnu/pkgconfig:\$PKG_CONFIG_PATH'" >> $GITHUB_ENV
 
-          echo "✅ 已设置简化的 Winlator 环境变量"
+          echo "✅ 已设置 Winlator 环境变量（简化路径）"
 
-      # 🧬🧬🧬 克隆 GStreamer 开发版本
+      # 🧬 克隆 GStreamer 开发版本
       - name: 克隆 GStreamer 开发版本
         run: git clone --depth=1 https://gitlab.freedesktop.org/gstreamer/gstreamer.git
 
-      # 🔍🔍 获取开发版本信息
+      # 🔍 获取开发版本信息
       - name: 获取开发版本信息
         id: get_dev_info
         run: |
@@ -75,7 +75,7 @@ jobs:
           echo "BUILD_DATE=$DATE" >> $GITHUB_ENV
           echo "COMMIT_DATE=$COMMIT_DATE" >> $GITHUB_ENV
 
-      # 💾💾 获取上次构建提交
+      # 💾 获取上次构建提交
       - name: 获取上次构建提交
         id: get_last_commit
         run: |
@@ -88,24 +88,24 @@ jobs:
           fi
           echo "LAST_COMMIT=$LAST_COMMIT" >> $GITHUB_ENV
 
-      # 🔍🔍 判断是否需要构建
+      # 🔍 判断是否需要构建
       - name: 判断是否需要构建
         id: check_build
         run: |
           if [ "$LATEST_COMMIT" = "$LAST_COMMIT" ]; then
             echo "skip_build=true" >> $GITHUB_OUTPUT
-            echo "🟡🟡🟡 提交未更新，跳过构建。"
+            echo "🟡 提交未更新，跳过构建。"
           else
             echo "skip_build=false" >> $GITHUB_OUTPUT
             echo "✅ 发现新提交: $LATEST_COMMIT"
           fi
 
-      # ⏭⏭⏭️ 跳过无更新构建
+      # ⏭️ 跳过无更新构建
       - name: 跳过无更新构建
         if: steps.check_build.outputs.skip_build == 'true'
         run: exit 0
 
-      # 🧱🧱🧱 构建 libvpx v1.14.0
+      # 🧱 构建 libvpx v1.14.0
       - name: 构建 libvpx v1.14.0
         if: steps.check_build.outputs.skip_build == 'false'
         run: |
@@ -127,7 +127,7 @@ jobs:
           sudo make install
           echo "✅ libvpx v1.14.0 已安装到 /data/data/com.winlator/files/rootfs/usr/lib"
 
-      # 🛠🛠🛠️ 构建 GStreamer 解码器（简化 RPATH 设置）
+      # 🛠️ 构建 GStreamer 解码器（简化路径）
       - name: 构建 GStreamer 解码器
         if: steps.check_build.outputs.skip_build == 'false'
         run: |
@@ -136,7 +136,7 @@ jobs:
           sudo mkdir -p /data/data/com.winlator/files/rootfs/usr
           sudo chmod -R 777 /data
           
-          # 简化 Meson 配置，移除复杂的 RPATH 设置
+          # 简化路径的 Meson 选项
           meson setup build \
             -Dprefix=/data/data/com.winlator/files/rootfs/usr \
             --libdir=lib \
@@ -151,23 +151,25 @@ jobs:
             -Dgst-plugins-base:gl=disabled -Dintrospection=disabled \
             -Dgst-full=enabled -Dgst-full-plugins='*' \
             -Ddevtools=disabled -Dtools=disabled -Drtsp_server=disabled \
-            -Dbuildtype=release
+            -Dbuildtype=release \
+            -Dcpp_link_args="-Wl,-rpath=\$ORIGIN:\$ORIGIN/..:\$ORIGIN/../gstreamer-1.0:\$ORIGIN/../../../glib-2.82.2/glib:\$ORIGIN/../../../glib-2.82.2/gobject:\$ORIGIN/../../../libffi/src:\$ORIGIN/../../../glib-2.82.2/gmodule:/data/data/com.winlator/files/rootfs/usr/lib" \
+            -Dc_link_args="-Wl,-rpath=\$ORIGIN:\$ORIGIN/..:\$ORIGIN/../gstreamer-1.0:\$ORIGIN/../../../glib-2.82.2/glib:\$ORIGIN/../../../glib-2.82.2/gobject:\$ORIGIN/../../../libffi/src:\$ORIGIN/../../../glib-2.82.2/gmodule:/data/data/com.winlator/files/rootfs/usr/lib"
           
           ninja -C build -j$(nproc)
           ninja -C build install
 
-      # 🔧🔧 修正 ELF 文件 RPATH（简化版本）
-      - name: 修正 ELF 文件 RPATH
+      # 🔧 修正 ELF 文件 RPATH（简化路径）
+      - name: 修正 ELF 文件 RPATH（简化路径模式）
         if: steps.check_build.outputs.skip_build == 'false'
         shell: bash
         run: |
-          echo "🔧🔧 开始修正 ELF 文件 RPATH（简化版本）..."
+          echo "🔧 开始修正 ELF 文件 RPATH（简化路径）..."
           WINLATOR_LIB="/data/data/com.winlator/files/rootfs/usr/lib"
-          
-          # 简化 RPATH 设置，避免字符串过长
-          SIMPLIFIED_RPATH='$ORIGIN:$ORIGIN/..:$ORIGIN/../gstreamer-1.0:/data/data/com.winlator/files/rootfs/usr/lib'
-          
-          echo "📦📦 扫描动态 ELF 文件中..."
+
+          # 简化路径的 RPATH
+          RELATIVE_RPATH='$ORIGIN:$ORIGIN/..:$ORIGIN/../gstreamer-1.0:$ORIGIN/../../../glib-2.82.2/glib:$ORIGIN/../../../glib-2.82.2/gobject:$ORIGIN/../../../libffi/src:$ORIGIN/../../../glib-2.82.2/gmodule:/data/data/com.winlator/files/rootfs/usr/lib'
+
+          echo "📦 扫描动态 ELF 文件中..."
           FILES=$(find "$INSTALL_ROOT" -type f | while read -r f; do
               if file "$f" | grep -q "ELF"; then
                   if readelf -l "$f" 2>/dev/null | grep -q 'INTERP'; then
@@ -176,40 +178,34 @@ jobs:
               fi
           done)
           TOTAL=$(echo "$FILES" | grep -c . || true)
-          echo "📊📊 检测到 $TOTAL 个动态 ELF 文件"
+          echo "📊 检测到 $TOTAL 个动态 ELF 文件"
 
           [ "$TOTAL" -eq 0 ] && echo "⚠️ 未找到可修正的动态 ELF 文件，跳过" && exit 0
 
           FIX_SCRIPT=$(mktemp)
           cat <<'EOF' > "$FIX_SCRIPT"
-          f="$1"; SIMPLIFIED_RPATH="$2"; WINLATOR_LIB="$3"
+          f="$1"; RELATIVE_RPATH="$2"; WINLATOR_LIB="$3"
           echo "✅ 修正 $f"
-          
-          # 首先清除现有的 RPATH
-          patchelf --remove-rpath "$f" 2>/dev/null || true
-          
-          # 设置简化的 RPATH
-          patchelf --set-rpath "$SIMPLIFIED_RPATH" "$f" 2>/dev/null || true
-          
+          # 设置相对路径 RPATH
+          patchelf --set-rpath "$RELATIVE_RPATH" "$f" 2>/dev/null || true
           # 设置动态链接器
           patchelf --set-interpreter "${WINLATOR_LIB}/ld-linux-aarch64.so.1" "$f" 2>/dev/null || true
           EOF
-          
           chmod +x "$FIX_SCRIPT"
-          echo "$FILES" | xargs -P "$(nproc)" -I{} bash "$FIX_SCRIPT" "{}" "$SIMPLIFIED_RPATH" "$WINLATOR_LIB"
-          echo "✅ ELF 文件 RPATH 修正完成（简化版本）"
+          echo "$FILES" | xargs -P "$(nproc)" -I{} bash "$FIX_SCRIPT" "{}" "$RELATIVE_RPATH" "$WINLATOR_LIB"
+          echo "✅ ELF 文件 RPATH 修正完成（简化路径）"
 
-      # 🧱🧱🧱 打包构建结果
+      # 🧱 打包构建结果
       - name: 打包 usr 目录
         if: steps.check_build.outputs.skip_build == 'false'
         run: |
           cd /data/data/com.winlator/files/rootfs
-          TAR_NAME="winlator-gst-decoders-${VERSION}-simplified-rpath.tar.gz"
+          TAR_NAME="winlator-gst-decoders-${VERSION}.tar.gz"
           tar -czvf /home/runner/$TAR_NAME usr
           echo "$LATEST_COMMIT" > ${{ env.LAST_COMMIT_FILE }}
           echo "TAR_NAME=$TAR_NAME" >> $GITHUB_ENV
 
-      # ⬆⬆⬆️ 上传构建产物
+      # ⬆️ 上传构建产物
       - name: 上传构建产物
         if: steps.check_build.outputs.skip_build == 'false'
         uses: actions/upload-artifact@v4
@@ -217,7 +213,7 @@ jobs:
           name: ${{ env.TAR_NAME }}
           path: /home/runner/${{ env.TAR_NAME }}
 
-      # 💾💾 上传提交记录
+      # 💾 上传提交记录
       - name: 上传提交记录
         if: steps.check_build.outputs.skip_build == 'false'
         uses: actions/upload-artifact@v4
@@ -226,17 +222,17 @@ jobs:
           path: ${{ env.LAST_COMMIT_FILE }}
           retention-days: 365
 
-      # 🚀🚀🚀 发布到 GitHub Release
+      # 🚀 发布到 GitHub Release
       - name: 发布到 GitHub Release
         if: steps.check_build.outputs.skip_build == 'false'
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ env.VERSION }}-simplified-rpath
-          name: "GStreamer Decoders ${{ env.VERSION }} (aarch64, Winlator) - Simplified RPATH"
+          tag_name: ${{ env.VERSION }}
+          name: "GStreamer Decoders ${{ env.VERSION }} (aarch64, Winlator)"
           body: |
-            ## 🎯🎯🎯 GStreamer 开发版本构建 - 简化 RPATH 版本
+            ## 🎯 GStreamer 开发版本构建
 
-            ### 📋📋 构建信息
+            ### 📋 构建信息
             - **版本**: `${{ env.VERSION }}`
             - **架构**: aarch64
             - **环境**: Winlator
@@ -244,20 +240,18 @@ jobs:
             - **提交日期**: ${{ env.COMMIT_DATE }}
             - **作者**: `${{ env.AUTHOR }}`
             - **构建时间**: `${{ env.BUILD_DATE }}`
-            - **RPATH 策略**: 简化版本（避免字符串截断）
 
-            ### 🛠🛠🛠️ 构建特性
+            ### 🛠️ 构建特性
             - ✅ Base / Good / Ugly / Bad / LibAV / GPL 全启用
-            - ✅ libvpx v1.14.0 支持 VP8/VP9 解码
             - ❌ RTSP Server 已禁用
-            - 🏗 构建类型: Release
-            - 🔗 RPATH: 简化路径优化，避免截断问题
+            - 🏗️ 构建类型: Release
+            - 🔗 RPATH: 简化路径优化
 
-            ### 📦📦 文件信息
-            - **文件名**: `${{ env.TAR_NAME }}`
-            - **动态链接器**: `/data/data/com.winlator/files/rootfs/usr/lib/ld-linux-aarch64.so.1`
-            - **简化 RPATH**: `$ORIGIN:$ORIGIN/..:$ORIGIN/../gstreamer-1.0:/data/data/com.winlator/files/rootfs/usr/lib`
-            - **安装路径**: `/data/data/com.winlator/files/rootfs/usr`
+            ### 📦 文件信息
+            - 文件名: `${{ env.TAR_NAME }}`
+            - 动态链接器: `/data/data/com.winlator/files/rootfs/usr/lib/ld-linux-aarch64.so.1`
+            - RPATH: `$ORIGIN:$ORIGIN/..:$ORIGIN/../gstreamer-1.0:$ORIGIN/../../../glib-2.82.2/glib:$ORIGIN/../../../glib-2.82.2/gobject:$ORIGIN/../../../libffi/src:$ORIGIN/../../../glib-2.82.2/gmodule:/data/data/com.winlator/files/rootfs/usr/lib`
+            - 安装路径: `/data/data/com.winlator/files/rootfs/usr`
             
             ### 📥 测试命令
             ```bash
