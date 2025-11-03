@@ -151,9 +151,7 @@ jobs:
             -Dgst-plugins-base:gl=disabled -Dintrospection=disabled \
             -Dgst-full=enabled -Dgst-full-plugins='*' \
             -Ddevtools=disabled -Dtools=disabled -Drtsp_server=disabled \
-            -Dbuildtype=release \
-            -Dbuild_rpath='' \
-            -Drpath=''
+            -Dbuildtype=release
           
           ninja -C build -j$(nproc)
           ninja -C build install
