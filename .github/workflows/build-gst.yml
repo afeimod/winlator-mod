@@ -48,11 +48,11 @@ jobs:
           # 优化后的RPATH设置
           OPTIMIZED_RPATH='$ORIGIN:$ORIGIN/..:$ORIGIN/../gstreamer-1.0:$ORIGIN/../../../gstreamer/libs/gst/base:$ORIGIN/../../../gstreamer/gst:$ORIGIN/../../../gst-plugins-base/gst-libs/gst/pbutils:$ORIGIN/../../../gst-plugins-base/gst-libs/gst/video:$ORIGIN/../../../gst-plugins-base/gst-libs/gst/audio:$ORIGIN/../../../gst-plugins-base/gst-libs/gst/tag:$ORIGIN/../../../glib-2.82.2/glib:$ORIGIN/../../../glib-2.82.2/gobject:$ORIGIN/../../../glib-2.82.2/gmodule:$ORIGIN/../../../libffi/src:$ORIGIN/../../../orc/orc:${WINLATOR_LIB}'
 
-          echo "export LDFLAGS='-L${WINLATOR_LIB} -Wl,--dynamic-linker=${WINLATOR_LIB}/ld-linux-aarch64.so.1 -Wl,-rpath=${OPTIMIZED_RPATH}'" >> $GITHUB_ENV
-          echo "export CFLAGS='-I${WINLATOR_INC}'" >> $GITHUB_ENV
-          echo "export CXXFLAGS='-I${WINLATOR_INC}'" >> $GITHUB_ENV
-          echo "export LD_LIBRARY_PATH='${WINLATOR_LIB}:\$LD_LIBRARY_PATH'" >> $GITHUB_ENV
-          echo "export PKG_CONFIG_PATH='${WINLATOR_LIB}/pkgconfig:${WINLATOR_LIB}/aarch64-linux-gnu/pkgconfig:\$PKG_CONFIG_PATH'" >> $GITHUB_ENV
+          echo "LDFLAGS='-L${WINLATOR_LIB} -Wl,--dynamic-linker=${WINLATOR_LIB}/ld-linux-aarch64.so.1 -Wl,-rpath=${OPTIMIZED_RPATH}'" >> $GITHUB_ENV
+          echo "CFLAGS='-I${WINLATOR_INC}'" >> $GITHUB_ENV
+          echo "CXXFLAGS='-I${WINLATOR_INC}'" >> $GITHUB_ENV
+          echo "LD_LIBRARY_PATH='${WINLATOR_LIB}:\$LD_LIBRARY_PATH'" >> $GITHUB_ENV
+          echo "PKG_CONFIG_PATH='${WINLATOR_LIB}/pkgconfig:${WINLATOR_LIB}/aarch64-linux-gnu/pkgconfig:\$PKG_CONFIG_PATH'" >> $GITHUB_ENV
           echo "OPTIMIZED_RPATH=${OPTIMIZED_RPATH}" >> $GITHUB_ENV
 
           echo "✅ 已设置优化的 Winlator 环境变量"
@@ -118,15 +118,16 @@ jobs:
           echo "🔐 准备安装目录权限..."
           WINLATOR_ROOT="/data/data/com.winlator/files/rootfs"
           
-          # 创建目录结构
+          # 创建完整的目录结构
           sudo mkdir -p $WINLATOR_ROOT/usr/{lib,include,bin,share}
           
           # 设置正确的所有权和权限
-          sudo chown -R $USER:$USER $WINLATOR_ROOT/usr
-          sudo chmod -R 755 $WINLATOR_ROOT/usr
+          sudo chown -R $USER:$USER $WINLATOR_ROOT
+          sudo chmod -R 755 $WINLATOR_ROOT
           
           # 验证权限
           echo "📁 目录权限:"
+          ls -la $WINLATOR_ROOT/
           ls -la $WINLATOR_ROOT/usr/
           echo "✅ 安装目录权限设置完成"
 
@@ -153,7 +154,7 @@ jobs:
           make install
           echo "✅ libvpx v1.14.0 已安装"
 
-      # 🛠️ 构建 GStreamer 解码器（修复权限问题）
+      # 🛠️ 构建 GStreamer 解码器（修复 Meson 安装权限问题）
       - name: 构建 GStreamer 解码器
         if: steps.check_build.outputs.skip_build == 'false'
         run: |
@@ -162,10 +163,13 @@ jobs:
           git submodule update --init --recursive
           
           # 再次确保权限正确
-          WINLATOR_USR="/data/data/com.winlator/files/rootfs/usr"
-          chmod -R 755 $WINLATOR_USR
+          WINLATOR_ROOT="/data/data/com.winlator/files/rootfs"
+          chmod -R 755 $WINLATOR_ROOT
           
-          # 使用 DESTDIR 方式安装，避免权限问题
+          # 创建临时安装目录
+          TEMP_INSTALL_DIR="/tmp/gst-install"
+          mkdir -p $TEMP_INSTALL_DIR
+          
           echo "⚙️ 配置 GStreamer 构建..."
           meson setup build \
             -Dprefix=/usr \
@@ -186,8 +190,18 @@ jobs:
           echo "🔨 编译 GStreamer..."
           ninja -C build -j$(nproc)
           
-          echo "📥 安装 GStreamer (使用 DESTDIR)..."
-          DESTDIR="/data/data/com.winlator/files/rootfs" ninja -C build install
+          echo "📥 安装 GStreamer 到临时目录..."
+          DESTDIR="$TEMP_INSTALL_DIR" ninja -C build install
+          
+          echo "📋 复制文件到目标位置..."
+          # 复制所有文件到 Winlator 目录
+          cp -r $TEMP_INSTALL_DIR/usr/* $WINLATOR_ROOT/usr/
+          
+          # 修复文件权限
+          find $WINLATOR_ROOT/usr -type f -exec chmod 644 {} \;
+          find $WINLATOR_ROOT/usr -type d -exec chmod 755 {} \;
+          find $WINLATOR_ROOT/usr/bin -type f -exec chmod 755 {} \;
+          find $WINLATOR_ROOT/usr/lib -name "*.so*" -exec chmod 755 {} \;
           
           echo "✅ GStreamer 构建完成"
 
@@ -204,7 +218,7 @@ jobs:
           OPTIMIZED_RPATH='$ORIGIN:$ORIGIN/..:$ORIGIN/../gstreamer-1.0:$ORIGIN/../../../gstreamer/libs/gst/base:$ORIGIN/../../../gstreamer/gst:$ORIGIN/../../../gst-plugins-base/gst-libs/gst/pbutils:$ORIGIN/../../../gst-plugins-base/gst-libs/gst/video:$ORIGIN/../../../gst-plugins-base/gst-libs/gst/audio:$ORIGIN/../../../gst-plugins-base/gst-libs/gst/tag:$ORIGIN/../../../glib-2.82.2/glib:$ORIGIN/../../../glib-2.82.2/gobject:$ORIGIN/../../../glib-2.82.2/gmodule:$ORIGIN/../../../libffi/src:$ORIGIN/../../../orc/orc:/data/data/com.winlator/files/rootfs/usr/lib'
 
           echo "📦 扫描动态 ELF 文件中..."
-          FILES=$(find "$INSTALL_ROOT" -type f | while read -r f; do
+          FILES=$(find "$WINLATOR_LIB" -type f | while read -r f; do
               if file "$f" | grep -q "ELF"; then
                   if readelf -l "$f" 2>/dev/null | grep -q 'INTERP'; then
                       echo "$f"
@@ -370,7 +384,7 @@ jobs:
             - 🔗 RPATH: 使用优化的相对路径模式
 
             ### 🔧 修复内容
-            - ✅ 修复权限问题：使用 DESTDIR 安装方式
+            - ✅ 修复 Meson 安装权限问题：使用临时目录安装
             - ✅ 优化 RPATH 设置，解决动态库加载问题
             - ✅ 改进目录权限管理
             - ✅ 添加构建结果验证步骤
@@ -411,6 +425,6 @@ jobs:
           echo "✅ 提交: ${{ env.COMMIT_SHORT }}"
           echo "✅ 文件: ${{ env.TAR_NAME }}"
           echo "✅ 时间: ${{ env.BUILD_DATE }}"
-          echo "✅ 状态: 权限问题已修复"
+          echo "✅ 状态: Meson 权限问题已修复"
           echo "========================"
           echo "所有构建步骤已完成！"
