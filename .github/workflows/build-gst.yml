@@ -51,7 +51,7 @@ jobs:
           echo "export LD_LIBRARY_PATH='${WINLATOR_LIB}:\$LD_LIBRARY_PATH'" >> $GITHUB_ENV
           echo "export PKG_CONFIG_PATH='${WINLATOR_LIB}/pkgconfig:${WINLATOR_LIB}/aarch64-linux-gnu/pkgconfig:\$PKG_CONFIG_PATH'" >> $GITHUB_ENV
 
-          echo "✅ 已设置 Winlator 环境变量（简化路径）"
+          echo "✅ 已设置 Winlator 环境变量（精确路径）"
 
       # 🧬 克隆 GStreamer 开发版本
       - name: 克隆 GStreamer 开发版本
@@ -127,7 +127,7 @@ jobs:
           sudo make install
           echo "✅ libvpx v1.14.0 已安装到 /data/data/com.winlator/files/rootfs/usr/lib"
 
-      # 🛠️ 构建 GStreamer 解码器（简化路径）
+      # 🛠️ 构建 GStreamer 解码器（精确路径）
       - name: 构建 GStreamer 解码器
         if: steps.check_build.outputs.skip_build == 'false'
         run: |
@@ -136,7 +136,7 @@ jobs:
           sudo mkdir -p /data/data/com.winlator/files/rootfs/usr
           sudo chmod -R 777 /data
           
-          # 简化路径的 Meson 选项
+          # 精确路径的 Meson 选项 - 只包含必要的路径
           meson setup build \
             -Dprefix=/data/data/com.winlator/files/rootfs/usr \
             --libdir=lib \
@@ -158,15 +158,15 @@ jobs:
           ninja -C build -j$(nproc)
           ninja -C build install
 
-      # 🔧 修正 ELF 文件 RPATH（简化路径）
-      - name: 修正 ELF 文件 RPATH（简化路径模式）
+      # 🔧 修正 ELF 文件 RPATH（精确路径）
+      - name: 修正 ELF 文件 RPATH（精确路径模式）
         if: steps.check_build.outputs.skip_build == 'false'
         shell: bash
         run: |
-          echo "🔧 开始修正 ELF 文件 RPATH（简化路径）..."
+          echo "🔧 开始修正 ELF 文件 RPATH（精确路径）..."
           WINLATOR_LIB="/data/data/com.winlator/files/rootfs/usr/lib"
 
-          # 简化路径的 RPATH
+          # 精确的 RPATH - 只包含你指定的路径
           RELATIVE_RPATH='$ORIGIN:$ORIGIN/..:$ORIGIN/../gstreamer-1.0:$ORIGIN/../../../glib-2.82.2/glib:$ORIGIN/../../../glib-2.82.2/gobject:$ORIGIN/../../../libffi/src:$ORIGIN/../../../glib-2.82.2/gmodule:/data/data/com.winlator/files/rootfs/usr/lib'
 
           echo "📦 扫描动态 ELF 文件中..."
@@ -186,14 +186,14 @@ jobs:
           cat <<'EOF' > "$FIX_SCRIPT"
           f="$1"; RELATIVE_RPATH="$2"; WINLATOR_LIB="$3"
           echo "✅ 修正 $f"
-          # 设置相对路径 RPATH
+          # 设置精确的相对路径 RPATH
           patchelf --set-rpath "$RELATIVE_RPATH" "$f" 2>/dev/null || true
           # 设置动态链接器
           patchelf --set-interpreter "${WINLATOR_LIB}/ld-linux-aarch64.so.1" "$f" 2>/dev/null || true
           EOF
           chmod +x "$FIX_SCRIPT"
           echo "$FILES" | xargs -P "$(nproc)" -I{} bash "$FIX_SCRIPT" "{}" "$RELATIVE_RPATH" "$WINLATOR_LIB"
-          echo "✅ ELF 文件 RPATH 修正完成（简化路径）"
+          echo "✅ ELF 文件 RPATH 修正完成（精确路径）"
 
       # 🧱 打包构建结果
       - name: 打包 usr 目录
@@ -245,7 +245,7 @@ jobs:
             - ✅ Base / Good / Ugly / Bad / LibAV / GPL 全启用
             - ❌ RTSP Server 已禁用
             - 🏗️ 构建类型: Release
-            - 🔗 RPATH: 简化路径优化
+            - 🔗 RPATH: 精确路径设置
 
             ### 📦 文件信息
             - 文件名: `${{ env.TAR_NAME }}`
