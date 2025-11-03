@@ -12,7 +12,7 @@ permissions:
 
 env:
   LAST_COMMIT_FILE: last_gst_commit.txt
-  INSTALL_ROOT: /data/data/com.winlator/files/rootfs
+  INSTALL_ROOT: /data/data/com.winlator/files/rootfs/usr
 
 jobs:
   build:
@@ -42,20 +42,20 @@ jobs:
       - name: 设置 Winlator 编译环境
         run: |
           WINLATOR_ROOT="/data/data/com.winlator/files/rootfs"
-          WINLATOR_LIB="${WINLATOR_ROOT}/lib"
-          WINLATOR_INC="${WINLATOR_ROOT}/include"
+          WINLATOR_LIB="${WINLATOR_ROOT}/usr/lib"
+          WINLATOR_INC="${WINLATOR_ROOT}/usr/include"
 
-          echo "export LDFLAGS='-L${WINLATOR_LIB} -Wl,--dynamic-linker=${WINLATOR_LIB}/ld-linux-aarch64.so.1 -Wl,-rpath,${WINLATOR_LIB}'" >> $GITHUB_ENV
+          echo "export LDFLAGS='-L${WINLATOR_LIB} -Wl,--dynamic-linker=${WINLATOR_LIB}/ld-linux-aarch64.so.1 -Wl,-rpath=\$ORIGIN:\$ORIGIN/..:\$ORIGIN/../gstreamer-1.0:\$ORIGIN/../../../../gst-plugins-base/gst-libs/gst/audio:\$ORIGIN/../../../../gst-plugins-base/gst-libs/gst/tag:\$ORIGIN/../../../../gstreamer/libs/gst/base:\$ORIGIN/../../../../gstreamer/gst:\$ORIGIN/../../../../glib-2.82.2/glib:\$ORIGIN/../../../../glib-2.82.2/gobject:\$ORIGIN/../../../../libffi/src:\$ORIGIN/../../../../glib-2.82.2/gmodule:${WINLATOR_LIB}'" >> $GITHUB_ENV
           echo "export CFLAGS='-I${WINLATOR_INC}'" >> $GITHUB_ENV
           echo "export CXXFLAGS='-I${WINLATOR_INC}'" >> $GITHUB_ENV
           echo "export LD_LIBRARY_PATH='${WINLATOR_LIB}:\$LD_LIBRARY_PATH'" >> $GITHUB_ENV
           echo "export PKG_CONFIG_PATH='${WINLATOR_LIB}/pkgconfig:${WINLATOR_LIB}/aarch64-linux-gnu/pkgconfig:\$PKG_CONFIG_PATH'" >> $GITHUB_ENV
 
-          echo "✅ 已设置 Winlator 环境变量"
+          echo "✅ 已设置 Winlator 环境变量（包含更新后的相对路径 RPATH）"
 
       # 🧬 克隆 GStreamer 开发版本
       - name: 克隆 GStreamer 开发版本
-        run: git clone https://gitlab.freedesktop.org/gstreamer/gstreamer.git
+        run: git clone --depth=1 https://gitlab.freedesktop.org/gstreamer/gstreamer.git
 
       # 🔍 获取开发版本信息
       - name: 获取开发版本信息
@@ -113,8 +113,8 @@ jobs:
           cd libvpx
           git checkout v1.14.0
           ./configure \
-            --prefix=/data/data/com.winlator/files/rootfs \
-            --libdir=/data/data/com.winlator/files/rootfs/lib \
+            --prefix=/data/data/com.winlator/files/rootfs/usr \
+            --libdir=/data/data/com.winlator/files/rootfs/usr/lib \
             --enable-shared \
             --enable-vp8 \
             --enable-vp9 \
@@ -125,21 +125,22 @@ jobs:
             --disable-docs
           make -j$(nproc)
           sudo make install
-          echo "✅ libvpx v1.14.0 已安装到 /data/data/com.winlator/files/rootfs/lib"
+          echo "✅ libvpx v1.14.0 已安装到 /data/data/com.winlator/files/rootfs/usr/lib"
 
-      # 🛠️ 构建 GStreamer 解码器（绝对嵌入）
+      # 🛠️ 构建 GStreamer 解码器（使用更新后的相对路径 RPATH）
       - name: 构建 GStreamer 解码器
         if: steps.check_build.outputs.skip_build == 'false'
         run: |
           cd gstreamer
           git submodule update --init --recursive
-          sudo mkdir -p /data/data/com.winlator/files/rootfs
+          sudo mkdir -p /data/data/com.winlator/files/rootfs/usr
           sudo chmod -R 777 /data
+          
+          # 设置 Meson 选项，包含更新后的 RPATH 配置
           meson setup build \
-            -Dprefix=/data/data/com.winlator/files/rootfs \
+            -Dprefix=/data/data/com.winlator/files/rootfs/usr \
             --libdir=lib \
             -Dbase=enabled \
-            -Dpackage-origin="gstreamer-winlator" \
             -Dgood=enabled -Dugly=enabled -Dbad=enabled \
             -Dlibav=enabled -Dgpl=enabled -Ddefault_library=shared \
             -Dtests=disabled -Ddoc=disabled -Dexamples=disabled \
@@ -150,18 +151,23 @@ jobs:
             -Dgst-plugins-base:gl=disabled -Dintrospection=disabled \
             -Dgst-full=enabled -Dgst-full-plugins='*' \
             -Ddevtools=disabled -Dtools=disabled -Drtsp_server=disabled \
-            --buildtype=release
+            -Dbuildtype=release \
+            -Dcpp_link_args="-Wl,-rpath=\$ORIGIN:\$ORIGIN/..:\$ORIGIN/../gstreamer-1.0:\$ORIGIN/../../../../gst-plugins-base/gst-libs/gst/audio:\$ORIGIN/../../../../gst-plugins-base/gst-libs/gst/tag:\$ORIGIN/../../../../gstreamer/libs/gst/base:\$ORIGIN/../../../../gstreamer/gst:\$ORIGIN/../../../../glib-2.82.2/glib:\$ORIGIN/../../../../glib-2.82.2/gobject:\$ORIGIN/../../../../libffi/src:\$ORIGIN/../../../../glib-2.82.2/gmodule:/data/data/com.winlator/files/rootfs/usr/lib" \
+            -Dc_link_args="-Wl,-rpath=\$ORIGIN:\$ORIGIN/..:\$ORIGIN/../gstreamer-1.0:\$ORIGIN/../../../../gst-plugins-base/gst-libs/gst/audio:\$ORIGIN/../../../../gst-plugins-base/gst-libs/gst/tag:\$ORIGIN/../../../../gstreamer/libs/gst/base:\$ORIGIN/../../../../gstreamer/gst:\$ORIGIN/../../../../glib-2.82.2/glib:\$ORIGIN/../../../../glib-2.82.2/gobject:\$ORIGIN/../../../../libffi/src:\$ORIGIN/../../../../glib-2.82.2/gmodule:/data/data/com.winlator/files/rootfs/usr/lib"
+          
           ninja -C build -j$(nproc)
           ninja -C build install
 
-      # 🔧 修正 ELF 文件 RPATH（并行、绝对路径）
-      - name: 修正 ELF 文件 RPATH（整合版）
+      # 🔧 修正 ELF 文件 RPATH（使用更新后的相对路径模式）
+      - name: 修正 ELF 文件 RPATH（更新后的相对路径模式）
         if: steps.check_build.outputs.skip_build == 'false'
         shell: bash
         run: |
-          echo "🔧 开始修正 ELF 文件 RPATH（绝对路径、并行处理）..."
-          WINLATOR_LIB="/data/data/com.winlator/files/rootfs/lib"
-          GST_PLUGINS_PATH="/data/data/com.winlator/files/rootfs/lib/gstreamer-1.0"
+          echo "🔧 开始修正 ELF 文件 RPATH（使用更新后的相对路径模式）..."
+          WINLATOR_LIB="/data/data/com.winlator/files/rootfs/usr/lib"
+
+          # 定义更新后的相对路径 RPATH
+          RELATIVE_RPATH='$ORIGIN:$ORIGIN/..:$ORIGIN/../gstreamer-1.0:$ORIGIN/../../../../gst-plugins-base/gst-libs/gst/audio:$ORIGIN/../../../../gst-plugins-base/gst-libs/gst/tag:$ORIGIN/../../../../gstreamer/libs/gst/base:$ORIGIN/../../../../gstreamer/gst:$ORIGIN/../../../../glib-2.82.2/glib:$ORIGIN/../../../../glib-2.82.2/gobject:$ORIGIN/../../../../libffi/src:$ORIGIN/../../../../glib-2.82.2/gmodule:/data/data/com.winlator/files/rootfs/usr/lib'
 
           echo "📦 扫描动态 ELF 文件中..."
           FILES=$(find "$INSTALL_ROOT" -type f | while read -r f; do
@@ -178,22 +184,24 @@ jobs:
 
           FIX_SCRIPT=$(mktemp)
           cat <<'EOF' > "$FIX_SCRIPT"
-          f="$1"; WINLATOR_LIB="$2"; GST_PLUGINS_PATH="$3"
+          f="$1"; RELATIVE_RPATH="$2"; WINLATOR_LIB="$3"
           echo "✅ 修正 $f"
-          patchelf --set-rpath "${WINLATOR_LIB}:${GST_PLUGINS_PATH}" "$f" 2>/dev/null || true
+          # 设置相对路径 RPATH
+          patchelf --set-rpath "$RELATIVE_RPATH" "$f" 2>/dev/null || true
+          # 设置动态链接器（保持绝对路径）
           patchelf --set-interpreter "${WINLATOR_LIB}/ld-linux-aarch64.so.1" "$f" 2>/dev/null || true
           EOF
           chmod +x "$FIX_SCRIPT"
-          echo "$FILES" | xargs -P "$(nproc)" -I{} bash "$FIX_SCRIPT" "{}" "$WINLATOR_LIB" "$GST_PLUGINS_PATH"
-          echo "✅ ELF 文件 RPATH 修正完成"
+          echo "$FILES" | xargs -P "$(nproc)" -I{} bash "$FIX_SCRIPT" "{}" "$RELATIVE_RPATH" "$WINLATOR_LIB"
+          echo "✅ ELF 文件 RPATH 修正完成（更新后的相对路径模式）"
 
       # 🧱 打包构建结果
-      - name: 打包构建结果
+      - name: 打包 usr 目录
         if: steps.check_build.outputs.skip_build == 'false'
         run: |
           cd /data/data/com.winlator/files/rootfs
           TAR_NAME="winlator-gst-decoders-${VERSION}.tar.gz"
-          tar -czvf /home/runner/$TAR_NAME lib include
+          tar -czvf /home/runner/$TAR_NAME usr
           echo "$LATEST_COMMIT" > ${{ env.LAST_COMMIT_FILE }}
           echo "TAR_NAME=$TAR_NAME" >> $GITHUB_ENV
 
@@ -237,12 +245,13 @@ jobs:
             - ✅ Base / Good / Ugly / Bad / LibAV / GPL / Devtools 全启用
             - ❌ RTSP Server 已禁用
             - 🏗️ 构建类型: Release
+            - 🔗 RPATH: 使用更新后的相对路径模式
 
             ### 📦 文件信息
             - 文件名: `${{ env.TAR_NAME }}`
-            - 动态链接器: `/data/data/com.winlator/files/rootfs/lib/ld-linux-aarch64.so.1`
-            - RPATH: `/data/data/com.winlator/files/rootfs/lib:/data/data/com.winlator/files/rootfs/lib/gstreamer-1.0`
-            - 安装路径: `/data/data/com.winlator/files/rootfs/lib`
+            - 动态链接器: `/data/data/com.winlator/files/rootfs/usr/lib/ld-linux-aarch64.so.1`
+            - RPATH: `$ORIGIN:$ORIGIN/..:$ORIGIN/../gstreamer-1.0:$ORIGIN/../../../../gst-plugins-base/gst-libs/gst/audio:$ORIGIN/../../../../gst-plugins-base/gst-libs/gst/tag:$ORIGIN/../../../../gstreamer/libs/gst/base:$ORIGIN/../../../../gstreamer/gst:$ORIGIN/../../../../glib-2.82.2/glib:$ORIGIN/../../../../glib-2.82.2/gobject:$ORIGIN/../../../../libffi/src:$ORIGIN/../../../../glib-2.82.2/gmodule:/data/data/com.winlator/files/rootfs/usr/lib`
+            - 安装路径: `/data/data/com.winlator/files/rootfs/usr`
             
             ### 📥 测试命令
             ```bash
