@@ -1,4 +1,4 @@
-name: winlator GStreamer Decoders (aarch64, Dev + libvpx) - 编译器修复版
+name: winlator GStreamer Decoders (aarch64, Dev) - 跳过 libvpx 版
 
 on:
   workflow_dispatch:
@@ -27,7 +27,7 @@ jobs:
       - name: 安装基础依赖
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential python3-pip git pkg-config nasm \
+          sudo apt-get install -y build-essential python3-pip git pkg-config \
             libglib2.0-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
             liborc-0.4-dev libxv-dev libx11-dev libasound2-dev libpulse-dev patchelf \
             libtheora-dev libx264-dev libx265-dev libvpx-dev
@@ -37,23 +37,6 @@ jobs:
         run: |
           pip install --upgrade pip
           pip install --upgrade meson ninja
-
-      # 🔧 设置 Winlator 编译与链接路径
-      - name: 设置 Winlator 编译环境
-        run: |
-          WINLATOR_ROOT="/data/data/com.winlator/files/rootfs"
-          WINLATOR_LIB="${WINLATOR_ROOT}/usr/lib"
-          WINLATOR_INC="${WINLATOR_ROOT}/usr/include"
-
-          # 优化后的RPATH设置
-          OPTIMIZED_RPATH='$ORIGIN:$ORIGIN/..:$ORIGIN/../gstreamer-1.0:$ORIGIN/../../../gstreamer/libs/gst/base:$ORIGIN/../../../gstreamer/gst:$ORIGIN/../../../gst-plugins-base/gst-libs/gst/pbutils:$ORIGIN/../../../gst-plugins-base/gst-libs/gst/video:$ORIGIN/../../../gst-plugins-base/gst-libs/gst/audio:$ORIGIN/../../../gst-plugins-base/gst-libs/gst/tag:$ORIGIN/../../../glib-2.82.2/glib:$ORIGIN/../../../glib-2.82.2/gobject:$ORIGIN/../../../glib-2.82.2/gmodule:$ORIGIN/../../../libffi/src:$ORIGIN/../../../orc/orc:${WINLATOR_LIB}'
-
-          echo "LDFLAGS='-L${WINLATOR_LIB} -Wl,--dynamic-linker=${WINLATOR_LIB}/ld-linux-aarch64.so.1 -Wl,-rpath=${OPTIMIZED_RPATH}'" >> $GITHUB_ENV
-          echo "LD_LIBRARY_PATH='${WINLATOR_LIB}:\$LD_LIBRARY_PATH'" >> $GITHUB_ENV
-          echo "PKG_CONFIG_PATH='${WINLATOR_LIB}/pkgconfig:${WINLATOR_LIB}/aarch64-linux-gnu/pkgconfig:\$PKG_CONFIG_PATH'" >> $GITHUB_ENV
-          echo "OPTIMIZED_RPATH=${OPTIMIZED_RPATH}" >> $GITHUB_ENV
-
-          echo "✅ 已设置优化的 Winlator 环境变量"
 
       # 🧬 克隆 GStreamer 开发版本
       - name: 克隆 GStreamer 开发版本
@@ -129,51 +112,63 @@ jobs:
           ls -la $WINLATOR_ROOT/usr/
           echo "✅ 安装目录权限设置完成"
 
-      # 🧱 构建 libvpx v1.14.0（修复编译器问题）
-      - name: 构建 libvpx v1.14.0
+      # 🔧 设置 Winlator 编译环境
+      - name: 设置 Winlator 编译环境
         if: steps.check_build.outputs.skip_build == 'false'
         run: |
-          echo "📦 开始构建 libvpx v1.14.0..."
+          WINLATOR_ROOT="/data/data/com.winlator/files/rootfs"
+          WINLATOR_LIB="${WINLATOR_ROOT}/usr/lib"
+          WINLATOR_INC="${WINLATOR_ROOT}/usr/include"
+
+          # 优化后的RPATH设置
+          OPTIMIZED_RPATH='$ORIGIN:$ORIGIN/..:$ORIGIN/../gstreamer-1.0:$ORIGIN/../../../gstreamer/libs/gst/base:$ORIGIN/../../../gstreamer/gst:$ORIGIN/../../../gst-plugins-base/gst-libs/gst/pbutils:$ORIGIN/../../../gst-plugins-base/gst-libs/gst/video:$ORIGIN/../../../gst-plugins-base/gst-libs/gst/audio:$ORIGIN/../../../gst-plugins-base/gst-libs/gst/tag:$ORIGIN/../../../glib-2.82.2/glib:$ORIGIN/../../../glib-2.82.2/gobject:$ORIGIN/../../../glib-2.82.2/gmodule:$ORIGIN/../../../libffi/src:$ORIGIN/../../../orc/orc:${WINLATOR_LIB}'
+
+          echo "LDFLAGS='-L${WINLATOR_LIB} -Wl,--dynamic-linker=${WINLATOR_LIB}/ld-linux-aarch64.so.1 -Wl,-rpath=${OPTIMIZED_RPATH}'" >> $GITHUB_ENV
+          echo "CFLAGS='-I${WINLATOR_INC}'" >> $GITHUB_ENV
+          echo "CXXFLAGS='-I${WINLATOR_INC}'" >> $GITHUB_ENV
+          echo "LD_LIBRARY_PATH='${WINLATOR_LIB}:\$LD_LIBRARY_PATH'" >> $GITHUB_ENV
+          echo "PKG_CONFIG_PATH='${WINLATOR_LIB}/pkgconfig:${WINLATOR_LIB}/aarch64-linux-gnu/pkgconfig:\$PKG_CONFIG_PATH'" >> $GITHUB_ENV
+          echo "OPTIMIZED_RPATH=${OPTIMIZED_RPATH}" >> $GITHUB_ENV
+
+          echo "✅ 已设置优化的 Winlator 环境变量"
+
+      # 📦 使用系统 libvpx 库
+      - name: 复制系统 libvpx 库
+        if: steps.check_build.outputs.skip_build == 'false'
+        run: |
+          echo "📦 复制系统 libvpx 库..."
           
-          # 临时清除可能干扰的环境变量
-          unset CFLAGS
-          unset CXXFLAGS
-          unset CPPFLAGS
-          
-          git clone https://chromium.googlesource.com/webm/libvpx
-          cd libvpx
-          git checkout v1.14.0
-          
-          # 使用简化的配置，避免编译器检测问题
-          ./configure \
-            --prefix=/data/data/com.winlator/files/rootfs/usr \
-            --libdir=/data/data/com.winlator/files/rootfs/usr/lib \
-            --enable-shared \
-            --disable-static \
-            --enable-vp8 \
-            --enable-vp9 \
-            --disable-examples \
-            --disable-tools \
-            --disable-docs \
-            --disable-unit-tests \
-            --target=arm64-linux-gcc
-          
-          # 如果上面的配置失败，尝试更简化的配置
-          if [ $? -ne 0 ]; then
-            echo "⚠️ 标准配置失败，尝试简化配置..."
-            make distclean || true
-            ./configure \
-              --prefix=/data/data/com.winlator/files/rootfs/usr \
-              --enable-shared \
-              --disable-static \
-              --target=generic-gnu
+          # 查找系统 libvpx 库文件
+          LIBVPX_LIBS=$(find /usr/lib -name "libvpx*.so*" 2>/dev/null || true)
+          if [ -z "$LIBVPX_LIBS" ]; then
+            LIBVPX_LIBS=$(find /usr/lib/aarch64-linux-gnu -name "libvpx*.so*" 2>/dev/null || true)
           fi
           
-          make -j$(nproc)
-          make install
-          echo "✅ libvpx v1.14.0 已安装"
+          if [ -n "$LIBVPX_LIBS" ]; then
+            echo "✅ 找到系统 libvpx 库:"
+            echo "$LIBVPX_LIBS"
+            
+            # 复制库文件到目标目录
+            for lib in $LIBVPX_LIBS; do
+              if [ -f "$lib" ]; then
+                sudo cp -p "$lib" "/data/data/com.winlator/files/rootfs/usr/lib/"
+                echo "📄 复制: $(basename $lib)"
+              fi
+            done
+            
+            # 复制头文件
+            if [ -d "/usr/include/aarch64-linux-gnu/vpx" ]; then
+              sudo cp -r "/usr/include/aarch64-linux-gnu/vpx" "/data/data/com.winlator/files/rootfs/usr/include/"
+            elif [ -d "/usr/include/vpx" ]; then
+              sudo cp -r "/usr/include/vpx" "/data/data/com.winlator/files/rootfs/usr/include/"
+            fi
+            
+            echo "✅ 系统 libvpx 库复制完成"
+          else
+            echo "⚠️ 未找到系统 libvpx 库，GStreamer 将不包含 VP8/VP9 解码支持"
+          fi
 
-      # 🛠️ 构建 GStreamer 解码器（修复 Meson 安装权限问题）
+      # 🛠️ 构建 GStreamer 解码器（跳过 vpx 如果不可用）
       - name: 构建 GStreamer 解码器
         if: steps.check_build.outputs.skip_build == 'false'
         run: |
@@ -184,6 +179,15 @@ jobs:
           # 再次确保权限正确
           WINLATOR_ROOT="/data/data/com.winlator/files/rootfs"
           chmod -R 755 $WINLATOR_ROOT
+          
+          # 检查 libvpx 是否可用
+          if pkg-config --exists vpx; then
+            echo "✅ libvpx 可用，启用 VP8/VP9 支持"
+            VPX_OPTION="-Dgst-plugins-good:vpx=enabled"
+          else
+            echo "⚠️ libvpx 不可用，禁用 VP8/VP9 支持"
+            VPX_OPTION="-Dgst-plugins-good:vpx=disabled"
+          fi
           
           # 创建临时安装目录
           TEMP_INSTALL_DIR="/tmp/gst-install"
@@ -199,7 +203,7 @@ jobs:
             -Dtests=disabled -Ddoc=disabled -Dexamples=disabled \
             -Dpython=disabled -Dnls=disabled \
             -Dgst-plugins-libav:aac=disabled \
-            -Dgst-plugins-good:vpx=enabled \
+            $VPX_OPTION \
             -Dgst-plugins-bad:hip=disabled -Dgst-plugins-bad:nvcodec=disabled \
             -Dgst-plugins-base:gl=disabled -Dintrospection=disabled \
             -Dgst-full=enabled \
@@ -306,6 +310,15 @@ jobs:
           [ -f "$WINLATOR_LIB/gstreamer-1.0/gst-inspect-1.0" ] && echo "✅ gst-inspect-1.0 存在" || echo "❌ gst-inspect-1.0 缺失"
           [ -d "$GST_PLUGINS_PATH" ] && echo "✅ GStreamer 插件目录存在" || echo "❌ GStreamer 插件目录缺失"
           
+          # 检查 libvpx 是否存在
+          if [ -f "$WINLATOR_LIB/libvpx.so" ] || [ -f "$WINLATOR_LIB/libvpx.so.8" ] || [ -f "$WINLATOR_LIB/libvpx.so.7" ]; then
+            echo "✅ libvpx 存在"
+            VPX_AVAILABLE=true
+          else
+            echo "⚠️ libvpx 不存在，VP8/VP9 解码不可用"
+            VPX_AVAILABLE=false
+          fi
+          
           # 统计插件数量
           PLUGIN_COUNT=$(find "$GST_PLUGINS_PATH" -name "*.so" | wc -l)
           echo "📊 GStreamer 插件数量: $PLUGIN_COUNT"
@@ -320,7 +333,7 @@ jobs:
           
           # 检查关键插件
           echo "🔍 检查关键插件:"
-          for plugin in coreelements apetag vp8dec vp9dec; do
+          for plugin in coreelements apetag; do
               if [ -f "$WINLATOR_LIB/gstreamer-1.0/gst-inspect-1.0" ]; then
                   if $WINLATOR_LIB/ld-linux-aarch64.so.1 $WINLATOR_LIB/gstreamer-1.0/gst-inspect-1.0 $plugin >/dev/null 2>&1; then
                       echo "✅ 插件 $plugin 可用"
@@ -331,6 +344,21 @@ jobs:
                   echo "⚠️ 无法检查插件 $plugin (gst-inspect 缺失)"
               fi
           done
+          
+          # 如果 libvpx 可用，检查 VP8/VP9 插件
+          if [ "$VPX_AVAILABLE" = "true" ]; then
+            for plugin in vp8dec vp9dec; do
+                if [ -f "$WINLATOR_LIB/gstreamer-1.0/gst-inspect-1.0" ]; then
+                    if $WINLATOR_LIB/ld-linux-aarch64.so.1 $WINLATOR_LIB/gstreamer-1.0/gst-inspect-1.0 $plugin >/dev/null 2>&1; then
+                        echo "✅ 插件 $plugin 可用"
+                    else
+                        echo "❌ 插件 $plugin 不可用"
+                    fi
+                else
+                    echo "⚠️ 无法检查插件 $plugin (gst-inspect 缺失)"
+                fi
+            done
+          fi
 
       # 🧱 打包构建结果
       - name: 打包 usr 目录
@@ -338,7 +366,7 @@ jobs:
         run: |
           echo "📦 开始打包构建结果..."
           cd /data/data/com.winlator/files/rootfs
-          TAR_NAME="winlator-gst-decoders-${VERSION}-compiler-fixed.tar.gz"
+          TAR_NAME="winlator-gst-decoders-${VERSION}-no-libvpx-build.tar.gz"
           
           # 创建打包列表，排除不必要的文件
           echo "🗂️ 创建打包清单..."
@@ -381,10 +409,10 @@ jobs:
         if: steps.check_build.outputs.skip_build == 'false'
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ env.VERSION }}-compiler-fixed
-          name: "GStreamer Decoders ${{ env.VERSION }} Compiler Fixed (aarch64, Winlator)"
+          tag_name: ${{ env.VERSION }}-no-libvpx-build
+          name: "GStreamer Decoders ${{ env.VERSION }} (aarch64, Winlator)"
           body: |
-            ## 🎯 GStreamer 开发版本构建 - 编译器修复版
+            ## 🎯 GStreamer 开发版本构建
 
             ### 📋 构建信息
             - **版本**: `${{ env.VERSION }}`
@@ -397,16 +425,15 @@ jobs:
 
             ### 🛠️ 构建特性
             - ✅ Base / Good / Ugly / Bad / LibAV / GPL 全启用
-            - ✅ VP8/VP9 解码支持 (libvpx v1.14.0)
+            - ❌ VP8/VP9 解码支持：使用系统 libvpx（如果可用）
             - ❌ RTSP Server 已禁用
             - 🏗️ 构建类型: Release
             - 🔗 RPATH: 使用优化的相对路径模式
 
-            ### 🔧 修复内容
-            - ✅ 修复 libvpx 编译器问题：清除干扰环境变量
-            - ✅ 修复 Meson 安装权限问题：使用临时目录安装
-            - ✅ 优化 RPATH 设置，解决动态库加载问题
-            - ✅ 改进目录权限管理
+            ### 🔧 构建说明
+            - ✅ 跳过自定义 libvpx 构建（因配置问题）
+            - ✅ 使用系统 libvpx 库（如果存在）
+            - ✅ 自动检测并相应启用/禁用 VP8/VP9 支持
 
             ### 📦 文件信息
             - 文件名: `${{ env.TAR_NAME }}`
@@ -428,8 +455,7 @@ jobs:
             
             # 测试 GStreamer
             gst-inspect-1.0 --version
-            gst-inspect-1.0 vp8dec
-            gst-inspect-1.0 vp9dec
+            gst-inspect-1.0 coreelements
             ```
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -444,6 +470,6 @@ jobs:
           echo "✅ 提交: ${{ env.COMMIT_SHORT }}"
           echo "✅ 文件: ${{ env.TAR_NAME }}"
           echo "✅ 时间: ${{ env.BUILD_DATE }}"
-          echo "✅ 状态: 编译器问题已修复"
+          echo "✅ 状态: 跳过 libvpx 构建，使用系统库"
           echo "========================"
           echo "所有构建步骤已完成！"
