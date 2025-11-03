@@ -1,4 +1,4 @@
-name: winlator GStreamer Decoders (aarch64, Dev + libvpx) - 权限修复版
+name: winlator GStreamer Decoders (aarch64, Dev + libvpx) - 编译器修复版
 
 on:
   workflow_dispatch:
@@ -49,8 +49,6 @@ jobs:
           OPTIMIZED_RPATH='$ORIGIN:$ORIGIN/..:$ORIGIN/../gstreamer-1.0:$ORIGIN/../../../gstreamer/libs/gst/base:$ORIGIN/../../../gstreamer/gst:$ORIGIN/../../../gst-plugins-base/gst-libs/gst/pbutils:$ORIGIN/../../../gst-plugins-base/gst-libs/gst/video:$ORIGIN/../../../gst-plugins-base/gst-libs/gst/audio:$ORIGIN/../../../gst-plugins-base/gst-libs/gst/tag:$ORIGIN/../../../glib-2.82.2/glib:$ORIGIN/../../../glib-2.82.2/gobject:$ORIGIN/../../../glib-2.82.2/gmodule:$ORIGIN/../../../libffi/src:$ORIGIN/../../../orc/orc:${WINLATOR_LIB}'
 
           echo "LDFLAGS='-L${WINLATOR_LIB} -Wl,--dynamic-linker=${WINLATOR_LIB}/ld-linux-aarch64.so.1 -Wl,-rpath=${OPTIMIZED_RPATH}'" >> $GITHUB_ENV
-          echo "CFLAGS='-I${WINLATOR_INC}'" >> $GITHUB_ENV
-          echo "CXXFLAGS='-I${WINLATOR_INC}'" >> $GITHUB_ENV
           echo "LD_LIBRARY_PATH='${WINLATOR_LIB}:\$LD_LIBRARY_PATH'" >> $GITHUB_ENV
           echo "PKG_CONFIG_PATH='${WINLATOR_LIB}/pkgconfig:${WINLATOR_LIB}/aarch64-linux-gnu/pkgconfig:\$PKG_CONFIG_PATH'" >> $GITHUB_ENV
           echo "OPTIMIZED_RPATH=${OPTIMIZED_RPATH}" >> $GITHUB_ENV
@@ -131,25 +129,46 @@ jobs:
           ls -la $WINLATOR_ROOT/usr/
           echo "✅ 安装目录权限设置完成"
 
-      # 🧱 构建 libvpx v1.14.0
+      # 🧱 构建 libvpx v1.14.0（修复编译器问题）
       - name: 构建 libvpx v1.14.0
         if: steps.check_build.outputs.skip_build == 'false'
         run: |
           echo "📦 开始构建 libvpx v1.14.0..."
+          
+          # 临时清除可能干扰的环境变量
+          unset CFLAGS
+          unset CXXFLAGS
+          unset CPPFLAGS
+          
           git clone https://chromium.googlesource.com/webm/libvpx
           cd libvpx
           git checkout v1.14.0
+          
+          # 使用简化的配置，避免编译器检测问题
           ./configure \
             --prefix=/data/data/com.winlator/files/rootfs/usr \
             --libdir=/data/data/com.winlator/files/rootfs/usr/lib \
             --enable-shared \
+            --disable-static \
             --enable-vp8 \
             --enable-vp9 \
-            --enable-runtime-cpu-detect \
-            --target=arm64-linux-gcc \
-            --as=nasm \
             --disable-examples \
-            --disable-docs
+            --disable-tools \
+            --disable-docs \
+            --disable-unit-tests \
+            --target=arm64-linux-gcc
+          
+          # 如果上面的配置失败，尝试更简化的配置
+          if [ $? -ne 0 ]; then
+            echo "⚠️ 标准配置失败，尝试简化配置..."
+            make distclean || true
+            ./configure \
+              --prefix=/data/data/com.winlator/files/rootfs/usr \
+              --enable-shared \
+              --disable-static \
+              --target=generic-gnu
+          fi
+          
           make -j$(nproc)
           make install
           echo "✅ libvpx v1.14.0 已安装"
@@ -319,7 +338,7 @@ jobs:
         run: |
           echo "📦 开始打包构建结果..."
           cd /data/data/com.winlator/files/rootfs
-          TAR_NAME="winlator-gst-decoders-${VERSION}-permission-fixed.tar.gz"
+          TAR_NAME="winlator-gst-decoders-${VERSION}-compiler-fixed.tar.gz"
           
           # 创建打包列表，排除不必要的文件
           echo "🗂️ 创建打包清单..."
@@ -362,10 +381,10 @@ jobs:
         if: steps.check_build.outputs.skip_build == 'false'
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ env.VERSION }}-permission-fixed
-          name: "GStreamer Decoders ${{ env.VERSION }} Permission Fixed (aarch64, Winlator)"
+          tag_name: ${{ env.VERSION }}-compiler-fixed
+          name: "GStreamer Decoders ${{ env.VERSION }} Compiler Fixed (aarch64, Winlator)"
           body: |
-            ## 🎯 GStreamer 开发版本构建 - 权限修复版
+            ## 🎯 GStreamer 开发版本构建 - 编译器修复版
 
             ### 📋 构建信息
             - **版本**: `${{ env.VERSION }}`
@@ -384,10 +403,10 @@ jobs:
             - 🔗 RPATH: 使用优化的相对路径模式
 
             ### 🔧 修复内容
+            - ✅ 修复 libvpx 编译器问题：清除干扰环境变量
             - ✅ 修复 Meson 安装权限问题：使用临时目录安装
             - ✅ 优化 RPATH 设置，解决动态库加载问题
             - ✅ 改进目录权限管理
-            - ✅ 添加构建结果验证步骤
 
             ### 📦 文件信息
             - 文件名: `${{ env.TAR_NAME }}`
@@ -425,6 +444,6 @@ jobs:
           echo "✅ 提交: ${{ env.COMMIT_SHORT }}"
           echo "✅ 文件: ${{ env.TAR_NAME }}"
           echo "✅ 时间: ${{ env.BUILD_DATE }}"
-          echo "✅ 状态: Meson 权限问题已修复"
+          echo "✅ 状态: 编译器问题已修复"
           echo "========================"
           echo "所有构建步骤已完成！"
