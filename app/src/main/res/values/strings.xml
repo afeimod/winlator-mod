@@ -341,4 +341,5 @@
     <string name="external_controller">External Controller</string>
     <string name="controls_profile">Controls Profile</string>
     <string name="do_you_want_to_reset_configurations">Do you want to reset the configurations?</string>
+    <string name="the_settings_have_been_changed_do_you_want_to_restart_the_app">The settings have been changed. Do you want to restart the app?</string>
 </resources>

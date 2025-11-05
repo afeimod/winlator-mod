@@ -284,4 +284,5 @@
     <string name="external_controller">Внешний контроллер</string>
     <string name="controls_profile">Контрольный профиль</string>
     <string name="do_you_want_to_reset_configurations">Вы хотите сбросить настройки?</string>
+    <string name="the_settings_have_been_changed_do_you_want_to_restart_the_app">Настройки были изменены. Хотите перезапустить приложение?</string>
 </resources>
