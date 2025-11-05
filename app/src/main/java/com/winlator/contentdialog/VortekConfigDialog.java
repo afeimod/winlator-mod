@@ -70,4 +70,13 @@ public class VortekConfigDialog extends ContentDialog {
             anchor.setTag(newConfig.toString());
         });
     }
+
+    public static boolean isRequireRestart(String oldGraphicsDriverConfig, String newGraphicsDriverConfig) {
+        if (!oldGraphicsDriverConfig.equals(newGraphicsDriverConfig)) {
+            String oldAdrenotoolsDriver = (new KeyValueSet(oldGraphicsDriverConfig)).get("adrenotoolsDriver");
+            String newAdrenotoolsDriver = (new KeyValueSet(newGraphicsDriverConfig)).get("adrenotoolsDriver");
+            return !oldAdrenotoolsDriver.isEmpty() && !newAdrenotoolsDriver.isEmpty() && !newAdrenotoolsDriver.equals(oldAdrenotoolsDriver);
+        }
+        else return false;
+    }
 }

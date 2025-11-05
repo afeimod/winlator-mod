@@ -40,6 +40,7 @@ import com.winlator.container.Drive;
 import com.winlator.container.GraphicsDrivers;
 import com.winlator.contentdialog.AddEnvVarDialog;
 import com.winlator.contentdialog.AudioDriverConfigDialog;
+import com.winlator.contentdialog.ContentDialog;
 import com.winlator.contentdialog.DXVKConfigDialog;
 import com.winlator.contentdialog.TurnipConfigDialog;
 import com.winlator.contentdialog.VKD3DConfigDialog;
@@ -144,6 +145,7 @@ public class ContainerDetailFragment extends Fragment {
         final View vDXWrapperConfig = view.findViewById(R.id.BTDXWrapperConfig);
 
         final View vGraphicsDriverConfig = view.findViewById(R.id.BTGraphicsDriverConfig);
+        final String oldGraphicsDriverConfig = isEditMode() ? container.getGraphicsDriverConfig() : "";
         vGraphicsDriverConfig.setTag(isEditMode() ? container.getGraphicsDriverConfig() : "");
 
         setupDXWrapperSpinner(sGraphicsDriver, sDXWrapper, vDXWrapperConfig);
@@ -230,6 +232,10 @@ public class ContainerDetailFragment extends Fragment {
                     container.saveData();
 
                     saveWineRegistryKeys(view);
+
+                    boolean requireRestart = graphicsDriver.equals(GraphicsDrivers.VORTEK) && VortekConfigDialog.isRequireRestart(oldGraphicsDriverConfig, graphicsDriverConfig);
+                    if (requireRestart) ContentDialog.confirm(context, R.string.the_settings_have_been_changed_do_you_want_to_restart_the_app, () -> AppUtils.restartApplication(context));
+
                     getActivity().onBackPressed();
                 }
                 else {

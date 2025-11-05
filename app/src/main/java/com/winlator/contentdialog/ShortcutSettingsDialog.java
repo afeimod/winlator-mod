@@ -13,6 +13,7 @@ import com.winlator.ContainerDetailFragment;
 import com.winlator.R;
 import com.winlator.ShortcutsFragment;
 import com.winlator.box64.Box64PresetManager;
+import com.winlator.container.GraphicsDrivers;
 import com.winlator.container.Shortcut;
 import com.winlator.core.AppUtils;
 import com.winlator.core.EnvVars;
@@ -59,7 +60,8 @@ public class ShortcutSettingsDialog extends ContentDialog {
         final View vDXWrapperConfig = findViewById(R.id.BTDXWrapperConfig);
 
         final View vGraphicsDriverConfig = findViewById(R.id.BTGraphicsDriverConfig);
-        vGraphicsDriverConfig.setTag(shortcut.getExtra("graphicsDriverConfig", shortcut.container.getGraphicsDriverConfig()));
+        final String oldGraphicsDriverConfig = shortcut.getExtra("graphicsDriverConfig", shortcut.container.getGraphicsDriverConfig());
+        vGraphicsDriverConfig.setTag(oldGraphicsDriverConfig);
 
         final View vAudioDriverConfig = findViewById(R.id.BTAudioDriverConfig);
         vAudioDriverConfig.setTag(shortcut.getExtra("audioDriverConfig", shortcut.container.getAudioDriverConfig()));
@@ -153,6 +155,9 @@ public class ShortcutSettingsDialog extends ContentDialog {
                 shortcut.putExtra("preferredInputApi", preferredInputApi != GamepadHandler.PreferredInputApi.AUTO.ordinal() ? String.valueOf(preferredInputApi): null);
 
                 shortcut.saveData();
+
+                boolean requireRestart = graphicsDriver.equals(GraphicsDrivers.VORTEK) && VortekConfigDialog.isRequireRestart(oldGraphicsDriverConfig, graphicsDriverConfig);
+                if (requireRestart) ContentDialog.confirm(context, R.string.the_settings_have_been_changed_do_you_want_to_restart_the_app, () -> AppUtils.restartApplication(context));
             }
         });
     }
