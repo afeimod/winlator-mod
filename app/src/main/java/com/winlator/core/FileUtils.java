@@ -1,11 +1,15 @@
 package com.winlator.core;
 
+import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
 import android.net.Uri;
 import android.os.Environment;
 import android.os.StatFs;
 import android.system.ErrnoException;
 import android.system.Os;
+
+import androidx.core.content.FileProvider;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -400,5 +404,17 @@ public abstract class FileUtils {
         if (filename == null || filename.isEmpty()) return "";
         int dotIndex = filename.lastIndexOf(".");
         return dotIndex != -1 ? filename.substring(dotIndex + 1) : "";
+    }
+
+    public static void openIntent(Activity activity, String path) {
+        Intent intent;
+        if (path.startsWith("file://")) {
+            File file = new File(Uri.decode(path.replace("file://", "")));
+            intent = new Intent(Intent.ACTION_VIEW, FileProvider.getUriForFile(activity, "com.winlator.FileProvider", file));
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        }
+        else intent = new Intent(Intent.ACTION_VIEW, Uri.parse(path));
+        intent.addFlags(Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT | Intent.FLAG_ACTIVITY_NEW_TASK);
+        activity.startActivity(intent);
     }
 }

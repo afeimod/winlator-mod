@@ -1,12 +1,11 @@
 package com.winlator.winhandler;
 
-import android.content.Intent;
-import android.net.Uri;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 
 import com.winlator.XServerDisplayActivity;
 import com.winlator.core.DefaultVersion;
+import com.winlator.core.FileUtils;
 import com.winlator.core.GeneralComponents;
 import com.winlator.core.StringUtils;
 import com.winlator.xserver.XServer;
@@ -323,9 +322,7 @@ public class WinHandler {
                 int requestLength = receiveData.getInt();
                 byte[] data = new byte[requestLength];
                 socket.receive(new DatagramPacket(data, data.length));
-                Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(new String(data)));
-                intent.addFlags(Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT | Intent.FLAG_ACTIVITY_NEW_TASK);
-                activity.startActivity(intent);
+                FileUtils.openIntent(activity, new String(data));
                 break;
             }
             case RequestCodes.MIDI_OPEN: {
