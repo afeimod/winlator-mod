@@ -117,7 +117,7 @@ VkContext* createVkContext(JNIEnv* env, jobject obj, int clientFd, jobject optio
     pthread_mutex_init(&context->extraDataRequestsMutex, NULL);
 
     context->memoryPool.data = calloc(MEMORY_POOL_MAX_SIZE, 1);
-    context->threadPool = ThreadPool_init(4);
+    context->threadPool = ThreadPool_init(THREAD_POOL_NUM_THREADS);
 
     (*env)->GetJavaVM(env, &context->jmethods.jvm);
     context->jmethods.obj = (*env)->NewGlobalRef(env, obj);

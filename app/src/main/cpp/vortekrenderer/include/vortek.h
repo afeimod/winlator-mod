@@ -7,6 +7,7 @@
 #define CLIENT_RING_BUFFER_SIZE 262144
 #define VORTEK_SERVER_PATH "/data/data/com.winlator/files/rootfs/tmp/.vortek/V0"
 #define VK_HANDLE_BYTE_COUNT 8
+#define THREAD_POOL_NUM_THREADS 8
 
 #include "winlator.h"
 
