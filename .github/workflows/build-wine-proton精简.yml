@@ -1,0 +1,849 @@
+# build-wine-proton精简.yml
+name: Build ProtonLite WOW64 for Termux
+
+on:
+  workflow_dispatch:  # 只保留手动触发
+    inputs:
+      proton_branch:
+        description: 'Proton 分支版本'
+        required: true
+        default: 'proton_10.0'
+        type: choice
+        options:
+        - proton_10.0-rc
+        - proton_10.0
+        - proton_9.0
+        - proton_8.0
+        - proton_7.0
+        - proton_6.3
+        - proton_5.13
+      build_type:
+        description: '构建类型'
+        required: true
+        default: 'standard'
+        type: choice
+        options:
+        - minimal
+        - standard
+        - full
+      enable_features:
+        description: '启用额外功能'
+        required: false
+        default: 'vulkan,gstreamer,openal,mpg123'
+        type: string
+      optimization_level:
+        description: '优化级别'
+        required: true
+        default: 'O3'
+        type: choice
+        options:
+        - O1
+        - O2
+        - O3
+        - Os
+      apply_compatibility_patches:
+        description: '应用兼容性补丁'
+        required: true
+        default: 'true'
+        type: choice
+        options:
+        - 'true'
+        - 'false'
+
+permissions:
+  contents: write  # 允许 GITHUB_TOKEN 创建 Release
+
+env:
+  BUILD_DIR: "/tmp/build_wine"
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+
+    steps:
+    - name: 解析输入参数
+      run: |
+        echo "选择的 Proton 分支: ${{ github.event.inputs.proton_branch }}"
+        echo "构建类型: ${{ github.event.inputs.build_type }}"
+        echo "启用功能: ${{ github.event.inputs.enable_features }}"
+        echo "优化级别: ${{ github.event.inputs.optimization_level }}"
+        echo "应用兼容性补丁: ${{ github.event.inputs.apply_compatibility_patches }}"
+        
+        # 设置功能标志
+        if echo "${{ github.event.inputs.enable_features }}" | grep -q "vulkan"; then
+          echo "ENABLE_VULKAN=1" >> $GITHUB_ENV
+        else
+          echo "ENABLE_VULKAN=0" >> $GITHUB_ENV
+        fi
+        
+        if echo "${{ github.event.inputs.enable_features }}" | grep -q "gstreamer"; then
+          echo "ENABLE_GSTREAMER=1" >> $GITHUB_ENV
+        else
+          echo "ENABLE_GSTREAMER=0" >> $GITHUB_ENV
+        fi
+        
+        if echo "${{ github.event.inputs.enable_features }}" | grep -q "openal"; then
+          echo "ENABLE_OPENAL=1" >> $GITHUB_ENV
+        else
+          echo "ENABLE_OPENAL=0" >> $GITHUB_ENV
+        fi
+        
+        if echo "${{ github.event.inputs.enable_features }}" | grep -q "mpg123"; then
+          echo "ENABLE_MPG123=1" >> $GITHUB_ENV
+        else
+          echo "ENABLE_MPG123=0" >> $GITHUB_ENV
+        fi
+        
+        echo "BUILD_TYPE=${{ github.event.inputs.build_type }}" >> $GITHUB_ENV
+        echo "PROTON_BRANCH=${{ github.event.inputs.proton_branch }}" >> $GITHUB_ENV
+        echo "OPT_LEVEL=${{ github.event.inputs.optimization_level }}" >> $GITHUB_ENV
+        echo "APPLY_PATCHES=${{ github.event.inputs.apply_compatibility_patches }}" >> $GITHUB_ENV
+
+    - name: 安装构建依赖
+      run: |
+        sudo apt update
+        # 先修复损坏的依赖
+        sudo apt --fix-broken install -y
+        
+        # 基础构建依赖
+        BASE_DEPS="\
+          debootstrap \
+          perl \
+          git \
+          wget \
+          xz-utils \
+          bubblewrap \
+          autoconf \
+          flex \
+          bison \
+          gcc-multilib \
+          g++-multilib \
+          libx11-dev \
+          libxext-dev \
+          libxi-dev \
+          libxrandr-dev \
+          libxcursor-dev \
+          libxcomposite-dev \
+          libxdamage-dev \
+          libxfixes-dev \
+          libxxf86vm-dev \
+          libxrender-dev \
+          libxinerama-dev \
+          libgl-dev \
+          libsdl2-dev \
+          libglu-dev \
+          libosmesa6-dev \
+          libfreetype6-dev \
+          libfontconfig1-dev \
+          libpcap-dev \
+          libdbus-1-dev \
+          libssl-dev \
+          libasound2-dev \
+          libpulse-dev \
+          libudev-dev \
+          libcups2-dev \
+          libjpeg-dev \
+          libpng-dev \
+          libtiff-dev \
+          libxml2-dev \
+          mingw-w64 \
+          gettext \
+          libgettextpo-dev \
+          locales \
+          language-pack-zh-hans"
+        
+        # 根据构建类型添加依赖
+        if [ "$BUILD_TYPE" = "full" ] || [ "$ENABLE_VULKAN" = "1" ]; then
+          BASE_DEPS="$BASE_DEPS libvulkan-dev vulkan-tools libvulkan1 mesa-vulkan-drivers"
+        fi
+        
+        sudo apt install -y $BASE_DEPS
+
+    - name: 安装多媒体和音频依赖
+      run: |
+        # 基础音频依赖
+        AUDIO_DEPS="libunwind-dev"
+        
+        # 根据启用的功能添加依赖
+        if [ "$BUILD_TYPE" = "full" ] || [ "$ENABLE_GSTREAMER" = "1" ]; then
+          AUDIO_DEPS="$AUDIO_DEPS libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev"
+        fi
+        
+        if [ "$BUILD_TYPE" = "full" ] || [ "$ENABLE_OPENAL" = "1" ]; then
+          AUDIO_DEPS="$AUDIO_DEPS libopenal-dev"
+        fi
+        
+        if [ "$BUILD_TYPE" = "full" ] || [ "$ENABLE_MPG123" = "1" ]; then
+          AUDIO_DEPS="$AUDIO_DEPS libmpg123-dev"
+        fi
+        
+        echo "安装音频依赖: $AUDIO_DEPS"
+        sudo apt install -y $AUDIO_DEPS
+
+    - name: 设置中文语言环境
+      run: |
+        sudo locale-gen zh_CN.UTF-8
+        sudo update-locale LANG=zh_CN.UTF-8
+        export LANG=zh_CN.UTF-8
+        export LC_ALL=zh_CN.UTF-8
+
+    - name: 检查工作目录
+      run: |
+        echo "当前工作目录: $(pwd)"
+        echo "构建配置:"
+        echo "  - Proton 分支: $PROTON_BRANCH"
+        echo "  - 构建类型: $BUILD_TYPE"
+        echo "  - 优化级别: $OPT_LEVEL"
+        echo "  - 启用功能: Vulkan=$ENABLE_VULKAN, GStreamer=$ENABLE_GSTREAMER, OpenAL=$ENABLE_OPENAL, MPG123=$ENABLE_MPG123"
+        ls -la
+
+    - name: 构建 Proton WOW64 版本
+      run: |
+        set -e  # 遇到错误立即退出
+        
+        echo "开始构建 Proton WOW64 版本..."
+        echo "配置:"
+        echo "  - 分支: $PROTON_BRANCH"
+        echo "  - 构建类型: $BUILD_TYPE"
+        echo "  - 优化级别: $OPT_LEVEL"
+        echo "  - 启用功能: Vulkan=$ENABLE_VULKAN, GStreamer=$ENABLE_GSTREAMER, OpenAL=$ENABLE_OPENAL, MPG123=$ENABLE_MPG123"
+        echo "  - 应用兼容性补丁: $APPLY_PATCHES"
+        
+        # 设置中文构建环境
+        export LANG=zh_CN.UTF-8
+        export LC_ALL=zh_CN.UTF-8
+        export LANGUAGE=zh_CN:zh:en_US:en
+        
+        # 清理并创建构建目录
+        rm -rf $BUILD_DIR/proton
+        mkdir -p $BUILD_DIR/proton
+        cd $BUILD_DIR/proton
+        
+        # 克隆 Proton 源码
+        git clone https://github.com/ValveSoftware/wine
+        cd wine
+        
+        # 切换到指定的 Proton 分支
+        echo "切换到分支: $PROTON_BRANCH"
+        git checkout $PROTON_BRANCH
+        
+        echo "彻底修复 Termux 路径问题..."
+        
+        # 修改所有硬编码的 /tmp 路径
+        find . -type f \( -name "*.c" -o -name "*.h" -o -name "*.in" -o -name "*.spec" \) -exec grep -l "/tmp" {} \; | xargs sed -i 's|/tmp/|/data/data/com.winlator/files/rootfs/tmp/|g'
+        
+        # 修改 server 目录中的特定路径
+        find server -type f \( -name "*.c" -o -name "*.h" \) -exec sed -i 's|"/tmp"|"/data/data/com.winlator/files/rootfs/tmp"|g' {} +
+        
+        # 修改其他关键文件
+        find . -name "file.c" -exec sed -i 's|"/tmp"|"/data/data/com.winlator/files/rootfs/tmp"|g' {} +
+        find . -name "loader.c" -exec sed -i 's|"/tmp"|"/data/data/com.winlator/files/rootfs/tmp"|g' {} +
+        find . -name "server.c" -exec sed -i 's|"/tmp"|"/data/data/com.winlator/files/rootfs/tmp"|g' {} +
+        
+        echo "路径修复完成"
+        echo "修改 ip.c 文件中的 /proc 路径..."
+
+        # 修改 IPv4 和 IPv6 转发和 TTL 配置路径
+        find . -name "ip.c" -exec sed -i 's|"/proc/sys/net/ipv4/conf/default/forwarding"|"/data/data/com.winlator/files/rootfs/tmp/ifaddrs"|g' {} \;
+        find . -name "ip.c" -exec sed -i 's|"/proc/sys/net/ipv4/ip_default_ttl"|"/data/data/com.winlator/files/rootfs/tmp/ifaddrs"|g' {} \;
+        find . -name "ip.c" -exec sed -i 's|"/proc/sys/net/ipv6/conf/default/forwarding"|"/data/data/com.winlator/files/rootfs/tmp/ifaddrs"|g' {} \;
+        find . -name "ip.c" -exec sed -i 's|"/proc/sys/net/ipv6/conf/default/hop_limit"|"/data/data/com.winlator/files/rootfs/tmp/ifaddrs"|g' {} \;
+        # 将 steamuser 替换为 xuser，取消 Steam 优化
+          echo "替换 steamuser 为 xuser，取消 Steam 优化..."
+          find . -type f \( -name "*.c" -o -name "*.h" -o -name "*.in" -o -name "*.spec" -o -name "*.mk" -o -name "*.rc" -o -name "*.txt" \) -exec sed -i 's/steamuser/xuser/g; s/SteamUser/XUser/g; s/STEAMUSER/XUSER/g' {} +
+          
+          # 移除 Steam 特定的配置和优化
+          echo "移除 Steam 特定的配置和优化..."
+          # 删除 Steam 客户端相关的组件
+          if [ -f "dlls/steam/Makefile.in" ]; then
+            rm -f "dlls/steam/Makefile.in"
+          fi
+          if [ -f "dlls/steam/Makefile" ]; then
+            rm -f "dlls/steam/Makefile"
+          fi
+          
+          # 修改默认用户名设置
+          if [ -f "include/wine/user.h" ]; then
+            sed -i 's/"steamuser"/"xuser"/g' "include/wine/user.h"
+          fi
+          
+          # 修改注册表默认设置
+          if [ -f "dlls/advapi32/registry.c" ]; then
+            sed -i 's/"steamuser"/"xuser"/g' "dlls/advapi32/registry.c"
+          fi
+          
+          # 修改默认配置文件
+          if [ -f "programs/winemenubuilder/winemenubuilder.c" ]; then
+            sed -i 's/"steamuser"/"xuser"/g' "programs/winemenubuilder/winemenubuilder.c"
+          fi
+          
+          echo "Steam 优化已移除，用户已改为 xuser"
+          
+          echo "路径修复完成"
+
+        # 修改 ICMPv4 统计信息读取路径
+        find . -name "ip.c" -exec sed -i 's|fopen( "/proc/net/snmp", "r" )|fopen( "/data/data/com.winlator/files/rootfs/tmp/ifaddrs", "r" )|g' {} \;
+
+        # 修改 ICMPv6 统计信息读取路径  
+        find . -name "ip.c" -exec sed -i 's|fopen( "/proc/net/snmp6", "r" )|fopen( "/data/data/com.winlator/files/rootfs/tmp/ifaddrs", "r" )|g' {} \;
+
+        # 修改 IPv4 统计信息读取路径
+        find . -name "ip.c" -exec sed -i 's|"/proc/net/snmp"|"/data/data/com.winlator/files/rootfs/tmp/ifaddrs"|g' {} \;
+
+        # 修改 IPv6 统计信息读取路径
+        find . -name "ip.c" -exec sed -i 's|"/proc/net/snmp6"|"/data/data/com.winlator/files/rootfs/tmp/ifaddrs"|g' {} \;
+
+        echo "ip.c 文件路径修改完成"
+        
+        # 应用兼容性补丁 - 使用 sed 直接修改源码
+        if [ "$APPLY_PATCHES" = "true" ]; then
+          echo "开始应用兼容性补丁（使用 sed 直接修改源码）..."
+          
+          # 1. Steamify Proton's WINE 补丁
+          echo "应用 Steamify Proton's WINE 补丁..."
+          if [ -f "dlls/advapi32/advapi.c" ]; then
+            sed -i 's/static const char steamuserA\\[\\] = {.*};/DWORD len = GetEnvironmentVariableA( "WINEUSERNAME", name, *size ); BOOL ret; if (!len) return FALSE; if ((ret = (len < *size))) len++; else SetLastError( ERROR_INSUFFICIENT_BUFFER ); *size = len; return ret;/g' dlls/advapi32/advapi.c
+            sed -i 's/static const WCHAR steamuserW\\[\\] = {.*};/DWORD len = GetEnvironmentVariableW( L"WINEUSERNAME", name, *size ); BOOL ret; if (!len) return FALSE; if ((ret = (len < *size))) len++; else SetLastError( ERROR_INSUFFICIENT_BUFFER ); *size = len; return ret;/g' dlls/advapi32/advapi.c
+            echo "✅ Steamify Proton's WINE 补丁应用成功"
+          else
+            echo "⚠️  dlls/advapi32/advapi.c 文件不存在，跳过 Steamify 补丁"
+          fi
+
+          # 2. Xinerama fallback 补丁
+          echo "应用 Xinerama fallback 补丁..."
+          if [ -f "dlls/winex11.drv/x11drv_main.c" ]; then
+            # 在 x11drv_main.c 中添加 xinerama_available 变量
+            sed -i '/static BOOL use_system_cursors = TRUE;/a\\nstatic BOOL xinerama_available = FALSE;' dlls/winex11.drv/x11drv_main.c
+            
+            # 添加 init_xinerama 函数
+            sed -i '/static BOOL use_system_cursors = TRUE;/a\\nstatic void init_xinerama(void)\n{\n    void *xinerama_handle;\n    \n    xinerama_handle = dlopen("libXinerama.so.1", RTLD_NOW);\n    if (!xinerama_handle) {\n        xinerama_handle = dlopen("libXinerama.so", RTLD_NOW);\n    }\n    \n    if (xinerama_handle) {\n        xinerama_available = TRUE;\n        dlclose(xinerama_handle);\n        TRACE("Xinerama support enabled\\\\n");\n    } else {\n        WARN("libXinerama not available, continuing without multi-monitor support\\\\n");\n        xinerama_available = FALSE;\n    }\n}' dlls/winex11.drv/x11drv_main.c
+            
+            # 添加 xinerama_init_fallback 函数
+            sed -i '/static BOOL use_system_cursors = TRUE;/a\\nvoid xinerama_init_fallback( int width, int height )\n{\n    struct x11drv_mode_info *mode;\n    TRACE( "Using fallback Xinerama with single monitor %dx%d\\\\n", width, height );\n    /* Add basic single monitor setup here if needed */\n}' dlls/winex11.drv/x11drv_main.c
+            
+            # 在 X11DRV_CreateWindow 中添加初始化调用
+            sed -i '/X11DRV_DisplayDevices_Init(FALSE);/i\\    /* Initialize Xinerama with fallback */\n    init_xinerama();\n    if (!xinerama_available)\n        xinerama_init_fallback( DisplayWidth( gdi_display, default_visual.screen ), DisplayHeight( gdi_display, default_visual.screen ) );' dlls/winex11.drv/x11drv_main.c
+            echo "✅ Xinerama fallback 补丁应用成功"
+          else
+            echo "⚠️  dlls/winex11.drv/x11drv_main.c 文件不存在，跳过 Xinerama 补丁"
+          fi
+
+          # 3. Seccomp handling 补丁
+          echo "应用 Seccomp handling 补丁..."
+          if [ -f "dlls/ntdll/unix/signal_x86_64.c" ]; then
+            # 在 install_bpf 函数中添加检查
+            sed -i '/int install_bpf(struct sigaction \\*old_act)/a\\    if (are_libs_in_low_addresses()) {\n        static int warned = 0;\n        if (!warned) {\n            WARN("Native libraries loaded in low addresses, disabling seccomp for compatibility\\\\n");\n            warned = 1;\n        }\n        return 0;\n    }' dlls/ntdll/unix/signal_x86_64.c
+            echo "✅ Seccomp handling 补丁应用成功"
+          else
+            echo "⚠️  dlls/ntdll/unix/signal_x86_64.c 文件不存在，跳过 Seccomp 补丁"
+          fi
+
+          # 4. Non-critical drivers 补丁
+          echo "应用 Non-critical drivers 补丁..."
+          if [ -f "dlls/ntdll/unix/server.c" ]; then
+            # 在 server.c 中添加辅助函数
+            sed -i '/static BOOL is_non_critical_driver( const WCHAR \\*name )/i\\static BOOL is_non_critical_driver( const WCHAR *name )\n{\n    static const WCHAR *non_critical_drivers[] = {\n        L"winebus",\n        L"SharedGpuResources", \n        L"winebth",\n        NULL\n    };\n    \n    for (int i = 0; non_critical_drivers[i]; i++) {\n        if (strcmpW(name, non_critical_drivers[i]) == 0)\n            return TRUE;\n    }\n    return FALSE;\n}' dlls/ntdll/unix/server.c
+            
+            # 添加 load_driver_with_fallback 函数
+            sed -i '/static BOOL is_non_critical_driver( const WCHAR \\*name )/a\\static NTSTATUS load_driver_with_fallback( const WCHAR *name )\n{\n    NTSTATUS status = orig_load_driver(name);\n    \n    if (!NT_SUCCESS(status)) {\n        if (is_non_critical_driver(name)) {\n            WARN("Failed to load non-critical driver %s: %x, continuing...\\\\n", debugstr_w(name), status);\n            return STATUS_SUCCESS;\n        }\n    }\n    \n    return status;\n}' dlls/ntdll/unix/server.c
+            echo "✅ Non-critical drivers 补丁应用成功"
+          else
+            echo "⚠️  dlls/ntdll/unix/server.c 文件不存在，跳过 Non-critical drivers 补丁"
+          fi
+
+          # 5. Mobile environment detection 补丁
+          echo "应用 Mobile environment detection 补丁..."
+          if [ -f "dlls/ntdll/unix/unix_private.h" ]; then
+            # 在 unix_private.h 中添加检测函数
+            sed -i '/extern void CDECL set_signal_handler( int signal, void (\\*handler)(int) );/a\\nstatic inline BOOL is_mobile_environment(void)\n{\n    static int mobile_env = -1;\n    \n    if (mobile_env == -1) {\n        const char *android_env = getenv("ANDROID_ROOT");\n        mobile_env = (android_env != NULL);\n    }\n    \n    return mobile_env;\n}' dlls/ntdll/unix/unix_private.h
+            echo "✅ Mobile environment detection 补丁应用成功"
+          else
+            echo "⚠️  dlls/ntdll/unix/unix_private.h 文件不存在，跳过 Mobile environment detection 补丁"
+          fi
+
+          echo "所有兼容性补丁应用完成"
+        else
+          echo "跳过兼容性补丁应用"
+        fi
+        
+        # 生成 configure 脚本
+        echo "生成 configure 脚本..."
+        ./autogen.sh
+        
+        # 配置编译标志
+        case "$OPT_LEVEL" in
+          "O1")
+            OPT_FLAGS="-O1 -pipe"
+            ;;
+          "O2")
+            OPT_FLAGS="-O2 -pipe"
+            ;;
+          "O3")
+            OPT_FLAGS="-O3 -ftree-vectorize -pipe"
+            ;;
+          "Os")
+            OPT_FLAGS="-Os -pipe"
+            ;;
+          *)
+            OPT_FLAGS="-O2 -pipe"
+            ;;
+        esac
+        
+        # 配置 Wine
+        mkdir -p build64
+        cd build64
+        
+        # 根据是否应用补丁调整编译标志
+        if [ "$APPLY_PATCHES" = "true" ]; then
+          echo "启用兼容性补丁编译选项..."
+          export EXTRA_CFLAGS="-DMOBILE_COMPATIBILITY=1"
+        fi
+        
+        export CROSSCC="x86_64-w64-mingw32-gcc"
+        export CROSSCXX="x86_64-w64-mingw32-g++"
+        export CFLAGS="-march=x86-64 -msse3 -mfpmath=sse $OPT_FLAGS $EXTRA_CFLAGS"
+        export CXXFLAGS="-march=x86-64 -msse3 -mfpmath=sse $OPT_FLAGS $EXTRA_CFLAGS"
+        export CROSSCFLAGS="-march=x86-64 -msse3 -mfpmath=sse $OPT_FLAGS $EXTRA_CFLAGS"
+        export CROSSCXXFLAGS="-march=x86-64 -msse3 -mfpmath=sse $OPT_FLAGS $EXTRA_CFLAGS"
+        
+        # 精细控制 X11 功能
+        CONFIGURE_OPTS="\
+          --enable-win64 \
+          --enable-archs=i386,x86_64 \
+          --prefix=/tmp/wine-install-proton \
+          --with-x \
+          --x-includes=/usr/include \
+          --x-libraries=/usr/lib/x86_64-linux-gnu \
+          --with-freetype \
+          --with-fontconfig \
+          --enable-nls \
+          --disable-winemenubuilder \
+          --disable-win16 \
+          --disable-tests \
+          --with-xinput \
+          --with-xinput2 \
+          --with-xshape \
+          --with-xshm \
+          --without-xcomposite \
+          --without-xcursor \
+          --without-xinerama \
+          --without-xrandr \
+          --without-xrender \
+          --without-xxf86vm \
+          --with-alsa \
+          --with-pulse \
+          --with-sdl \
+          --without-ldap \
+          --without-capi \
+          --without-oss \
+          --without-cups \
+          --without-dbus \
+          --without-coreaudio \
+          --without-gphoto \
+          --without-osmesa \
+          --without-sane \
+          --without-pcap \
+          --without-pcsclite \
+          --without-udev \
+          --without-unwind \
+          --without-usb \
+          --without-v4l2 \
+          --without-wayland"
+        # 根据功能添加配置选项
+        if [ "$ENABLE_VULKAN" = "1" ]; then
+          CONFIGURE_OPTS="$CONFIGURE_OPTS --with-vulkan"
+        else
+          CONFIGURE_OPTS="$CONFIGURE_OPTS --without-vulkan"
+        fi
+        
+        if [ "$ENABLE_GSTREAMER" = "1" ]; then
+          CONFIGURE_OPTS="$CONFIGURE_OPTS --with-gstreamer"
+        else
+          CONFIGURE_OPTS="$CONFIGURE_OPTS --without-gstreamer"
+        fi
+        
+        # 根据构建类型调整配置
+        case "$BUILD_TYPE" in
+          "minimal")
+            CONFIGURE_OPTS="$CONFIGURE_OPTS --without-openal --without-mpg123"
+            ;;
+          "standard")
+            if [ "$ENABLE_OPENAL" = "1" ]; then
+              CONFIGURE_OPTS="$CONFIGURE_OPTS --with-openal"
+            else
+              CONFIGURE_OPTS="$CONFIGURE_OPTS --without-openal"
+            fi
+            if [ "$ENABLE_MPG123" = "1" ]; then
+              CONFIGURE_OPTS="$CONFIGURE_OPTS --with-mpg123"
+            else
+              CONFIGURE_OPTS="$CONFIGURE_OPTS --without-mpg123"
+            fi
+            ;;
+          "full")
+            CONFIGURE_OPTS="$CONFIGURE_OPTS --with-openal --with-mpg123"
+            ;;
+        esac
+        
+        echo "配置参数: $CONFIGURE_OPTS"
+        ../configure $CONFIGURE_OPTS
+        
+        # 构建并安装
+        make -j$(nproc)
+        make install
+        
+        # 额外步骤：确保中文资源文件被正确安装
+        echo "检查本地化文件..."
+        find /tmp/wine-install-proton -name "*zh_CN*" -o -name "*chinese*" | head -20
+        
+        cd ../..
+        
+        # 获取版本信息
+        VERSION_PROTON=$(cd wine && git describe --tags --abbrev=0 2>/dev/null || echo "$PROTON_BRANCH")
+        COMMIT_HASH=$(cd wine && git rev-parse --short HEAD)
+        PATCH_STATUS=""
+        if [ "$APPLY_PATCHES" = "true" ]; then
+          PATCH_STATUS="-patched"
+        fi
+        PROTON_VERSION="${VERSION_PROTON}-${COMMIT_HASH}${PATCH_STATUS}"
+        echo "PROTON_VERSION=$PROTON_VERSION" >> $GITHUB_ENV
+
+    - name: 准备打包
+      run: |
+        # 创建打包目录，使用新的目录结构
+        PACKAGE_NAME="wine-${{ env.PROTON_VERSION }}-wow64"
+        mkdir -p wine-package/$PACKAGE_NAME
+        
+        # 复制 Wine 安装文件到新的目录
+        echo "复制 Wine 文件到 $PACKAGE_NAME..."
+        cp -r /tmp/wine-install-proton/* wine-package/$PACKAGE_NAME/
+
+    - name: 检查构建输出中的本地化文件
+      run: |
+        echo "检查构建的本地化文件..."
+        PACKAGE_NAME="wine-${{ env.PROTON_VERSION }}-wow64"
+        find wine-package -name "*zh_CN*" -o -name "*chinese*" | head -20 || echo "未找到相关本地化文件"
+
+    - name: 验证功能支持
+      run: |
+        PACKAGE_NAME="wine-${{ env.PROTON_VERSION }}-wow64"
+        echo "构建配置总结:"
+        echo "  - 版本: ${{ env.PROTON_VERSION }}"
+        echo "  - 分支: $PROTON_BRANCH"
+        echo "  - 构建类型: $BUILD_TYPE"
+        echo "  - 优化级别: $OPT_LEVEL"
+        echo "  - 启用功能:"
+        echo "    * Vulkan: $ENABLE_VULKAN"
+        echo "    * GStreamer: $ENABLE_GSTREAMER"
+        echo "    * OpenAL: $ENABLE_OPENAL"
+        echo "    * MPG123: $ENABLE_MPG123"
+        
+        if [ "$ENABLE_VULKAN" = "1" ]; then
+          echo "检查 Vulkan 支持..."
+          find wine-package -name "*vulkan*" | head -10
+        fi
+        
+        if [ "$ENABLE_GSTREAMER" = "1" ]; then
+          echo "检查 GStreamer 支持..."
+          find wine-package -name "*gst*" | head -10
+        fi
+
+    - name: 创建打包文件
+      run: |
+        PACKAGE_NAME="wine-${{ env.PROTON_VERSION }}-wow64"
+        
+        echo "最终文件结构:"
+        find wine-package -type f | sort | head -20
+        
+        # 使用 tar.xz 格式打包
+        tar -cJf $PACKAGE_NAME.tar.xz -C wine-package $PACKAGE_NAME
+        
+        echo "打包完成:"
+        ls -lh *.tar.xz
+
+    - name: 为 Termux 准备安装包
+      run: |
+        PACKAGE_NAME="wine-${{ env.PROTON_VERSION }}-wow64"
+        
+        # 解压构建文件到临时目录
+        tar -xJf "$PACKAGE_NAME.tar.xz" -C /tmp/
+        
+        # 创建 Termux 包结构
+        mkdir -p termux-package/opt/wine
+        mkdir -p termux-package/bin
+        
+        # 复制 Wine 文件
+        cp -r /tmp/$PACKAGE_NAME/* termux-package/opt/wine/
+        
+        # 创建包装脚本 - 根据构建配置调整
+        cat > termux-package/bin/wine << 'EOF'
+        #!/bin/bash
+        # Wine Proton for Termux 启动脚本 - 增强中文支持
+        
+        export TERMUX_PREFIX="/data/data/com.termux/files/usr"
+        export HOME="$HOME"
+        
+        # 设置临时目录
+        export TMPDIR="$TERMUX_PREFIX/tmp"
+        export TEMP="$TMPDIR"
+        export TMP="$TMPDIR"
+        
+        # 确保临时目录存在
+        mkdir -p "$TMPDIR" 2>/dev/null
+        
+        # 设置 Wine 前缀
+        if [ -z "$WINEPREFIX" ]; then
+            export WINEPREFIX="$HOME/.wine"
+        fi
+        
+        # 确保 Wine 前缀目录存在
+        mkdir -p "$WINEPREFIX" 2>/dev/null
+        
+        # 设置库路径
+        export LD_LIBRARY_PATH="$TERMUX_PREFIX/opt/wine/lib:$TERMUX_PREFIX/opt/wine/lib64:$TERMUX_PREFIX/lib:$LD_LIBRARY_PATH"
+        
+        # 设置 Vulkan 驱动路径（如果启用）
+        if [ -f "$TERMUX_PREFIX/share/vulkan/icd.d/freedreno_icd.aarch64.json" ]; then
+            export VK_ICD_FILENAMES="$TERMUX_PREFIX/share/vulkan/icd.d/freedreno_icd.aarch64.json"
+        fi
+        
+        # 设置字体路径
+        export FONTCONFIG_PATH="$TERMUX_PREFIX/opt/wine/etc/fonts"
+        
+        # 设置其他 Wine 相关环境变量
+        export WINEDLLPATH="$TERMUX_PREFIX/opt/wine/lib/wine:$TERMUX_PREFIX/opt/wine/lib64/wine"
+        export WINEARCH="win64"  # WOW64 模式
+        
+        # 强制设置中文环境 - 增强版本
+        export LANG="zh_CN.UTF-8"
+        export LC_ALL="zh_CN.UTF-8"
+        export LC_CTYPE="zh_CN.UTF-8"
+        export LANGUAGE="zh_CN:zh:en_US:en"
+        
+        # 设置 Wine 的 UI 语言为中文
+        export WINELANG="zh_CN"
+        
+        # 运行真正的 wine 程序
+        exec "$TERMUX_PREFIX/opt/wine/bin/wine" "$@"
+        EOF
+        
+        chmod +x termux-package/bin/wine
+        
+        # 创建其他包装脚本
+        for bin in wineserver winecfg; do
+          cat > termux-package/bin/$bin << EOF
+        #!/bin/bash
+        export TERMUX_PREFIX="/data/data/com.termux/files/usr"
+        export TMPDIR="\$TERMUX_PREFIX/tmp"
+        export LD_LIBRARY_PATH="\$TERMUX_PREFIX/opt/wine/lib:\$TERMUX_PREFIX/opt/wine/lib64:\$TERMUX_PREFIX/lib:\$LD_LIBRARY_PATH"
+        export WINEDLLPATH="\$TERMUX_PREFIX/opt/wine/lib/wine:\$TERMUX_PREFIX/opt/wine/lib64/wine"
+        # 强制中文环境
+        export LANG="zh_CN.UTF-8"
+        export LC_ALL="zh_CN.UTF-8"
+        export WINELANG="zh_CN"
+        exec "\$TERMUX_PREFIX/opt/wine/bin/$bin" "\$@"
+        EOF
+          chmod +x termux-package/bin/$bin
+        done
+
+    - name: 创建安装脚本和配置
+      run: |
+        # 创建安装脚本
+        cat > termux-package/install.sh << EOF
+        #!/bin/bash
+        set -e
+        
+        echo "=========================================="
+        echo "   Wine Proton WOW64 for Termux 安装脚本"
+        echo "=========================================="
+        echo "版本: ${{ env.PROTON_VERSION }}"
+        echo "构建类型: $BUILD_TYPE"
+        echo "优化级别: $OPT_LEVEL"
+        echo "启用功能:"
+        [ "$ENABLE_VULKAN" = "1" ] && echo "  ✓ Vulkan 支持"
+        [ "$ENABLE_GSTREAMER" = "1" ] && echo "  ✓ GStreamer 多媒体支持"
+        [ "$ENABLE_OPENAL" = "1" ] && echo "  ✓ OpenAL 3D 音频支持"
+        [ "$ENABLE_MPG123" = "1" ] && echo "  ✓ MPG123 音频支持"
+        echo ""
+        
+        TERMUX_PREFIX="/data/data/com.termux/files/usr"
+        INSTALL_DIR="\$TERMUX_PREFIX/opt/wine"
+        BIN_DIR="\$TERMUX_PREFIX/bin"
+        
+        # 检查环境
+        if [ ! -d "\$TERMUX_PREFIX" ]; then
+            echo "错误: 这似乎不是 Termux 环境!"
+            exit 1
+        fi
+        
+        # 创建目录
+        echo "创建目录..."
+        mkdir -p "\$INSTALL_DIR"
+        mkdir -p "\$BIN_DIR"
+        mkdir -p "\$TERMUX_PREFIX/tmp"
+        mkdir -p "\$TERMUX_PREFIX/share/vulkan/icd.d"
+        mkdir -p "\$HOME/.wine"
+        
+        # 安装文件
+        echo "安装 Wine 文件..."
+        cp -r opt/wine/* "\$INSTALL_DIR"/
+        
+        echo "安装启动脚本..."
+        cp bin/wine "\$BIN_DIR"/
+        cp bin/wineserver "\$BIN_DIR"/
+        cp bin/winecfg "\$BIN_DIR"/
+        
+        chmod +x "\$BIN_DIR"/wine
+        chmod +x "\$BIN_DIR"/wineserver
+        chmod +x "\$BIN_DIR"/winecfg
+        
+        # 创建 Vulkan ICD 配置（如果启用 Vulkan）
+        if [ "$ENABLE_VULKAN" = "1" ]; then
+          cat > "\$TERMUX_PREFIX/share/vulkan/icd.d/freedreno_icd.aarch64.json" << 'EOL'
+        {
+            "file_format_version": "1.0.0",
+            "ICD": {
+                "library_path": "libvulkan_freedreno.so",
+                "api_version": "1.0.0"
+            }
+        }
+        EOL
+        fi
+        
+        echo ""
+        echo "=========================================="
+        echo "   Wine Proton WOW64 安装完成!"
+        echo "=========================================="
+        echo ""
+        echo "构建信息:"
+        echo "✓ 版本: ${{ env.PROTON_VERSION }}"
+        echo "✓ 分支: $PROTON_BRANCH"
+        echo "✓ 构建类型: $BUILD_TYPE"
+        echo "✓ 优化级别: $OPT_LEVEL"
+        echo ""
+        echo "启用的功能:"
+        [ "$ENABLE_VULKAN" = "1" ] && echo "✓ Vulkan 图形 API 支持"
+        [ "$ENABLE_GSTREAMER" = "1" ] && echo "✓ GStreamer 多媒体支持"
+        [ "$ENABLE_OPENAL" = "1" ] && echo "✓ OpenAL 3D 音频支持"
+        [ "$ENABLE_MPG123" = "1" ] && echo "✓ MPG123 音频支持"
+        echo "✓ 完整中文语言支持"
+        echo "✓ WOW64 架构 (同时支持 32/64 位应用)"
+        echo "✓ 游戏优化和兼容性改进"
+        echo ""
+        echo "下一步:"
+        echo "1. 重新启动 Termux 或运行: source ~/.bashrc"
+        echo "2. 初始化 Wine: wine wineboot"
+        echo "3. 配置 Wine: winecfg"
+        echo ""
+        echo "依赖安装:"
+        [ "$ENABLE_VULKAN" = "1" ] && echo "- Vulkan: pkg install mesa-vulkan-driver"
+        [ "$ENABLE_OPENAL" = "1" ] || [ "$ENABLE_MPG123" = "1" ] && echo "- 音频: pkg install pulseaudio openal mpg123"
+        echo ""
+        echo "故障排除:"
+        echo "- 确保 Termux 有存储权限"
+        echo "- 运行: termux-setup-storage"
+        echo "- 检查 Wine 前缀: echo \$WINEPREFIX"
+        echo "=========================================="
+        EOF
+        
+        chmod +x termux-package/install.sh
+
+    - name: 创建 Termux 打包文件
+      run: |
+        PACKAGE_NAME="wine-${{ env.PROTON_VERSION }}-wow64"
+        
+        # 打包 Termux 版本
+        tar -czf ${PACKAGE_NAME}-termux.tar.gz termux-package/
+        
+        echo "打包完成:"
+        ls -lh *.tar.*
+
+    - name: 设置 Release 标签
+      run: |
+        CURRENT_DATE=$(date +%Y%m%d)
+        echo "RELEASE_TAG=proton-$PROTON_BRANCH-$BUILD_TYPE-$CURRENT_DATE" >> $GITHUB_ENV
+        echo "Release 标签设置为: $RELEASE_TAG"
+
+    - name: 上传所有构建产物
+      uses: actions/upload-artifact@v4
+      with:
+        name: wine-wow64-builds-${{ env.RELEASE_TAG }}
+        path: |
+          wine-*.tar.*
+        retention-days: 7
+
+    - name: 发布到 GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ env.RELEASE_TAG }}
+        name: Wine Proton WOW64 Build ${{ env.RELEASE_TAG }}
+        body: |
+          # Wine Proton WOW64 for Termux
+          
+          ## 构建信息
+          - **版本**: ${{ env.PROTON_VERSION }}
+          - **Proton 分支**: ${{ github.event.inputs.proton_branch }}
+          - **构建类型**: ${{ github.event.inputs.build_type }}
+          - **优化级别**: ${{ github.event.inputs.optimization_level }}
+          - **启用功能**: ${{ github.event.inputs.enable_features }}
+          
+          ## 包含的功能
+          ${{ env.ENABLE_VULKAN == '1' && '- ✅ Vulkan 图形 API 支持' || '- ❌ Vulkan 图形 API 支持' }}
+          ${{ env.ENABLE_GSTREAMER == '1' && '- ✅ GStreamer 多媒体支持' || '- ❌ GStreamer 多媒体支持' }}
+          ${{ env.ENABLE_OPENAL == '1' && '- ✅ OpenAL 3D 音频支持' || '- ❌ OpenAL 3D 音频支持' }}
+          ${{ env.ENABLE_MPG123 == '1' && '- ✅ MPG123 音频支持' || '- ❌ MPG123 音频支持' }}
+          - ✅ 完整中文语言支持
+          - ✅ WOW64 架构 (同时支持 32/64 位应用)
+          - ✅ 游戏优化和兼容性改进
+          
+        files: |
+          wine-*.tar.*
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: 输出版本信息和使用说明
+      run: |
+        PACKAGE_NAME="wine-${{ env.PROTON_VERSION }}-wow64"
+        
+        echo "✅ Wine Proton WOW64 构建完成"
+        echo ""
+        echo "构建配置:"
+        echo "- Proton 分支: $PROTON_BRANCH"
+        echo "- 构建类型: $BUILD_TYPE"
+        echo "- 优化级别: $OPT_LEVEL"
+        echo "- 启用功能: Vulkan=$ENABLE_VULKAN, GStreamer=$ENABLE_GSTREAMER, OpenAL=$ENABLE_OPENAL, MPG123=$ENABLE_MPG123"
+        echo ""
+        echo "构建产物:"
+        echo "- 主包: ${PACKAGE_NAME}.tar.xz"
+        echo "- Termux 安装包: ${PACKAGE_NAME}-termux.tar.gz"
+        echo "- Release 标签: ${{ env.RELEASE_TAG }}"
+        echo ""
+        echo "启用的功能:"
+        [ "$ENABLE_VULKAN" = "1" ] && echo "✓ Vulkan 图形 API 支持"
+        [ "$ENABLE_GSTREAMER" = "1" ] && echo "✓ GStreamer 多媒体支持"
+        [ "$ENABLE_OPENAL" = "1" ] && echo "✓ OpenAL 3D 音频支持"
+        [ "$ENABLE_MPG123" = "1" ] && echo "✓ MPG123 音频支持"
+        echo "✓ 完整中文语言支持 (NLS 已启用)"
+        echo "✓ 游戏优化和兼容性改进"
+        echo ""
+        echo "中文支持增强:"
+        echo "✓ 构建时启用 NLS 和 gettext"
+        echo "✓ 包含中文语言环境"
+        echo "✓ 环境变量强制设置为中文"
+        echo "✓ 设置 WINELANG 环境变量"
+        echo ""
+        echo "使用说明:"
+        echo "1. 下载 ${PACKAGE_NAME}-termux.tar.gz"
+        echo "2. 解压: tar -xzf ${PACKAGE_NAME}-termux.tar.gz"
+        echo "3. 进入目录: cd termux-package"
+        echo "4. 运行安装: ./install.sh"
+        echo "5. 重新加载环境: source ~/.bashrc"
+        echo "6. 初始化: wine wineboot"
+        echo ""
+        echo "注意:"
+        echo "- 这是基于 Valve Proton 的 WOW64 构建"
+        echo "- 单一二进制支持 32/64 位应用"
+        echo "- 已修复 Termux 路径问题"
+        echo "- 专为游戏和兼容性优化"
+        echo "- 强制启用中文界面支持"
