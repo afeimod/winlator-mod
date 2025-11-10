@@ -401,16 +401,7 @@ jobs:
               libgstreamer-plugins-base1.0-dev \
               libgstreamer-plugins-good1.0-dev \
               libgstreamer-plugins-bad1.0-dev \
-              gstreamer1.0-plugins-base \
-              gstreamer1.0-plugins-good \
-              gstreamer1.0-plugins-bad \
-              gstreamer1.0-plugins-ugly \
-              gstreamer1.0-libav \
-              gstreamer1.0-pulseaudio \
-              gstreamer1.0-alsa \
-              gstreamer1.0-gl \
-              gstreamer1.0-qt5 \
-              gstreamer1.0-gtk3 \
+              gstreamer1.0-* \
               libmpg123-dev \
               libopenal-dev \
               libfaad-dev \
@@ -604,11 +595,7 @@ jobs:
           find . -name "server.c" -exec sed -i 's|"/tmp"|"/data/data/com.winlator/files/rootfs/tmp"|g' {} +
           
           echo "路径修复完成"
-          # 下载并应用 FFmpeg API 兼容性补丁
-          echo "修复 FFmpeg API 兼容性问题..."
-            wget -O fix_ffmpeg_api_compatibility.patch https://github.com/afeimod/linbox/raw/main/path/fix_ffmpeg_api_compatibility.patch
-            patch -p1 < fix_ffmpeg_api_compatibility.patch
-            echo "✅ FFmpeg API 兼容性补丁应用成功"
+          
           # 根据版本选择修复方式
           # 从 WINE_VERSION_ACTUAL 中提取纯数字版本号
           PURE_VERSION=$(echo "$WINE_VERSION_ACTUAL" | sed 's/^wine-//')
