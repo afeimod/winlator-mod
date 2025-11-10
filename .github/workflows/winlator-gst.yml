@@ -51,6 +51,11 @@ jobs:
             autoconf \
             automake \
             libtool \
+            autopoint \
+            gperf \
+            yasm \
+            nasm \
+            cmake \
             libglib2.0-dev \
             libffi-dev \
             libxml2-dev \
@@ -182,8 +187,11 @@ jobs:
           # 构建xz
           echo "Build and Compile xz(liblzma)"
           cd /tmp/xz-src
-          ./autogen.sh
-          mkdir build
+          # 检查是否需要运行 autogen.sh
+          if [ -f "autogen.sh" ]; then
+            ./autogen.sh
+          fi
+          mkdir -p build
           cd build
           if ! ../configure --prefix=/data/data/com.winlator/files/rootfs/; then
             exit 1
@@ -283,8 +291,9 @@ jobs:
           cd /data/data/com.winlator/files/rootfs/
           patchelf_fix
           create_ver_txt
-          if ! tar -I 'xz -T8' -cf /tmp/output/output-lite.tar.xz *; then
-            exit 1
+          if ! tar -I 'xz -9 -T8' -cf /tmp/output/output-lite.tar.xz *; then
+            # 如果并行压缩失败，尝试单线程
+            tar -cJf /tmp/output/output-lite.tar.xz *
           fi
 
           cd /tmp
@@ -292,18 +301,20 @@ jobs:
           tar -xf tzdata-2025b-1-aarch64.pkg.tar.xz -C /data/data/com.winlator/files/rootfs/
           cd /data/data/com.winlator/files/rootfs/
           create_ver_txt
-          if ! tar -I 'xz -T8' -cf /tmp/output/output-full.tar.xz *; then
-            exit 1
+          if ! tar -I 'xz -9 -T8' -cf /tmp/output/output-full.tar.xz *; then
+            # 如果并行压缩失败，尝试单线程
+            tar -cJf /tmp/output/output-full.tar.xz *
           fi
 
           # 重新创建干净的rootfs并合并
           rm -rf /data/data/com.winlator/files/rootfs/*
-          tar -xf rootfs.tzst -C /data/data/com.winlator/files/rootfs/
+          tar -xf /tmp/rootfs.tzst -C /data/data/com.winlator/files/rootfs/
           tar -xf /tmp/output/output-full.tar.xz -C /data/data/com.winlator/files/rootfs/
           cd /data/data/com.winlator/files/rootfs/
           create_ver_txt
-          if ! tar -I 'zstd -T8' -cf /tmp/output/rootfs.tzst *; then
-            exit 1
+          if ! tar -I 'zstd -9 -T8' -cf /tmp/output/rootfs.tzst *; then
+            # 如果并行压缩失败，尝试单线程
+            tar -I zstd -cf /tmp/output/rootfs.tzst *
           fi
 
           echo "构建完成！"
