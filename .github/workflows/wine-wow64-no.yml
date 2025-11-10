@@ -50,7 +50,7 @@ permissions:
 
 jobs:
   build-proton:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     if: github.event.inputs.build_type == 'proton' || (github.event_name == 'schedule' && github.event.schedule == '0 0 1,15 * *')
     timeout-minutes: 180
     
@@ -186,11 +186,6 @@ jobs:
             find . -name "file.c" -exec sed -i 's|"/tmp"|"/data/data/com.winlator/files/rootfs/tmp"|g' {} +
             find . -name "loader.c" -exec sed -i 's|"/tmp"|"/data/data/com.winlator/files/rootfs/tmp"|g' {} +
             find . -name "server.c" -exec sed -i 's|"/tmp"|"/data/data/com.winlator/files/rootfs/tmp"|g' {} +
-            # 下载并应用 FFmpeg API 兼容性补丁
-            echo "修复 FFmpeg API 兼容性问题..."
-            wget -O fix_ffmpeg_api_compatibility.patch https://github.com/afeimod/linbox/raw/main/path/fix_ffmpeg_api_compatibility.patch
-            patch -p1 < fix_ffmpeg_api_compatibility.patch
-            echo "✅ FFmpeg API 兼容性补丁应用成功"
             
             # 生成 configure 脚本
             echo "生成 configure 脚本..."
