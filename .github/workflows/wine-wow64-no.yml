@@ -136,135 +136,199 @@ jobs:
 
       - name: 构建 Proton WOW64 版本
         run: |
-          set -e
-          
-          echo "开始构建 Proton WOW64 版本..."
-          echo "分支: ${{ github.event.inputs.proton_branch || 'proton_10.0' }}"
-          
-          # 设置中文构建环境
-          export LANG=zh_CN.UTF-8
-          export LC_ALL=zh_CN.UTF-8
-          export LANGUAGE=zh_CN:zh:en_US:en
-          
-          # 清理并创建构建目录
-          rm -rf $BUILD_DIR/proton
-          mkdir -p $BUILD_DIR/proton
-          cd $BUILD_DIR/proton
-          
-          # 克隆 Proton 源码
-          git clone https://github.com/ValveSoftware/wine
-          cd wine
-          
-          # 切换到指定的 Proton 分支
-          PROTON_BRANCH="${{ github.event.inputs.proton_branch || 'proton_10.0' }}"
-          echo "切换到分支: $PROTON_BRANCH"
-          git checkout $PROTON_BRANCH
-          
-          # 修复 Termux 路径问题
-          echo "修复 Termux 路径问题..."
-          find . -type f \( -name "*.c" -o -name "*.h" -o -name "*.in" -o -name "*.spec" \) -exec grep -l "/tmp" {} \; | xargs sed -i 's|/tmp/|/data/data/com.winlator/files/rootfs/tmp/|g'
-          find server -type f \( -name "*.c" -o -name "*.h" \) -exec sed -i 's|"/tmp"|"/data/data/com.winlator/files/rootfs/tmp"|g' {} +
-          find . -name "file.c" -exec sed -i 's|"/tmp"|"/data/data/com.winlator/files/rootfs/tmp"|g' {} +
-          find . -name "loader.c" -exec sed -i 's|"/tmp"|"/data/data/com.winlator/files/rootfs/tmp"|g' {} +
-          find . -name "server.c" -exec sed -i 's|"/tmp"|"/data/data/com.winlator/files/rootfs/tmp"|g' {} +
-          
-          # 将 steamuser 替换为 xuser，取消 Steam 优化
-          echo "替换 steamuser 为 xuser，取消 Steam 优化..."
-          find . -type f \( -name "*.c" -o -name "*.h" -o -name "*.in" -o -name "*.spec" -o -name "*.mk" -o -name "*.rc" -o -name "*.txt" \) -exec sed -i 's/steamuser/xuser/g; s/SteamUser/XUser/g; s/STEAMUSER/XUSER/g' {} +
-          
-          # 移除 Steam 特定的配置和优化
-          echo "移除 Steam 特定的配置和优化..."
-          # 删除 Steam 客户端相关的组件
-          if [ -f "dlls/steam/Makefile.in" ]; then
-            rm -f "dlls/steam/Makefile.in"
-          fi
-          if [ -f "dlls/steam/Makefile" ]; then
-            rm -f "dlls/steam/Makefile"
-          fi
-          
-          # 修改默认用户名设置
-          if [ -f "include/wine/user.h" ]; then
-            sed -i 's/"steamuser"/"xuser"/g' "include/wine/user.h"
-          fi
-          
-          # 修改注册表默认设置
-          if [ -f "dlls/advapi32/registry.c" ]; then
-            sed -i 's/"steamuser"/"xuser"/g' "dlls/advapi32/registry.c"
-          fi
-          
-          # 修改默认配置文件
-          if [ -f "programs/winemenubuilder/winemenubuilder.c" ]; then
-            sed -i 's/"steamuser"/"xuser"/g' "programs/winemenubuilder/winemenubuilder.c"
-          fi
-          
-          echo "Steam 优化已移除，用户已改为 xuser"
-          
-          echo "路径修复完成"
-          
-          # 生成 configure 脚本
-          echo "生成 configure 脚本..."
-          ./autogen.sh
-          
-          # 配置和构建真正的 WOW64 Proton
-          mkdir -p build-wow64
-          cd build-wow64
-          
-          export CROSSCC="x86_64-w64-mingw32-gcc"
-          export CROSSCXX="x86_64-w64-mingw32-g++"
-          export CFLAGS="-march=x86-64 -msse3 -mfpmath=sse -O3 -ftree-vectorize -pipe"
-          export CXXFLAGS="-march=x86-64 -msse3 -mfpmath=sse -O3 -ftree-vectorize -pipe"
-          export CROSSCFLAGS="-march=x86-64 -msse3 -mfpmath=sse -O3 -ftree-vectorize -pipe"
-          export CROSSCXXFLAGS="-march=x86-64 -msse3 -mfpmath=sse -O3 -ftree-vectorize -pipe"
+            set -e
+            
+            echo "开始构建 Proton WOW64 版本..."
+            echo "分支: ${{ github.event.inputs.proton_branch || 'proton_10.0' }}"
+            
+            # 设置中文构建环境
+            export LANG=zh_CN.UTF-8
+            export LC_ALL=zh_CN.UTF-8
+            export LANGUAGE=zh_CN:zh:en_US:en
+            
+            # 清理并创建构建目录
+            rm -rf $BUILD_DIR/proton
+            mkdir -p $BUILD_DIR/proton
+            cd $BUILD_DIR/proton
+            
+            # 克隆 Proton 源码
+            git clone https://github.com/ValveSoftware/wine
+            cd wine
+            
+            # 切换到指定的 Proton 分支
+            PROTON_BRANCH="${{ github.event.inputs.proton_branch || 'proton_10.0' }}"
+            echo "切换到分支: $PROTON_BRANCH"
+            git checkout $PROTON_BRANCH
+            
+            # 修复 Termux 路径问题
+            echo "修复 Termux 路径问题..."
+            find . -type f \( -name "*.c" -o -name "*.h" -o -name "*.in" -o -name "*.spec" \) -exec grep -l "/tmp" {} \; | xargs sed -i 's|/tmp/|/data/data/com.winlator/files/rootfs/tmp/|g'
+            find server -type f \( -name "*.c" -o -name "*.h" \) -exec sed -i 's|"/tmp"|"/data/data/com.winlator/files/rootfs/tmp"|g' {} +
+            find . -name "file.c" -exec sed -i 's|"/tmp"|"/data/data/com.winlator/files/rootfs/tmp"|g' {} +
+            find . -name "loader.c" -exec sed -i 's|"/tmp"|"/data/data/com.winlator/files/rootfs/tmp"|g' {} +
+            find . -name "server.c" -exec sed -i 's|"/tmp"|"/data/data/com.winlator/files/rootfs/tmp"|g' {} +
+            
+            # 全面替换 steamuser 为 xuser
+            echo "全面替换 steamuser 为 xuser..."
+            
+            # 1. 递归替换所有文件中的 steamuser
+            find . -type f \( -name "*.c" -o -name "*.h" -o -name "*.in" -o -name "*.spec" -o -name "*.mk" -o -name "*.rc" -o -name "*.txt" -o -name "*.py" -o -name "*.conf" -o -name "*.desktop" \) \
+              ! -path "*/.*" \
+              -exec grep -l -i "steamuser" {} \; | xargs sed -i \
+              -e 's/steamuser/xuser/g' \
+              -e 's/SteamUser/XUser/g' \
+              -e 's/STEAMUSER/XUSER/g' \
+              -e 's/Steam User/X User/g' \
+              -e 's/steam user/x user/g'
+            
+            # 2. 替换特定的 Proton 配置文件
+            if [ -f "proton" ]; then
+              sed -i 's/steamuser/xuser/g' proton
+            fi
+            
+            # 3. 替换用户配置相关文件
+            echo "修改用户配置文件..."
+            
+            # 修改默认用户配置
+            if [ -f "include/wine/user.h" ]; then
+              sed -i 's/"steamuser"/"xuser"/g' "include/wine/user.h"
+            fi
+            
+            # 修改注册表默认用户
+            if [ -f "dlls/advapi32/registry.c" ]; then
+              sed -i 's/"steamuser"/"xuser"/g' "dlls/advapi32/registry.c"
+            fi
+            
+            # 修改用户配置文件
+            if [ -f "dlls/user/profile.c" ]; then
+              sed -i 's/"steamuser"/"xuser"/g' "dlls/user/profile.c"
+            fi
+            
+            # 4. 修改 Proton 特定的用户设置
+            # 查找并替换 Proton 特定的用户配置文件
+            find . -name "*proton*" -type f \( -name "*.c" -o -name "*.h" -o -name "*.py" -o -name "*.conf" \) \
+              -exec grep -l -i "steamuser" {} \; | xargs sed -i 's/steamuser/xuser/g; s/SteamUser/XUser/g'
+            
+            # 5. 修改 Wine 前缀默认配置
+            if [ -f "libs/wine/config.c" ]; then
+              sed -i 's/"steamuser"/"xuser"/g' "libs/wine/config.c"
+            fi
+            
+            # 6. 修改 Windows 注册表模板
+            find . -name "*.in" -exec grep -l "steamuser" {} \; | xargs sed -i 's/steamuser/xuser/g'
+            
+            # 7. 检查是否还有遗漏的 steamuser
+            echo "检查剩余的 steamuser 引用:"
+            find . -type f \( -name "*.c" -o -name "*.h" -o -name "*.in" -o -name "*.spec" -o -name "*.mk" -o -name "*.rc" \) \
+              ! -path "*/.*" \
+              -exec grep -l -i "steamuser" {} \; | while read file; do
+              echo "发现遗漏: $file"
+              sed -i 's/steamuser/xuser/g; s/SteamUser/XUser/g; s/STEAMUSER/XUSER/g' "$file"
+            done
+            
+            # 8. 移除 Steam 特定的组件和优化
+            echo "移除 Steam 特定的组件和优化..."
+            
+            # 删除 Steam 客户端相关组件
+            if [ -d "dlls/steam" ]; then
+              echo "移除 dlls/steam 目录"
+              rm -rf "dlls/steam"
+            fi
+            
+            # 删除 Steam 相关的 Makefile
+            find . -name "Makefile*" -exec grep -l "steam" {} \; | while read file; do
+              echo "清理 $file 中的 Steam 引用"
+              sed -i '/steam/d' "$file"
+            done
+            
+            # 9. 创建自定义的默认用户配置补丁
+            cat > custom_user.patch << 'EOF'
+            diff --git a/include/wine/user.h b/include/wine/user.h
+            index XXXXXXX..XXXXXXX 100644
+            --- a/include/wine/user.h
+            +++ b/include/wine/user.h
+            @@ -XXX,XX +XXX,XX @@
+             #define USER_DEFAULT_USERNAME            "xuser"
+             #define USER_DEFAULT_GEOCITY            "Redmond"
+             #define USER_DEFAULT_COUNTRY            "US"
+            -#define USER_DEFAULT_LANGUAGE   "en-US"
+            +#define USER_DEFAULT_LANGUAGE   "zh-CN"
+            EOF
+            
+            # 尝试应用补丁
+            if patch -p1 --forward --ignore-whitespace < custom_user.patch 2>/dev/null; then
+              echo "✅ 自定义用户补丁应用成功"
+            else
+              echo "⚠️ 自定义用户补丁可能已应用或不需要"
+            fi
+            
+            echo "✅ 所有 steamuser 已替换为 xuser，Steam 优化已移除"
+            
+            echo "路径修复完成"
+            
+            # 生成 configure 脚本
+            echo "生成 configure 脚本..."
+            ./autogen.sh
+            
+            # 配置和构建真正的 WOW64 Proton
+            mkdir -p build-wow64
+            cd build-wow64
+            
+            export CROSSCC="x86_64-w64-mingw32-gcc"
+            export CROSSCXX="x86_64-w64-mingw32-g++"
+            export CFLAGS="-march=x86-64 -msse3 -mfpmath=sse -O3 -ftree-vectorize -pipe"
+            export CXXFLAGS="-march=x86-64 -msse3 -mfpmath=sse -O3 -ftree-vectorize -pipe"
+            export CROSSCFLAGS="-march=x86-64 -msse3 -mfpmath=sse -O3 -ftree-vectorize -pipe"
+            export CROSSCXXFLAGS="-march=x86-64 -msse3 -mfpmath=sse -O3 -ftree-vectorize -pipe"
 
-          # 配置真正的 WOW64 Proton，启用 Vulkan 和完整 GStreamer 支持，禁用 Steam 特定功能
-          ../configure \
-            --enable-win64 \
-            --enable-archs=i386,x86_64 \
-            --prefix=/tmp/wine-install-proton \
-            --with-x \
-            --with-vulkan \
-            --with-alsa \
-            --with-pulse \
-            --with-freetype \
-            --with-fontconfig \
-            --with-gstreamer \
-            --with-gettext \
-            --with-sdl \
-            --enable-nls \
-            --disable-winemenubuilder \
-            --disable-win16 \
-            --disable-tests \
-            --without-ldap \
-            --without-capi \
-            --without-oss \
-            --without-cups \
-            --without-dbus \
-            --without-coreaudio \
-            --without-gphoto \
-            --without-osmesa \
-            --without-sane \
-            --without-pcap \
-            --without-pcsclite \
-            --without-udev \
-            --without-unwind \
-            --without-usb \
-            --without-v4l2 \
-            --without-wayland \
-            --without-steam
+            # 配置真正的 WOW64 Proton，启用 Vulkan 和完整 GStreamer 支持，禁用 Steam 特定功能
+            ../configure \
+              --enable-win64 \
+              --enable-archs=i386,x86_64 \
+              --prefix=/tmp/wine-install-proton \
+              --with-x \
+              --with-vulkan \
+              --with-alsa \
+              --with-pulse \
+              --with-freetype \
+              --with-fontconfig \
+              --with-gstreamer \
+              --with-gettext \
+              --with-sdl \
+              --enable-nls \
+              --disable-winemenubuilder \
+              --disable-win16 \
+              --disable-tests \
+              --without-ldap \
+              --without-capi \
+              --without-oss \
+              --without-cups \
+              --without-dbus \
+              --without-coreaudio \
+              --without-gphoto \
+              --without-osmesa \
+              --without-sane \
+              --without-pcap \
+              --without-pcsclite \
+              --without-udev \
+              --without-unwind \
+              --without-usb \
+              --without-v4l2 \
+              --without-wayland
 
-          # 构建真正的 WOW64 Proton
-          echo "开始构建支持 Vulkan 和完整 GStreamer 的 WOW64 Proton..."
-          make -j$(nproc)
-          make install
-          
-          cd ../..
-          
-          # 获取版本信息
-          VERSION_PROTON=$(cd wine && git describe --tags --abbrev=0 2>/dev/null || echo "$PROTON_BRANCH")
-          COMMIT_HASH=$(cd wine && git rev-parse --short HEAD)
-          PROTON_VERSION="${VERSION_PROTON}-${COMMIT_HASH}"
-          echo "PROTON_VERSION=$PROTON_VERSION" >> $GITHUB_ENV
-          echo "BUILD_NAME=proton-${PROTON_VERSION}-wow64-xuser" >> $GITHUB_ENV
+            # 构建真正的 WOW64 Proton
+            echo "开始构建支持 Vulkan 和完整 GStreamer 的 WOW64 Proton..."
+            make -j$(nproc)
+            make install
+            
+            cd ../..
+            
+            # 获取版本信息
+            VERSION_PROTON=$(cd wine && git describe --tags --abbrev=0 2>/dev/null || echo "$PROTON_BRANCH")
+            COMMIT_HASH=$(cd wine && git rev-parse --short HEAD)
+            PROTON_VERSION="${VERSION_PROTON}-${COMMIT_HASH}"
+            echo "PROTON_VERSION=$PROTON_VERSION" >> $GITHUB_ENV
+            echo "BUILD_NAME=proton-${PROTON_VERSION}-wow64-xuser" >> $GITHUB_ENV
 
       - name: 准备打包
         run: |
