@@ -154,6 +154,10 @@ jobs:
             exit 1
           fi
 
+          # 首先解压基础rootfs
+          echo "解压基础rootfs..."
+          tar -xf rootfs.tzst -C /data/data/com.winlator/files/rootfs/
+
           # 下载CA证书
           cd /data/data/com.winlator/files/rootfs/etc
           mkdir -p ca-certificates
@@ -292,7 +296,8 @@ jobs:
             exit 1
           fi
 
-          rm -rf /data/data/com.winlator/files/rootfs/*/
+          # 重新创建干净的rootfs并合并
+          rm -rf /data/data/com.winlator/files/rootfs/*
           tar -xf rootfs.tzst -C /data/data/com.winlator/files/rootfs/
           tar -xf /tmp/output/output-full.tar.xz -C /data/data/com.winlator/files/rootfs/
           cd /data/data/com.winlator/files/rootfs/
