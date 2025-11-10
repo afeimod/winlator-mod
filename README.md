@@ -33,6 +33,7 @@ Winlator-Amod是一个 Winlaor的mod版。
 # 鸣谢和第三方应用程序
 
 - Ubuntu RootFs ([Focal Fossa](https://releases.ubuntu.com/focal))
+- Gst补全 (https://github.com/Waim908/rootfs-custom-winlator)
 - Wine ([winehq.org](https://www.winehq.org/))
 - Box86/Box64 by [ptitseb](https://github.com/ptitSeb)
 - PRoot ([proot-me.github.io](https://proot-me.github.io))
@@ -45,3 +46,4 @@ Winlator-Amod是一个 Winlaor的mod版。
 感谢 [ptitSeb](https://github.com/ptitSeb) (Box86/Box64), [Danylo](https://blogs.igalia.com/dpiliaiev/tags/mesa/) (Turnip), [alexvorxx](https://github.com/alexvorxx) (Mods/Tips) 和其他贡献者。
 
 感谢所有相信这个项目的人。
+
