@@ -120,7 +120,7 @@ jobs:
         run: |
             sudo apt update
             # 安装完整的 GStreamer 生态系统
-        sudo apt install -y \
+            sudo apt install -y \
               libunwind-dev \
               # GStreamer 开发库
               libgstreamer1.0-dev \
