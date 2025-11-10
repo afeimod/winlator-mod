@@ -118,14 +118,37 @@ jobs:
 
       - name: 安装多媒体和音频依赖
         run: |
-          sudo apt update
-          # 安装多媒体相关包
-          sudo apt install -y \
-            libunwind-dev \
-            libgstreamer1.0-dev \
-            libgstreamer-plugins-base1.0-dev \
-            libmpg123-dev \
-            libopenal-dev
+            sudo apt update
+            # 安装完整的 GStreamer 生态系统
+        sudo apt install -y \
+              libunwind-dev \
+              # GStreamer 开发库
+              libgstreamer1.0-dev \
+              libgstreamer-plugins-base1.0-dev \
+              libgstreamer-plugins-good1.0-dev \
+              libgstreamer-plugins-bad1.0-dev \
+              # GStreamer 插件包
+              gstreamer1.0-plugins-base \
+              gstreamer1.0-plugins-good \
+              gstreamer1.0-plugins-bad \
+              gstreamer1.0-plugins-ugly \
+              gstreamer1.0-libav \
+              gstreamer1.0-pulseaudio \
+              gstreamer1.0-alsa \
+              gstreamer1.0-gl \
+              gstreamer1.0-qt5 \
+              gstreamer1.0-gtk3 \
+              # 音频解码器
+              libmpg123-dev \
+              libopenal-dev \
+              libfaad-dev \
+              libflac-dev \
+              libvorbis-dev \
+              # 视频解码器
+              libx264-dev \
+              libx265-dev \
+              libvpx-dev \
+              libtheora-dev
 
       - name: 设置中文语言环境
         run: |
