@@ -1,0 +1,265 @@
+name: Winlator Rootfs Build (ARM Native)
+
+permissions:
+  contents: write
+
+on:
+  workflow_dispatch:
+    inputs:
+      inputGstVersion:
+        description: "输入gstreamer版本："
+        required: true
+        default: "1.27.2"
+      inputXzVersion:
+        description: "输入xz版本："
+        required: true
+        default: "v5.8.1"
+      inputCustomTag:
+        description: "输入自定义Tag名称："
+        required: true
+        default: "beta11-g2.39"
+
+env:
+  gstVer: ${{ github.event.inputs.inputGstVersion }}
+  xzVer: ${{ github.event.inputs.inputXzVersion }}
+  customTag: ${{ github.event.inputs.inputCustomTag }}
+
+jobs:
+  build-rootfs:
+    runs-on: ubuntu-24.04-arm
+    container:
+      image: archlinux:latest
+    steps:
+      - name: 更新系统并安装依赖
+        run: |
+          pacman -Syu --noconfirm
+          pacman -S --noconfirm base-devel git wget meson ninja patchelf tar zstd xz python3 curl ca-certificates
+
+      - name: 克隆仓库和准备文件
+        run: |
+          git clone https://github.com/Waim908/rootfs-custom-winlator.git
+          cp rootfs-custom-winlator/data.tar.xz /tmp/
+          cp rootfs-custom-winlator/tzdata-2025b-1-aarch64.pkg.tar.xz /tmp/
+
+      - name: 准备环境变量
+        run: |
+          cat > /tmp/init.sh << EOF
+          export gstVer=$gstVer
+          export xzVer=$xzVer
+          export customTag=$customTag
+          EOF
+
+      - name: 执行构建脚本
+        run: |
+          # 定义函数
+          patchelf_fix() {
+            LD_RPATH=/data/data/com.winlator/files/rootfs/lib
+            LD_FILE=$LD_RPATH/ld-linux-aarch64.so.1
+            find . -type f -exec file {} + | grep -E ":.*ELF" | cut -d: -f1 | while read -r elf_file; do
+              echo "Patching $elf_file..."
+              patchelf --set-rpath "$LD_RPATH" --set-interpreter "$LD_FILE" "$elf_file" || {
+                echo "Failed to patch $elf_file" >&2
+                continue
+              }
+            done
+          }
+
+          create_ver_txt() {
+            date=$(TZ=Asia/Shanghai date '+%Y-%m-%d %H:%M:%S')
+            cat > '/data/data/com.winlator/files/rootfs/_version_.txt' << EOF
+          Output Date(UTC+8): $date
+          Version:
+            gstreamer=> $gstVer
+            xz=> $xzVer
+            rootfs-tag=> $customTag
+          Repo:
+            [Waim908/rootfs-custom-winlator](https://github.com/Waim908/rootfs-custom-winlator)
+          EOF
+          }
+
+          # 主构建逻辑
+          set -e
+
+          # 初始化环境
+          source /tmp/init.sh
+          echo "gst=> $gstVer"
+          echo "xz=> $xzVer"
+
+          # 移除不需要的包
+          pacman -R --noconfirm libvorbis flac lame || true
+
+          # 创建根文件系统目录
+          mkdir -p /data/data/com.winlator/files/rootfs/
+
+          # 下载基础rootfs
+          cd /tmp
+          if ! wget https://github.com/Waim908/rootfs-custom-winlator/releases/download/ori-b11.0/rootfs.tzst; then
+            exit 1
+          fi
+
+          # 下载CA证书
+          cd /data/data/com.winlator/files/rootfs/etc
+          mkdir -p ca-certificates
+          if ! wget https://curl.haxx.se/ca/cacert.pem; then
+            exit 1
+          fi
+
+          # 清理旧的gstreamer库
+          cd /tmp
+          rm -rf /data/data/com.winlator/files/rootfs/lib/libgst*
+          rm -rf /data/data/com.winlator/files/rootfs/lib/gstreamer-1.0
+
+          # 克隆源代码
+          if ! git clone -b $xzVer https://github.com/tukaani-project/xz.git xz-src; then
+            exit 1
+          fi
+
+          if ! git clone -b $gstVer https://github.com/GStreamer/gstreamer.git gst-src; then
+            exit 1
+          fi
+
+          # 构建xz
+          echo "Build and Compile xz(liblzma)"
+          cd /tmp/xz-src
+          ./autogen.sh
+          mkdir build
+          cd build
+          if ! ../configure -prefix=/data/data/com.winlator/files/rootfs/; then
+            exit 1
+          fi
+          if ! make -j$(nproc); then
+            exit 1
+          fi
+          make install
+
+          # 构建gstreamer
+          cd /tmp/gst-src
+          echo "Build and Compile gstreamer"
+          meson setup builddir \
+            --buildtype=release \
+            --strip \
+            -Dgst-full-target-type=shared_library \
+            -Dintrospection=disabled \
+            -Dgst-full-libraries=app,video,player \
+            -Dbase=enabled \
+            -Dgood=enabled \
+            -Dbad=enabled \
+            -Dugly=enabled \
+            -Dlibav=enabled \
+            -Dtests=disabled \
+            -Dexamples=disabled \
+            -Ddoc=disabled \
+            -Dges=disabled \
+            -Dpython=disabled \
+            -Ddevtools=disabled \
+            -Dgstreamer:check=disabled \
+            -Dgstreamer:benchmarks=disabled \
+            -Dgstreamer:libunwind=disabled \
+            -Dgstreamer:libdw=disabled \
+            -Dgstreamer:bash-completion=disabled \
+            -Dgst-plugins-good:cairo=disabled \
+            -Dgst-plugins-good:gdk-pixbuf=disabled \
+            -Dgst-plugins-good:oss=disabled \
+            -Dgst-plugins-good:oss4=disabled \
+            -Dgst-plugins-good:v4l2=disabled \
+            -Dgst-plugins-good:aalib=disabled \
+            -Dgst-plugins-good:jack=disabled \
+            -Dgst-plugins-good:pulse=enabled \
+            -Dgst-plugins-good:adaptivedemux2=disabled \
+            -Dgst-plugins-good:v4l2=disabled \
+            -Dgst-plugins-good:libcaca=disabled \
+            -Dgst-plugins-good:mpg123=enabled \
+            -Dgst-plugins-base:examples=disabled \
+            -Dgst-plugins-base:alsa=enabled \
+            -Dgst-plugins-base:pango=disabled \
+            -Dgst-plugins-base:x11=enabled \
+            -Dgst-plugins-base:gl=disabled \
+            -Dgst-plugins-base:opus=disabled \
+            -Dgst-plugins-bad:androidmedia=disabled \
+            -Dgst-plugins-bad:rtmp=disabled \
+            -Dgst-plugins-bad:shm=disabled \
+            -Dgst-plugins-bad:zbar=disabled \
+            -Dgst-plugins-bad:webp=disabled \
+            -Dgst-plugins-bad:kms=disabled \
+            -Dgst-plugins-bad:vulkan=disabled \
+            -Dgst-plugins-bad:dash=disabled \
+            -Dgst-plugins-bad:analyticsoverlay=disabled \
+            -Dgst-plugins-bad:nvcodec=disabled \
+            -Dgst-plugins-bad:uvch264=disabled \
+            -Dgst-plugins-bad:v4l2codecs=disabled \
+            -Dgst-plugins-bad:udev=disabled \
+            -Dgst-plugins-bad:libde265=disabled \
+            -Dgst-plugins-bad:smoothstreaming=disabled \
+            -Dgst-plugins-bad:fluidsynth=disabled \
+            -Dgst-plugins-bad:inter=disabled \
+            -Dgst-plugins-bad:x11=enabled \
+            -Dgst-plugins-bad:gl=disabled \
+            -Dgst-plugins-bad:wayland=disabled \
+            -Dgst-plugins-bad:openh264=disabled \
+            -Dgst-plugins-bad:hip=disabled \
+            -Dgst-plugins-bad:aja=disabled \
+            -Dgst-plugins-bad:aes=disabled \
+            -Dgst-plugins-bad:dtls=disabled \
+            -Dgst-plugins-bad:hls=disabled \
+            -Dgst-plugins-bad:curl=disabled \
+            -Dgst-plugins-bad:opus=disabled \
+            -Dgst-plugins-bad:webrtc=disabled \
+            -Dgst-plugins-bad:webrtcdsp=disabled \
+            -Dpackage-origin="[gstremaer-build] (https://github.com/Waim908/gstreamer-build)" \
+            --prefix=/data/data/com.winlator/files/rootfs/ || exit 1
+
+          if [[ ! -d builddir ]]; then
+            exit 1
+          fi
+          if ! meson compile -C builddir; then
+            exit 1
+          fi
+          meson install -C builddir
+
+          # 打包
+          echo "Package"
+          mkdir -p /tmp/output
+          cd /data/data/com.winlator/files/rootfs/
+          patchelf_fix
+          create_ver_txt
+          if ! tar -I 'xz -T8' -cf /tmp/output/output-lite.tar.xz *; then
+            exit 1
+          fi
+
+          cd /tmp
+          tar -xf data.tar.xz -C /data/data/com.winlator/files/rootfs/
+          tar -xf tzdata-2025b-1-aarch64.pkg.tar.xz -C /data/data/com.winlator/files/rootfs/
+          cd /data/data/com.winlator/files/rootfs/
+          create_ver_txt
+          if ! tar -I 'xz -T8' -cf /tmp/output/output-full.tar.xz *; then
+            exit 1
+          fi
+
+          rm -rf /data/data/com.winlator/files/rootfs/*/
+          tar -xf rootfs.tzst -C /data/data/com.winlator/files/rootfs/
+          tar -xf /tmp/output/output-full.tar.xz -C /data/data/com.winlator/files/rootfs/
+          cd /data/data/com.winlator/files/rootfs/
+          create_ver_txt
+          if ! tar -I 'zstd -T8' -cf /tmp/output/rootfs.tzst *; then
+            exit 1
+          fi
+
+          echo "构建完成！"
+
+      - name: 创建发布
+        uses: softprops/action-gh-release@v2
+        with:
+          name: rootfs-${{ github.event.inputs.inputCustomTag }}
+          draft: false
+          prerelease: false
+          tag_name: rootfs-${{ github.event.inputs.inputCustomTag }}
+          body: |
+            gstVer=> ${{ github.event.inputs.inputGstVersion }}
+            xzVer=> ${{ github.event.inputs.inputXzVersion }}
+            customTag=> ${{ github.event.inputs.inputCustomTag }}
+          files: |
+            /tmp/output/output-lite.tar.xz
+            /tmp/output/output-full.tar.xz
+            /tmp/output/rootfs.tzst
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
