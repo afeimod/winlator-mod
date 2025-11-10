@@ -50,7 +50,7 @@ permissions:
 
 jobs:
   build-proton:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-22.04
     if: github.event.inputs.build_type == 'proton' || (github.event_name == 'schedule' && github.event.schedule == '0 0 1,15 * *')
     timeout-minutes: 180
     
