@@ -192,7 +192,11 @@ jobs:
             export CXXFLAGS="-march=x86-64 -msse3 -mfpmath=sse -O3 -ftree-vectorize -pipe"
             export CROSSCFLAGS="-march=x86-64 -msse3 -mfpmath=sse -O3 -ftree-vectorize -pipe"
             export CROSSCXXFLAGS="-march=x86-64 -msse3 -mfpmath=sse -O3 -ftree-vectorize -pipe"
-
+            
+            # 添加 GStreamer 库路径到链接器搜索路径
+            export LDFLAGS="-Wl,-rpath,/data/data/com.winlator/files/rootfs/usr/lib/gstreamer-1.0 -Wl,-rpath,/data/data/com.winlator/files/rootfs/usr/lib"
+            export GST_PLUGIN_PATH="/data/data/com.winlator/files/rootfs/usr/lib/gstreamer-1.0"
+            
             # 配置真正的 WOW64 Proton，启用 Vulkan 和完整 GStreamer 支持，禁用 Steam 特定功能
             ../configure \
               --enable-win64 \
