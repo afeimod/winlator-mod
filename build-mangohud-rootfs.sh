@@ -84,7 +84,6 @@ cd /tmp/mangohud-src
 meson setup builddir \
   --buildtype=release \
   --strip \
-  -Dbuildtype=release \
   -Dwith_x11=enabled \
   -Dwith_wayland=enabled \
   -Dwith_xnvctrl=disabled \
