@@ -1,0 +1,50 @@
+name: MangoHud Base Build Container ARM64
+
+permissions:
+  contents: write
+  packages: write
+
+on:
+  workflow_dispatch:
+
+jobs:
+  archlinux:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - name: Setting chroot
+        run: |
+          cd /tmp
+          git clone https://github.com/Waim908/BCC BCC
+          install -m 755 /tmp/BCC/arch-bootstrap.sh /usr/local/bin/arch-bootstrap
+          cp /tmp/BCC/MangoHud-bcc.sh /tmp
+          cp /tmp/BCC/mount.sh /tmp
+          cd /tmp
+          if ! sudo arch-bootstrap -a aarch64 archlinux ; then
+            echo "基础容器创建失败！"
+            exit 1
+          fi
+          cd /tmp
+          bash mount.sh mount archlinux
+          chmod 777 MangoHud-bcc.sh
+          sudo cp MangoHud-bcc.sh archlinux/bin/
+          sudo chroot archlinux /bin/MangoHud-bcc.sh &&
+          cd /tmp
+          bash mount.sh unmount archlinux
+
+      - name: Package
+        run: |
+          cd /tmp
+          sudo tar -I 'xz -T$(nproc)' -cvf mangohud-bcc.tar.xz archlinux
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: MangoHud BCC
+          draft: false
+          prerelease: false
+          tag_name: mangohud-bcc-latest
+          body: |
+            MangoHud Build Container
+          files: /tmp/mangohud-bcc.tar.xz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
