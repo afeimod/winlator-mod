@@ -329,7 +329,7 @@ jobs:
 
           # 重新创建干净的rootfs并合并
           rm -rf /data/data/com.winlator/files/rootfs/*
-          tar -xf rootfs.tzst -C /data/data/com.winlator/files/rootfs/
+          tar -xf /tmp/rootfs.tzst -C /data/data/com.winlator/files/rootfs/
           tar -xf /tmp/output/output-full.tar.xz -C /data/data/com.winlator/files/rootfs/
           cd /data/data/com.winlator/files/rootfs/
           create_ver_txt
