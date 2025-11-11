@@ -1,4 +1,4 @@
-name: Winlator MangoHud Rootfs Build (use BCC)
+name: Build MangoHud RootFS for Winlator
 
 permissions:
   contents: write
@@ -7,15 +7,15 @@ on:
   workflow_dispatch:
     inputs:
       inputMangoHudVersion:
-        description: "输入MangoHud版本："
+        description: "MangoHud version"
         required: true
         default: "v0.7.1"
       inputMangoHudCommit:
-        description: "输入MangoHud commit哈希（可选）："
+        description: "MangoHud commit hash (optional)"
         required: false
         default: ""
       inputCustomTag:
-        description: "输入自定义Tag名称："
+        description: "Custom tag name"
         required: true
         default: "beta11-mangohud"
 
@@ -25,38 +25,101 @@ env:
   customTag: ${{ github.event.inputs.inputCustomTag }}
 
 jobs:
-  BCC:
+  build-rootfs:
     runs-on: ubuntu-24.04-arm
+    
     steps:
-      - name: BCC
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            arch-bootstrap.sh
+            build-mangohud-rootfs.sh
+            data.tar.xz
+            tzdata-2025b-1-aarch64.pkg.tar.xz
+
+      - name: Setup chroot environment
         run: |
-          echo "MangoHud ${mangohudVer}"
-          echo "Commit ${mangohudCommit}"
-          curl -L -O "https://github.com/Waim908/BCC/releases/download/wlt-bcc-latest/wlt-bcc.tar.xz"
-          sudo tar xf wlt-bcc.tar.xz -C /tmp
-          cd /tmp
-          git clone https://github.com/Waim908/rootfs-custom-winlator.git
-          sudo cp rootfs-custom-winlator/build-mangohud-rootfs.sh /tmp/archlinux/bin
-          mv rootfs-custom-winlator/data.tar.xz /tmp/archlinux/tmp
-          mv rootfs-custom-winlator/tzdata-2025b-1-aarch64.pkg.tar.xz /tmp/archlinux/tmp
-          sudo chmod +x /tmp/archlinux/bin/build-mangohud-rootfs.sh
+          sudo apt update
+          sudo apt install -y coreutils curl sed gawk tar gzip xz-utils zstd
           
-          cat > /tmp/archlinux/tmp/init.sh << EOF
+          # Make arch-bootstrap executable
+          chmod +x arch-bootstrap.sh
+          sudo cp arch-bootstrap.sh /usr/local/bin/arch-bootstrap
+          
+          # Create chroot environment
+          cd /tmp
+          sudo arch-bootstrap -a aarch64 archlinux
+
+      - name: Install build dependencies in chroot
+        run: |
+          # Create dependency installation script
+          cat > /tmp/install-deps.sh << 'EOF'
+          #!/bin/bash
+          pacman -Syu --noconfirm
+          pacman-key --init
+          pacman -S --noconfirm --needed \
+            base-devel \
+            git \
+            cmake \
+            meson \
+            ninja \
+            glib2-devel \
+            libx11 \
+            mesa \
+            vulkan-devel \
+            libglvnd \
+            dbus \
+            gcc \
+            make \
+            pkg-config \
+            python3 \
+            patchelf \
+            wget \
+            ca-certificates
+          exit 0
+          EOF
+          
+          sudo chmod +x /tmp/install-deps.sh
+          sudo cp /tmp/install-deps.sh /tmp/archlinux/
+          
+          # Mount required filesystems
+          sudo mount --bind /proc /tmp/archlinux/proc
+          sudo mount --bind /sys /tmp/archlinux/sys
+          sudo mount --bind /dev /tmp/archlinux/dev
+          
+          # Install dependencies in chroot
+          sudo chroot /tmp/archlinux /install-deps.sh
+          
+          # Cleanup
+          sudo rm /tmp/archlinux/install-deps.sh
+
+      - name: Prepare build files in chroot
+        run: |
+          # Copy build script and data files
+          sudo cp build-mangohud-rootfs.sh /tmp/archlinux/tmp/
+          sudo cp data.tar.xz /tmp/archlinux/tmp/
+          sudo cp tzdata-2025b-1-aarch64.pkg.tar.xz /tmp/archlinux/tmp/
+          
+          # Create init script with environment variables
+          cat > /tmp/init.sh << EOF
           export mangohudVer=$mangohudVer
           export mangohudCommit=$mangohudCommit
           export customTag=$customTag
           EOF
           
-          sudo mount --bind /proc archlinux/proc
-          sudo mount --bind /sys archlinux/sys
-          sudo mount --bind /dev archlinux/dev
-          if ! sudo chroot /tmp/archlinux /bin/build-mangohud-rootfs.sh; then
-            echo "构建失败"
-            exit 1
-          fi
-          sudo umount -l archlinux/dev
-          sudo umount -l archlinux/sys
-          sudo umount -l archlinux/proc
+          sudo cp /tmp/init.sh /tmp/archlinux/tmp/
+          sudo chmod +x /tmp/archlinux/tmp/build-mangohud-rootfs.sh
+
+      - name: Build rootfs with MangoHud
+        run: |
+          # Execute build script in chroot
+          sudo chroot /tmp/archlinux /tmp/build-mangohud-rootfs.sh
+          
+          # Unmount filesystems
+          sudo umount -l /tmp/archlinux/dev
+          sudo umount -l /tmp/archlinux/sys
+          sudo umount -l /tmp/archlinux/proc
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
@@ -79,3 +142,8 @@ jobs:
             /tmp/archlinux/tmp/output/mangohud-rootfs.tzst
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Cleanup
+        if: always()
+        run: |
+          sudo rm -rf /tmp/archlinux
