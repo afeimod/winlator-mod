@@ -1,0 +1,196 @@
+name: Build GStMangohud RootFS for Winlator
+
+permissions:
+  contents: write
+
+on:
+  workflow_dispatch:
+    inputs:
+      inputGstVersion:
+        description: "GStreamer version"
+        required: true
+        default: "1.27.2"
+      inputXzVersion:
+        description: "XZ version"
+        required: true
+        default: "v5.8.1"
+      inputCustomTag:
+        description: "Custom tag name"
+        required: true
+        default: "beta11-g2.39"
+
+env:
+  gstVer: ${{ github.event.inputs.inputGstVersion }}
+  xzVer: ${{ github.event.inputs.inputXzVersion }}
+  customTag: ${{ github.event.inputs.inputCustomTag }}
+
+jobs:
+  build-rootfs:
+    runs-on: ubuntu-24.04-arm
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            arch-bootstrap.sh
+            build-rootfs.sh
+            data.tar.xz
+            tzdata-2025b-1-aarch64.pkg.tar.xz
+
+      - name: Setup chroot environment
+        run: |
+          sudo apt update
+          sudo apt install -y coreutils curl sed gawk tar gzip xz-utils zstd
+          
+          # Make arch-bootstrap executable
+          chmod +x arch-bootstrap.sh
+          sudo cp arch-bootstrap.sh /usr/local/bin/arch-bootstrap
+          
+          # Create chroot environment
+          cd /tmp
+          sudo arch-bootstrap -a aarch64 archlinux
+
+      - name: Install build dependencies in chroot
+        run: |
+          # Create dependency installation script
+          cat > /tmp/install-deps.sh << 'EOF'
+          #!/bin/bash
+          pacman -Syu --noconfirm
+          pacman-key --init
+          pacman -S --noconfirm --needed \
+            base-devel \
+            ninja \
+            meson \
+            git \
+            glib2-devel \
+            libx11 \
+            mesa \
+            libpulse \
+            vulkan-devel \
+            nasm \
+            yasm \
+            glslang \
+            cmake \
+            patchelf \
+            libde265 \
+            wget \
+            ca-certificates \
+            libdrm \
+            dbus \
+            glm \
+            libxnvctrl \
+            nlohmann-json
+          exit 0
+          EOF
+          
+          sudo chmod +x /tmp/install-deps.sh
+          sudo cp /tmp/install-deps.sh /tmp/archlinux/
+          
+          # Mount required filesystems
+          sudo mount --bind /proc /tmp/archlinux/proc
+          sudo mount --bind /sys /tmp/archlinux/sys
+          sudo mount --bind /dev /tmp/archlinux/dev
+          
+          # Install dependencies in chroot
+          sudo chroot /tmp/archlinux /install-deps.sh
+          
+          # Cleanup
+          sudo rm /tmp/archlinux/install-deps.sh
+
+      - name: Build libxkbcommon
+        run: |
+          # Create libxkbcommon build script
+          cat > /tmp/build-libxkbcommon.sh << 'EOF'
+          #!/bin/bash
+          cd /tmp
+          git clone https://github.com/xkbcommon/libxkbcommon.git libxkbcommon-src
+          cd libxkbcommon-src
+          meson setup builddir \
+            -Denable-xkbregistry=false \
+            -Denable-bash-completion=false \
+            --prefix=/data/data/com.winlator/files/rootfs/
+          meson compile -C builddir
+          meson install -C builddir
+          EOF
+          
+          sudo chmod +x /tmp/build-libxkbcommon.sh
+          sudo cp /tmp/build-libxkbcommon.sh /tmp/archlinux/tmp/
+          sudo chroot /tmp/archlinux /tmp/build-libxkbcommon.sh
+
+      - name: Build MangoHud
+        run: |
+          # Create MangoHud build script
+          cat > /tmp/build-mangohud.sh << 'EOF'
+          #!/bin/bash
+          cd /tmp
+          git clone https://github.com/flightlessmango/MangoHud.git MangoHud-src
+          cd MangoHud-src
+          meson setup builddir \
+            -Ddynamic_string_tokens=false \
+            -Dwith_xnvctrl=disabled \
+            -Dwith_wayland=disabled \
+            -Dwith_nvml=disabled \
+            -Dinclude_doc=false \
+            --prefix=/data/data/com.winlator/files/rootfs/
+          meson compile -C builddir
+          meson install -C builddir
+          EOF
+          
+          sudo chmod +x /tmp/build-mangohud.sh
+          sudo cp /tmp/build-mangohud.sh /tmp/archlinux/tmp/
+          sudo chroot /tmp/archlinux /tmp/build-mangohud.sh
+
+      - name: Prepare build files in chroot
+        run: |
+          # Copy build script and data files
+          sudo cp build-rootfs.sh /tmp/archlinux/tmp/
+          sudo cp data.tar.xz /tmp/archlinux/tmp/
+          sudo cp tzdata-2025b-1-aarch64.pkg.tar.xz /tmp/archlinux/tmp/
+          
+          # Create init script with environment variables
+          cat > /tmp/init.sh << EOF
+          export gstVer=$gstVer
+          export xzVer=$xzVer
+          export customTag=$customTag
+          EOF
+          
+          sudo cp /tmp/init.sh /tmp/archlinux/tmp/
+          sudo chmod +x /tmp/archlinux/tmp/build-rootfs.sh
+
+      - name: Build rootfs with GStreamer
+        run: |
+          # Execute build script in chroot
+          sudo chroot /tmp/archlinux /tmp/build-rootfs.sh
+          
+          # Unmount filesystems
+          sudo umount -l /tmp/archlinux/dev
+          sudo umount -l /tmp/archlinux/sys
+          sudo umount -l /tmp/archlinux/proc
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: rootfs-${{ github.event.inputs.inputCustomTag }}
+          draft: false
+          prerelease: false
+          tag_name: rootfs-${{ github.event.inputs.inputCustomTag }}
+          body: |
+            GStreamer RootFS Build
+            Version Information:
+            - GStreamer: ${{ github.event.inputs.inputGstVersion }}
+            - XZ: ${{ github.event.inputs.inputXzVersion }}
+            - Custom Tag: ${{ github.event.inputs.inputCustomTag }}
+            
+            This rootfs contains a custom build of GStreamer for Winlator.
+          files: |
+            /tmp/archlinux/tmp/output/output-lite.tar.xz
+            /tmp/archlinux/tmp/output/output-full.tar.xz
+            /tmp/archlinux/tmp/output/rootfs.tzst
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Cleanup
+        if: always()
+        run: |
+          sudo rm -rf /tmp/archlinux
