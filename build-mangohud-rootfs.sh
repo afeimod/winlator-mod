@@ -1,3 +1,5 @@
+#!/bin/bash
+
 patchelf_fix() {
 LD_RPATH=/data/data/com.winlator/files/rootfs/lib
 LD_FILE=$LD_RPATH/ld-linux-aarch64.so.1
@@ -29,6 +31,11 @@ else
   echo "mangohud=> $mangohudVer"
   echo "commit=> $mangohudCommit"
 fi
+
+# 安装必要的网络工具
+echo "安装必要的网络工具..."
+pacman -Syu --noconfirm
+pacman -S --noconfirm --needed wget ca-certificates
 
 # Remove unnecessary packages if needed
 # pacman -R --noconfirm some-package
