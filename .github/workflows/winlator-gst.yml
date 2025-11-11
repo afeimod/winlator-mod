@@ -94,6 +94,8 @@ jobs:
             gstreamer1.0-pulseaudio \
             gstreamer1.0-alsa \
             gstreamer1.0-x \
+            libmpg123-dev \
+            libopenal-dev \
             patchelf
 
       - name: 安装meson
