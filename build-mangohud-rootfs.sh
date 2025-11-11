@@ -101,7 +101,6 @@ meson setup build \
   -Dmangoapp=false \
   -Dmangohudctl=false \
   -Dtests=disabled \
-  -Duse_system_vulkan=enabled \
   -Dprefix=/data/data/com.winlator/files/rootfs/ || {
     echo "Meson配置失败"
     if [[ -d build/meson-logs ]]; then
