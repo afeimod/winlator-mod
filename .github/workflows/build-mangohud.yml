@@ -67,14 +67,18 @@ jobs:
             glib2-devel \
             libx11 \
             mesa \
-            vulkan-devel \
+            vulkan-headers \
+            vulkan-icd-loader \
+            vulkan-tools \
+            vulkan-validation-layers \
             libglvnd \
             dbus \
             gcc \
             make \
             pkg-config \
             python3 \
-            python3-mako \
+            git \
+            python-mako \
             patchelf \
             wget \
             ca-certificates
