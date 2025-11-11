@@ -1,0 +1,81 @@
+name: Winlator MangoHud Rootfs Build (use BCC)
+
+permissions:
+  contents: write
+
+on:
+  workflow_dispatch:
+    inputs:
+      inputMangoHudVersion:
+        description: "输入MangoHud版本："
+        required: true
+        default: "v0.7.1"
+      inputMangoHudCommit:
+        description: "输入MangoHud commit哈希（可选）："
+        required: false
+        default: ""
+      inputCustomTag:
+        description: "输入自定义Tag名称："
+        required: true
+        default: "beta11-mangohud"
+
+env:
+  mangohudVer: ${{ github.event.inputs.inputMangoHudVersion }}
+  mangohudCommit: ${{ github.event.inputs.inputMangoHudCommit }}
+  customTag: ${{ github.event.inputs.inputCustomTag }}
+
+jobs:
+  BCC:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - name: BCC
+        run: |
+          echo "MangoHud ${mangohudVer}"
+          echo "Commit ${mangohudCommit}"
+          curl -L -O "https://github.com/Waim908/BCC/releases/download/wlt-bcc-latest/wlt-bcc.tar.xz"
+          sudo tar xf wlt-bcc.tar.xz -C /tmp
+          cd /tmp
+          git clone https://github.com/Waim908/rootfs-custom-winlator.git
+          sudo cp rootfs-custom-winlator/build-mangohud-rootfs.sh /tmp/archlinux/bin
+          mv rootfs-custom-winlator/data.tar.xz /tmp/archlinux/tmp
+          mv rootfs-custom-winlator/tzdata-2025b-1-aarch64.pkg.tar.xz /tmp/archlinux/tmp
+          sudo chmod +x /tmp/archlinux/bin/build-mangohud-rootfs.sh
+          
+          cat > /tmp/archlinux/tmp/init.sh << EOF
+          export mangohudVer=$mangohudVer
+          export mangohudCommit=$mangohudCommit
+          export customTag=$customTag
+          EOF
+          
+          sudo mount --bind /proc archlinux/proc
+          sudo mount --bind /sys archlinux/sys
+          sudo mount --bind /dev archlinux/dev
+          if ! sudo chroot /tmp/archlinux /bin/build-mangohud-rootfs.sh; then
+            echo "构建失败"
+            exit 1
+          fi
+          sudo umount -l archlinux/dev
+          sudo umount -l archlinux/sys
+          sudo umount -l archlinux/proc
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: mangohud-rootfs-${{ github.event.inputs.inputCustomTag }}
+          draft: false
+          prerelease: false
+          tag_name: mangohud-rootfs-${{ github.event.inputs.inputCustomTag }}
+          body: |
+            MangoHud RootFS Build
+            Version Information:
+            - MangoHud: ${{ github.event.inputs.inputMangoHudVersion }}
+            - Commit: ${{ github.event.inputs.inputMangoHudCommit }}
+            - Custom Tag: ${{ github.event.inputs.inputCustomTag }}
+            
+            This rootfs contains a custom build of MangoHud for Winlator.
+          files: |
+            /tmp/archlinux/tmp/output/mangohud-output-lite.tar.xz
+            /tmp/archlinux/tmp/output/mangohud-output-full.tar.xz
+            /tmp/archlinux/tmp/output/mangohud-rootfs.tzst
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
