@@ -81,7 +81,12 @@ echo "Build and Compile MangoHud"
 cd /tmp/mangohud-src
 
 # Configure MangoHud build
-meson setup builddir \
+# Build MangoHud
+echo "Build and Compile MangoHud"
+cd /tmp/mangohud-src
+
+# Configure MangoHud build
+meson setup build \
   --buildtype=release \
   --strip \
   -Dwith_x11=enabled \
@@ -94,15 +99,15 @@ meson setup builddir \
   -Dtests=disabled \
   -Dprefix=/data/data/com.winlator/files/rootfs/ || exit 1
 
-if [[ ! -d builddir ]]; then
+if [[ ! -d build ]]; then
   exit 1
 fi
 
-# Compile and install
-if ! meson compile -C builddir; then
+# Compile and install using traditional ninja commands
+if ! ninja -C build -j$(nproc); then
   exit 1
 fi
-meson install -C builddir
+ninja -C build install
 
 # Install MangoHud configuration file
 mkdir -p /data/data/com.winlator/files/rootfs/etc/mangohud/
