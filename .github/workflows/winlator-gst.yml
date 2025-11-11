@@ -56,6 +56,7 @@ jobs:
             yasm \
             nasm \
             cmake \
+            po4a \
             libglib2.0-dev \
             libffi-dev \
             libxml2-dev \
@@ -149,6 +150,9 @@ jobs:
           echo "gst=> $gstVer"
           echo "xz=> $xzVer"
 
+          # 移除不需要的包
+          pacman -R --noconfirm libvorbis flac lame || true
+
           # 创建根文件系统目录
           sudo mkdir -p /data/data/com.winlator/files/rootfs/
           sudo chown -R $USER:$USER /data/data/com.winlator/files/rootfs/
@@ -159,21 +163,23 @@ jobs:
             exit 1
           fi
 
-          # 首先解压基础rootfs
-          echo "解压基础rootfs..."
+          # 解压基础rootfs和额外数据文件
+          echo "解压基础rootfs和额外数据文件..."
           tar -xf rootfs.tzst -C /data/data/com.winlator/files/rootfs/
+          tar -xf data.tar.xz -C /data/data/com.winlator/files/rootfs/
+          tar -xf tzdata-2025b-1-aarch64.pkg.tar.xz -C /data/data/com.winlator/files/rootfs/
 
           # 下载CA证书
           cd /data/data/com.winlator/files/rootfs/etc
           mkdir -p ca-certificates
-          if ! wget https://curl.haxx.se/ca/cacert.pem; then
-            exit 1
+          if ! wget https://curl.haxx.se/ca/cacert.pem -O cacert.pem; then
+            echo "警告: 无法下载CA证书，但继续构建..."
           fi
 
           # 清理旧的gstreamer库
           cd /tmp
-          rm -rf /data/data/com.winlator/files/rootfs/lib/libgst*
-          rm -rf /data/data/com.winlator/files/rootfs/lib/gstreamer-1.0
+          rm -rf /data/data/com.winlator/files/rootfs/lib/libgst* 2>/dev/null || true
+          rm -rf /data/data/com.winlator/files/rootfs/lib/gstreamer-1.0 2>/dev/null || true
 
           # 克隆源代码
           if ! git clone -b $xzVer https://github.com/tukaani-project/xz.git xz-src; then
@@ -187,13 +193,22 @@ jobs:
           # 构建xz
           echo "Build and Compile xz(liblzma)"
           cd /tmp/xz-src
-          # 检查是否需要运行 autogen.sh
+          # 跳过po4a文档生成以避免错误
           if [ -f "autogen.sh" ]; then
-            ./autogen.sh
+            # 修改autogen.sh以跳过po4a
+            sed -i 's/generate_po4a=y/generate_po4a=n/' autogen.sh || true
+            ./autogen.sh || {
+              echo "autogen.sh 失败，尝试直接运行autoreconf..."
+              autoreconf -fi
+            }
+          else
+            autoreconf -fi
           fi
+          
           mkdir -p build
           cd build
-          if ! ../configure --prefix=/data/data/com.winlator/files/rootfs/; then
+          # 禁用文档生成
+          if ! ../configure --prefix=/data/data/com.winlator/files/rootfs/ --disable-doc; then
             exit 1
           fi
           if ! make -j$(nproc); then
@@ -204,6 +219,9 @@ jobs:
           # 构建gstreamer
           cd /tmp/gst-src
           echo "Build and Compile gstreamer"
+          # 设置环境变量以避免可能的构建问题
+          export CFLAGS="-O2 -pipe"
+          export CXXFLAGS="-O2 -pipe"
           meson setup builddir \
             --buildtype=release \
             --strip \
@@ -285,36 +303,36 @@ jobs:
           fi
           meson install -C builddir
 
+          export date=$(TZ=Asia/Shanghai date '+%Y-%m-%d %H:%M:%S')
+          
           # 打包
           echo "Package"
           mkdir -p /tmp/output
           cd /data/data/com.winlator/files/rootfs/
           patchelf_fix
           create_ver_txt
-          if ! tar -I 'xz -9 -T8' -cf /tmp/output/output-lite.tar.xz *; then
-            # 如果并行压缩失败，尝试单线程
-            tar -cJf /tmp/output/output-lite.tar.xz *
+          if ! tar -I 'xz -T8' -cf /tmp/output/output-lite.tar.xz *; then
+            exit 1
           fi
 
+          # 按照原始脚本的逻辑，重新解压数据文件
           cd /tmp
           tar -xf data.tar.xz -C /data/data/com.winlator/files/rootfs/
           tar -xf tzdata-2025b-1-aarch64.pkg.tar.xz -C /data/data/com.winlator/files/rootfs/
           cd /data/data/com.winlator/files/rootfs/
           create_ver_txt
-          if ! tar -I 'xz -9 -T8' -cf /tmp/output/output-full.tar.xz *; then
-            # 如果并行压缩失败，尝试单线程
-            tar -cJf /tmp/output/output-full.tar.xz *
+          if ! tar -I 'xz -T8' -cf /tmp/output/output-full.tar.xz *; then
+            exit 1
           fi
 
           # 重新创建干净的rootfs并合并
           rm -rf /data/data/com.winlator/files/rootfs/*
-          tar -xf /tmp/rootfs.tzst -C /data/data/com.winlator/files/rootfs/
+          tar -xf rootfs.tzst -C /data/data/com.winlator/files/rootfs/
           tar -xf /tmp/output/output-full.tar.xz -C /data/data/com.winlator/files/rootfs/
           cd /data/data/com.winlator/files/rootfs/
           create_ver_txt
-          if ! tar -I 'zstd -9 -T8' -cf /tmp/output/rootfs.tzst *; then
-            # 如果并行压缩失败，尝试单线程
-            tar -I zstd -cf /tmp/output/rootfs.tzst *
+          if ! tar -I 'zstd -T8' -cf /tmp/output/rootfs.tzst *; then
+            exit 1
           fi
 
           echo "构建完成！"
