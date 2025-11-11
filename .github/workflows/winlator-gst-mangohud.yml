@@ -1,4 +1,4 @@
-name: Build GStMangohud RootFS for Winlator
+name: Build GStmangohudRootFS for Winlator
 
 permissions:
   contents: write
@@ -14,6 +14,14 @@ on:
         description: "XZ version"
         required: true
         default: "v5.8.1"
+      inputLibxkbcommonVersion:
+        description: "libxkbcommon version"
+        required: true
+        default: "xkbcommon-1.7.0"
+      inputMangoHudVersion:
+        description: "MangoHud version"
+        required: true
+        default: "v0.7.1"
       inputCustomTag:
         description: "Custom tag name"
         required: true
@@ -22,10 +30,12 @@ on:
 env:
   gstVer: ${{ github.event.inputs.inputGstVersion }}
   xzVer: ${{ github.event.inputs.inputXzVersion }}
+  libxkbcommonVer: ${{ github.event.inputs.inputLibxkbcommonVersion }}
+  mangohudVer: ${{ github.event.inputs.inputMangoHudVersion }}
   customTag: ${{ github.event.inputs.inputCustomTag }}
 
 jobs:
-  build-rootfs:
+  build-rootfs2:
     runs-on: ubuntu-24.04-arm
     
     steps:
@@ -34,7 +44,7 @@ jobs:
         with:
           sparse-checkout: |
             arch-bootstrap.sh
-            build-rootfs.sh
+            build-rootfs2.sh
             data.tar.xz
             tzdata-2025b-1-aarch64.pkg.tar.xz
 
@@ -80,7 +90,11 @@ jobs:
             dbus \
             glm \
             libxnvctrl \
-            nlohmann-json
+            nlohmann-json \
+            libxcb \
+            xorgproto \
+            wayland \
+            wayland-protocols
           exit 0
           EOF
           
@@ -98,53 +112,10 @@ jobs:
           # Cleanup
           sudo rm /tmp/archlinux/install-deps.sh
 
-      - name: Build libxkbcommon
-        run: |
-          # Create libxkbcommon build script
-          cat > /tmp/build-libxkbcommon.sh << 'EOF'
-          #!/bin/bash
-          cd /tmp
-          git clone https://github.com/xkbcommon/libxkbcommon.git libxkbcommon-src
-          cd libxkbcommon-src
-          meson setup builddir \
-            -Denable-xkbregistry=false \
-            -Denable-bash-completion=false \
-            --prefix=/data/data/com.winlator/files/rootfs/
-          meson compile -C builddir
-          meson install -C builddir
-          EOF
-          
-          sudo chmod +x /tmp/build-libxkbcommon.sh
-          sudo cp /tmp/build-libxkbcommon.sh /tmp/archlinux/tmp/
-          sudo chroot /tmp/archlinux /tmp/build-libxkbcommon.sh
-
-      - name: Build MangoHud
-        run: |
-          # Create MangoHud build script
-          cat > /tmp/build-mangohud.sh << 'EOF'
-          #!/bin/bash
-          cd /tmp
-          git clone https://github.com/flightlessmango/MangoHud.git MangoHud-src
-          cd MangoHud-src
-          meson setup builddir \
-            -Ddynamic_string_tokens=false \
-            -Dwith_xnvctrl=disabled \
-            -Dwith_wayland=disabled \
-            -Dwith_nvml=disabled \
-            -Dinclude_doc=false \
-            --prefix=/data/data/com.winlator/files/rootfs/
-          meson compile -C builddir
-          meson install -C builddir
-          EOF
-          
-          sudo chmod +x /tmp/build-mangohud.sh
-          sudo cp /tmp/build-mangohud.sh /tmp/archlinux/tmp/
-          sudo chroot /tmp/archlinux /tmp/build-mangohud.sh
-
       - name: Prepare build files in chroot
         run: |
           # Copy build script and data files
-          sudo cp build-rootfs.sh /tmp/archlinux/tmp/
+          sudo cp build-rootfs2.sh /tmp/archlinux/tmp/
           sudo cp data.tar.xz /tmp/archlinux/tmp/
           sudo cp tzdata-2025b-1-aarch64.pkg.tar.xz /tmp/archlinux/tmp/
           
@@ -152,16 +123,18 @@ jobs:
           cat > /tmp/init.sh << EOF
           export gstVer=$gstVer
           export xzVer=$xzVer
+          export libxkbcommonVer=$libxkbcommonVer
+          export mangohudVer=$mangohudVer
           export customTag=$customTag
           EOF
           
           sudo cp /tmp/init.sh /tmp/archlinux/tmp/
-          sudo chmod +x /tmp/archlinux/tmp/build-rootfs.sh
+          sudo chmod +x /tmp/archlinux/tmp/build-rootfs2.sh
 
-      - name: Build rootfs with GStreamer
+      - name: Build rootfs with GStreamer, libxkbcommon and MangoHud
         run: |
           # Execute build script in chroot
-          sudo chroot /tmp/archlinux /tmp/build-rootfs.sh
+          sudo chroot /tmp/archlinux /tmp/build-rootfs2.sh
           
           # Unmount filesystems
           sudo umount -l /tmp/archlinux/dev
@@ -180,9 +153,11 @@ jobs:
             Version Information:
             - GStreamer: ${{ github.event.inputs.inputGstVersion }}
             - XZ: ${{ github.event.inputs.inputXzVersion }}
+            - libxkbcommon: ${{ github.event.inputs.inputLibxkbcommonVersion }}
+            - MangoHud: ${{ github.event.inputs.inputMangoHudVersion }}
             - Custom Tag: ${{ github.event.inputs.inputCustomTag }}
             
-            This rootfs contains a custom build of GStreamer for Winlator.
+            This rootfs contains a custom build of GStreamer, libxkbcommon and MangoHud for Winlator.
           files: |
             /tmp/archlinux/tmp/output/output-lite.tar.xz
             /tmp/archlinux/tmp/output/output-full.tar.xz
