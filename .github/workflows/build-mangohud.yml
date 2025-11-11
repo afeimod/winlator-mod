@@ -35,8 +35,6 @@ jobs:
           sparse-checkout: |
             arch-bootstrap.sh
             build-mangohud-rootfs.sh
-            data.tar.xz
-            tzdata-2025b-1-aarch64.pkg.tar.xz
 
       - name: Setup chroot environment
         run: |
@@ -73,7 +71,7 @@ jobs:
             wget curl ca-certificates \
             patchelf tar xz zstd gzip sed gawk
 
-          echo "安装图形和显示相关依赖..."
+          echo "安装图形和着色器编译工具..."
           pacman -S --noconfirm --needed \
             glslang spirv-tools \
             libx11 libxext libxrandr libxinerama \
@@ -105,10 +103,8 @@ jobs:
 
       - name: Prepare build files in chroot
         run: |
-          # Copy build script and data files
+          # Copy build script
           sudo cp build-mangohud-rootfs.sh /tmp/archlinux/tmp/
-          sudo cp data.tar.xz /tmp/archlinux/tmp/
-          sudo cp tzdata-2025b-1-aarch64.pkg.tar.xz /tmp/archlinux/tmp/
           
           # Create init script with environment variables
           cat > /tmp/init.sh << EOF
@@ -120,7 +116,7 @@ jobs:
           sudo cp /tmp/init.sh /tmp/archlinux/tmp/
           sudo chmod +x /tmp/archlinux/tmp/build-mangohud-rootfs.sh
 
-      - name: Build rootfs with MangoHud
+      - name: Build MangoHud in chroot
         run: |
           # Execute build script in chroot
           sudo chroot /tmp/archlinux /tmp/build-mangohud-rootfs.sh
@@ -130,27 +126,52 @@ jobs:
           sudo umount -l /tmp/archlinux/sys
           sudo umount -l /tmp/archlinux/proc
 
+      - name: Copy artifacts from chroot
+        run: |
+          # Create output directory
+          mkdir -p artifacts
+          
+          # Copy built artifacts from chroot
+          sudo cp /tmp/archlinux/tmp/output/* ./artifacts/ 2>/dev/null || echo "No artifacts found"
+          
+          # List artifacts
+          echo "构建产物:"
+          ls -la ./artifacts/ || echo "No artifacts directory"
+
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          name: mangohud-rootfs-${{ github.event.inputs.inputCustomTag }}
+          name: mangohud-${{ github.event.inputs.inputCustomTag }}
           draft: false
           prerelease: false
-          tag_name: mangohud-rootfs-${{ github.event.inputs.inputCustomTag }}
+          tag_name: mangohud-${{ github.event.inputs.inputCustomTag }}
           body: |
-            MangoHud RootFS Build
-            Version Information:
-            - MangoHud: ${{ github.event.inputs.inputMangoHudVersion }}
-            - Commit: ${{ github.event.inputs.inputMangoHudCommit }}
-            - Custom Tag: ${{ github.event.inputs.inputCustomTag }}
+            MangoHud Build for Winlator (aarch64)
             
-            This rootfs contains a custom build of MangoHud for Winlator.
+            ## Version Information
+            - **MangoHud**: ${{ github.event.inputs.inputMangoHudVersion }}
+            - **Commit**: ${{ github.event.inputs.inputMangoHudCommit }}
+            - **Custom Tag**: ${{ github.event.inputs.inputCustomTag }}
+            
+            ## Files Included
+            - `mangohud-*.tar.gz`: Standalone MangoHud installation
+            - `mangohud-winlator-*.tar.gz`: Pre-integrated package for Winlator
+            - `install-mangohud.sh`: Installation script
+            
+            ## Usage
+            Extract the Winlator package to your Winlator rootfs directory, or use the standalone package for other systems.
           files: |
-            /tmp/archlinux/tmp/output/mangohud-output-lite.tar.xz
-            /tmp/archlinux/tmp/output/mangohud-output-full.tar.xz
-            /tmp/archlinux/tmp/output/mangohud-rootfs.tzst
+            artifacts/mangohud-*.tar.gz
+            artifacts/mangohud-winlator-*.tar.gz
+            artifacts/install-mangohud.sh
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: mangohud-build-${{ github.event.inputs.inputCustomTag }}
+          path: artifacts/
 
       - name: Cleanup
         if: always()
