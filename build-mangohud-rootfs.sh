@@ -84,15 +84,15 @@ cd /tmp/mangohud-src
 meson setup builddir \
   --buildtype=release \
   --strip \
+  -Dbuildtype=release \
   -Dwith_x11=enabled \
-  -Dwith_wayland=disabled \
-  -Dwith_dlsym=disabled \
-  -Duse_system_spdlog=disabled \
-  -Duse_system_vulkan=disabled \
+  -Dwith_wayland=enabled \
+  -Dwith_xnvctrl=disabled \
+  -Dwith_dbus=enabled \
+  -Dmangoplot=enabled \
+  -Dmangoapp=false \
+  -Dmangohudctl=false \
   -Dtests=disabled \
-  -Dmangoapp=disabled \
-  -Dmangoapp_layer=disabled \
-  -Dmangohudctl=disabled \
   -Dprefix=/data/data/com.winlator/files/rootfs/ || exit 1
 
 if [[ ! -d builddir ]]; then
