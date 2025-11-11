@@ -1,4 +1,4 @@
-name: Winlator Rootfs Build (ARM Native)
+name: Build GStreamer RootFS for Winlator
 
 permissions:
   contents: write
@@ -7,15 +7,15 @@ on:
   workflow_dispatch:
     inputs:
       inputGstVersion:
-        description: "输入gstreamer版本："
+        description: "GStreamer version"
         required: true
         default: "1.27.2"
       inputXzVersion:
-        description: "输入xz版本："
+        description: "XZ version"
         required: true
         default: "v5.8.1"
       inputCustomTag:
-        description: "输入自定义Tag名称："
+        description: "Custom tag name"
         required: true
         default: "beta11-g2.39"
 
@@ -27,319 +27,100 @@ env:
 jobs:
   build-rootfs:
     runs-on: ubuntu-24.04-arm
+    
     steps:
-      - name: 安装必要的依赖
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            arch-bootstrap.sh
+            build-rootfs.sh
+            data.tar.xz
+            tzdata-2025b-1-aarch64.pkg.tar.xz
+
+      - name: Setup chroot environment
         run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            build-essential \
+          sudo apt update
+          sudo apt install -y coreutils curl sed gawk tar gzip xz-utils zstd
+          
+          # Make arch-bootstrap executable
+          chmod +x arch-bootstrap.sh
+          sudo cp arch-bootstrap.sh /usr/local/bin/arch-bootstrap
+          
+          # Create chroot environment
+          cd /tmp
+          sudo arch-bootstrap -a aarch64 archlinux
+
+      - name: Install build dependencies in chroot
+        run: |
+          # Create dependency installation script
+          cat > /tmp/install-deps.sh << 'EOF'
+          #!/bin/bash
+          pacman -Syu --noconfirm
+          pacman-key --init
+          pacman -S --noconfirm --needed \
+            base-devel \
+            ninja \
+            meson \
             git \
-            wget \
-            curl \
-            tar \
-            xz-utils \
-            zstd \
-            python3 \
-            python3-pip \
-            python3-setuptools \
-            python3-wheel \
-            ninja-build \
-            pkg-config \
-            flex \
-            bison \
-            gettext \
-            autoconf \
-            automake \
-            libtool \
-            autopoint \
-            gperf \
-            yasm \
+            glib2-devel \
+            libx11 \
+            mesa \
+            libpulse \
+            vulkan-devel \
             nasm \
+            yasm \
+            glslang \
             cmake \
-            po4a \
-            libglib2.0-dev \
-            libffi-dev \
-            libxml2-dev \
-            libpng-dev \
-            libjpeg-dev \
-            libtiff5-dev \
-            libgmp-dev \
-            libmpfr-dev \
-            libmpc-dev \
-            libssl-dev \
-            libasound2-dev \
-            libpulse-dev \
-            libx11-dev \
-            libxext-dev \
-            libxrandr-dev \
-            libxi-dev \
-            libxcursor-dev \
-            libxdamage-dev \
-            libxfixes-dev \
-            libxinerama-dev \
-            libxxf86vm-dev \
-            libxcomposite-dev \
-            libdrm-dev \
-            libudev-dev \
-            libsystemd-dev \
-            mesa-common-dev \
-            libgles2-mesa-dev \
-            libegl1-mesa-dev \
-            libgstreamer1.0-dev \
-            libgstreamer-plugins-base1.0-dev \
-            gstreamer1.0-plugins-good \
-            gstreamer1.0-plugins-bad \
-            gstreamer1.0-plugins-ugly \
-            gstreamer1.0-libav \
-            gstreamer1.0-pulseaudio \
-            gstreamer1.0-alsa \
-            gstreamer1.0-x \
-            libmpg123-dev \
-            libopenal-dev \
-            patchelf
+            patchelf \
+            libde265 \
+            wget \
+            ca-certificates
+          exit 0
+          EOF
+          
+          sudo chmod +x /tmp/install-deps.sh
+          sudo cp /tmp/install-deps.sh /tmp/archlinux/
+          
+          # Mount required filesystems
+          sudo mount --bind /proc /tmp/archlinux/proc
+          sudo mount --bind /sys /tmp/archlinux/sys
+          sudo mount --bind /dev /tmp/archlinux/dev
+          
+          # Install dependencies in chroot
+          sudo chroot /tmp/archlinux /install-deps.sh
+          
+          # Cleanup
+          sudo rm /tmp/archlinux/install-deps.sh
 
-      - name: 安装meson
+      - name: Prepare build files in chroot
         run: |
-          pip3 install meson
-
-      - name: 克隆仓库和准备文件
-        run: |
-          git clone https://github.com/Waim908/rootfs-custom-winlator.git
-          cp rootfs-custom-winlator/data.tar.xz /tmp/
-          cp rootfs-custom-winlator/tzdata-2025b-1-aarch64.pkg.tar.xz /tmp/
-
-      - name: 准备环境变量
-        run: |
+          # Copy build script and data files
+          sudo cp build-rootfs.sh /tmp/archlinux/tmp/
+          sudo cp data.tar.xz /tmp/archlinux/tmp/
+          sudo cp tzdata-2025b-1-aarch64.pkg.tar.xz /tmp/archlinux/tmp/
+          
+          # Create init script with environment variables
           cat > /tmp/init.sh << EOF
           export gstVer=$gstVer
           export xzVer=$xzVer
           export customTag=$customTag
           EOF
+          
+          sudo cp /tmp/init.sh /tmp/archlinux/tmp/
+          sudo chmod +x /tmp/archlinux/tmp/build-rootfs.sh
 
-      - name: 执行构建脚本
+      - name: Build rootfs with GStreamer
         run: |
-          # 定义函数
-          patchelf_fix() {
-            LD_RPATH=/data/data/com.winlator/files/rootfs/lib
-            LD_FILE=$LD_RPATH/ld-linux-aarch64.so.1
-            find . -type f -exec file {} + | grep -E ":.*ELF" | cut -d: -f1 | while read -r elf_file; do
-              echo "Patching $elf_file..."
-              patchelf --set-rpath "$LD_RPATH" --set-interpreter "$LD_FILE" "$elf_file" || {
-                echo "Failed to patch $elf_file" >&2
-                continue
-              }
-            done
-          }
-
-          create_ver_txt() {
-            date=$(TZ=Asia/Shanghai date '+%Y-%m-%d %H:%M:%S')
-            cat > '/data/data/com.winlator/files/rootfs/_version_.txt' << EOF
-          Output Date(UTC+8): $date
-          Version:
-            gstreamer=> $gstVer
-            xz=> $xzVer
-            rootfs-tag=> $customTag
-          Repo:
-            [Waim908/rootfs-custom-winlator](https://github.com/Waim908/rootfs-custom-winlator)
-          EOF
-          }
-
-          # 主构建逻辑
-          set -e
-
-          # 初始化环境
-          source /tmp/init.sh
-          echo "gst=> $gstVer"
-          echo "xz=> $xzVer"
-
-          # 移除不需要的包
-          pacman -R --noconfirm libvorbis flac lame || true
-
-          # 创建根文件系统目录
-          sudo mkdir -p /data/data/com.winlator/files/rootfs/
-          sudo chown -R $USER:$USER /data/data/com.winlator/files/rootfs/
-
-          # 下载基础rootfs
-          cd /tmp
-          if ! wget https://github.com/Waim908/rootfs-custom-winlator/releases/download/ori-b11.0/rootfs.tzst; then
-            exit 1
-          fi
-
-          # 解压基础rootfs和额外数据文件
-          echo "解压基础rootfs和额外数据文件..."
-          tar -xf rootfs.tzst -C /data/data/com.winlator/files/rootfs/
-          tar -xf data.tar.xz -C /data/data/com.winlator/files/rootfs/
-          tar -xf tzdata-2025b-1-aarch64.pkg.tar.xz -C /data/data/com.winlator/files/rootfs/
-
-          # 下载CA证书
-          cd /data/data/com.winlator/files/rootfs/etc
-          mkdir -p ca-certificates
-          if ! wget https://curl.haxx.se/ca/cacert.pem -O cacert.pem; then
-            echo "警告: 无法下载CA证书，但继续构建..."
-          fi
-
-          # 清理旧的gstreamer库
-          cd /tmp
-          rm -rf /data/data/com.winlator/files/rootfs/lib/libgst* 2>/dev/null || true
-          rm -rf /data/data/com.winlator/files/rootfs/lib/gstreamer-1.0 2>/dev/null || true
-
-          # 克隆源代码
-          if ! git clone -b $xzVer https://github.com/tukaani-project/xz.git xz-src; then
-            exit 1
-          fi
-
-          if ! git clone -b $gstVer https://github.com/GStreamer/gstreamer.git gst-src; then
-            exit 1
-          fi
-
-          # 构建xz
-          echo "Build and Compile xz(liblzma)"
-          cd /tmp/xz-src
-          # 跳过po4a文档生成以避免错误
-          if [ -f "autogen.sh" ]; then
-            # 修改autogen.sh以跳过po4a
-            sed -i 's/generate_po4a=y/generate_po4a=n/' autogen.sh || true
-            ./autogen.sh || {
-              echo "autogen.sh 失败，尝试直接运行autoreconf..."
-              autoreconf -fi
-            }
-          else
-            autoreconf -fi
-          fi
+          # Execute build script in chroot
+          sudo chroot /tmp/archlinux /tmp/build-rootfs.sh
           
-          mkdir -p build
-          cd build
-          # 禁用文档生成
-          if ! ../configure --prefix=/data/data/com.winlator/files/rootfs/ --disable-doc; then
-            exit 1
-          fi
-          if ! make -j$(nproc); then
-            exit 1
-          fi
-          make install
+          # Unmount filesystems
+          sudo umount -l /tmp/archlinux/dev
+          sudo umount -l /tmp/archlinux/sys
+          sudo umount -l /tmp/archlinux/proc
 
-          # 构建gstreamer
-          cd /tmp/gst-src
-          echo "Build and Compile gstreamer"
-          # 设置环境变量以避免可能的构建问题
-          export CFLAGS="-O2 -pipe"
-          export CXXFLAGS="-O2 -pipe"
-          meson setup builddir \
-            --buildtype=release \
-            --strip \
-            -Dgst-full-target-type=shared_library \
-            -Dintrospection=disabled \
-            -Dgst-full-libraries=app,video,player \
-            -Dbase=enabled \
-            -Dgood=enabled \
-            -Dbad=enabled \
-            -Dugly=enabled \
-            -Dlibav=enabled \
-            -Dtests=disabled \
-            -Dexamples=disabled \
-            -Ddoc=disabled \
-            -Dges=disabled \
-            -Dpython=disabled \
-            -Ddevtools=disabled \
-            -Dgstreamer:check=disabled \
-            -Dgstreamer:benchmarks=disabled \
-            -Dgstreamer:libunwind=disabled \
-            -Dgstreamer:libdw=disabled \
-            -Dgstreamer:bash-completion=disabled \
-            -Dgst-plugins-good:cairo=disabled \
-            -Dgst-plugins-good:gdk-pixbuf=disabled \
-            -Dgst-plugins-good:oss=disabled \
-            -Dgst-plugins-good:oss4=disabled \
-            -Dgst-plugins-good:v4l2=disabled \
-            -Dgst-plugins-good:aalib=disabled \
-            -Dgst-plugins-good:jack=disabled \
-            -Dgst-plugins-good:pulse=enabled \
-            -Dgst-plugins-good:adaptivedemux2=disabled \
-            -Dgst-plugins-good:v4l2=disabled \
-            -Dgst-plugins-good:libcaca=disabled \
-            -Dgst-plugins-good:mpg123=enabled \
-            -Dgst-plugins-base:examples=disabled \
-            -Dgst-plugins-base:alsa=enabled \
-            -Dgst-plugins-base:pango=disabled \
-            -Dgst-plugins-base:x11=enabled \
-            -Dgst-plugins-base:gl=disabled \
-            -Dgst-plugins-base:opus=disabled \
-            -Dgst-plugins-bad:androidmedia=disabled \
-            -Dgst-plugins-bad:rtmp=disabled \
-            -Dgst-plugins-bad:shm=disabled \
-            -Dgst-plugins-bad:zbar=disabled \
-            -Dgst-plugins-bad:webp=disabled \
-            -Dgst-plugins-bad:kms=disabled \
-            -Dgst-plugins-bad:vulkan=disabled \
-            -Dgst-plugins-bad:dash=disabled \
-            -Dgst-plugins-bad:analyticsoverlay=disabled \
-            -Dgst-plugins-bad:nvcodec=disabled \
-            -Dgst-plugins-bad:uvch264=disabled \
-            -Dgst-plugins-bad:v4l2codecs=disabled \
-            -Dgst-plugins-bad:udev=disabled \
-            -Dgst-plugins-bad:libde265=disabled \
-            -Dgst-plugins-bad:smoothstreaming=disabled \
-            -Dgst-plugins-bad:fluidsynth=disabled \
-            -Dgst-plugins-bad:inter=disabled \
-            -Dgst-plugins-bad:x11=enabled \
-            -Dgst-plugins-bad:gl=disabled \
-            -Dgst-plugins-bad:wayland=disabled \
-            -Dgst-plugins-bad:openh264=disabled \
-            -Dgst-plugins-bad:hip=disabled \
-            -Dgst-plugins-bad:aja=disabled \
-            -Dgst-plugins-bad:aes=disabled \
-            -Dgst-plugins-bad:dtls=disabled \
-            -Dgst-plugins-bad:hls=disabled \
-            -Dgst-plugins-bad:curl=disabled \
-            -Dgst-plugins-bad:opus=disabled \
-            -Dgst-plugins-bad:webrtc=disabled \
-            -Dgst-plugins-bad:webrtcdsp=disabled \
-            -Dpackage-origin="[gstremaer-build] (https://github.com/Waim908/gstreamer-build)" \
-            --prefix=/data/data/com.winlator/files/rootfs/ || exit 1
-
-          if [[ ! -d builddir ]]; then
-            exit 1
-          fi
-          if ! meson compile -C builddir; then
-            exit 1
-          fi
-          meson install -C builddir
-
-          export date=$(TZ=Asia/Shanghai date '+%Y-%m-%d %H:%M:%S')
-          
-          # 打包
-          echo "Package"
-          mkdir -p /tmp/output
-          cd /data/data/com.winlator/files/rootfs/
-          patchelf_fix
-          create_ver_txt
-          if ! tar -I 'xz -T8' -cf /tmp/output/output-lite.tar.xz *; then
-            exit 1
-          fi
-
-          # 按照原始脚本的逻辑，重新解压数据文件
-          cd /tmp
-          tar -xf data.tar.xz -C /data/data/com.winlator/files/rootfs/
-          tar -xf tzdata-2025b-1-aarch64.pkg.tar.xz -C /data/data/com.winlator/files/rootfs/
-          cd /data/data/com.winlator/files/rootfs/
-          create_ver_txt
-          if ! tar -I 'xz -T8' -cf /tmp/output/output-full.tar.xz *; then
-            exit 1
-          fi
-
-          # 重新创建干净的rootfs并合并
-          rm -rf /data/data/com.winlator/files/rootfs/*
-          tar -xf /tmp/rootfs.tzst -C /data/data/com.winlator/files/rootfs/
-          tar -xf /tmp/output/output-full.tar.xz -C /data/data/com.winlator/files/rootfs/
-          cd /data/data/com.winlator/files/rootfs/
-          create_ver_txt
-          if ! tar -I 'zstd -T8' -cf /tmp/output/rootfs.tzst *; then
-            exit 1
-          fi
-
-          echo "构建完成！"
-
-      - name: 创建发布
+      - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           name: rootfs-${{ github.event.inputs.inputCustomTag }}
@@ -347,12 +128,21 @@ jobs:
           prerelease: false
           tag_name: rootfs-${{ github.event.inputs.inputCustomTag }}
           body: |
-            gstVer=> ${{ github.event.inputs.inputGstVersion }}
-            xzVer=> ${{ github.event.inputs.inputXzVersion }}
-            customTag=> ${{ github.event.inputs.inputCustomTag }}
+            GStreamer RootFS Build
+            Version Information:
+            - GStreamer: ${{ github.event.inputs.inputGstVersion }}
+            - XZ: ${{ github.event.inputs.inputXzVersion }}
+            - Custom Tag: ${{ github.event.inputs.inputCustomTag }}
+            
+            This rootfs contains a custom build of GStreamer for Winlator.
           files: |
-            /tmp/output/output-lite.tar.xz
-            /tmp/output/output-full.tar.xz
-            /tmp/output/rootfs.tzst
+            /tmp/archlinux/tmp/output/output-lite.tar.xz
+            /tmp/archlinux/tmp/output/output-full.tar.xz
+            /tmp/archlinux/tmp/output/rootfs.tzst
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Cleanup
+        if: always()
+        run: |
+          sudo rm -rf /tmp/archlinux
