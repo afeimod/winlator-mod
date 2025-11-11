@@ -37,9 +37,6 @@ echo "安装必要的网络工具..."
 pacman -Syu --noconfirm
 pacman -S --noconfirm --needed wget ca-certificates
 
-# Remove unnecessary packages if needed
-# pacman -R --noconfirm some-package
-
 mkdir -p /data/data/com.winlator/files/rootfs/
 cd /tmp
 
@@ -80,10 +77,17 @@ fi
 echo "Build and Compile MangoHud"
 cd /tmp/mangohud-src
 
-# Configure MangoHud build
-# Build MangoHud
-echo "Build and Compile MangoHud"
-cd /tmp/mangohud-src
+# 检查必要的工具
+echo "检查构建工具..."
+if ! command -v glslangValidator &> /dev/null; then
+    echo "错误: glslangValidator 未找到"
+    exit 1
+fi
+
+if ! command -v meson &> /dev/null; then
+    echo "错误: meson 未找到"
+    exit 1
+fi
 
 # Configure MangoHud build
 meson setup build \
@@ -97,16 +101,28 @@ meson setup build \
   -Dmangoapp=false \
   -Dmangohudctl=false \
   -Dtests=disabled \
-  -Dprefix=/data/data/com.winlator/files/rootfs/ || exit 1
+  -Duse_system_vulkan=enabled \
+  -Dprefix=/data/data/com.winlator/files/rootfs/ || {
+    echo "Meson配置失败"
+    if [[ -d build/meson-logs ]]; then
+        cat build/meson-logs/meson-log.txt
+    fi
+    exit 1
+}
 
 if [[ ! -d build ]]; then
+  echo "构建目录未创建"
   exit 1
 fi
 
-# Compile and install using traditional ninja commands
+# Compile and install
+echo "开始编译 MangoHud..."
 if ! ninja -C build -j$(nproc); then
+  echo "编译失败"
   exit 1
 fi
+
+echo "安装 MangoHud..."
 ninja -C build install
 
 # Install MangoHud configuration file
