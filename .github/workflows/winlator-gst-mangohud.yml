@@ -88,6 +88,8 @@ jobs:
             ca-certificates \
             libdrm \
             dbus \
+            python3 \
+            python-mako \
             glm \
             nlohmann-json \
             libxcb \
