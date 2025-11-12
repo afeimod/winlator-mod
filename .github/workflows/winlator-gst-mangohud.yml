@@ -51,7 +51,7 @@ jobs:
       - name: Setup chroot environment
         run: |
           sudo apt update
-          sudo apt install -y coreutils curl sed gawk tar gzip xz-utils zstd
+          sudo apt install -y coreutils curl sed gawk tar gzip xz-utils zstd patchelf
           
           # Make arch-bootstrap executable
           chmod +x arch-bootstrap.sh
@@ -95,7 +95,12 @@ jobs:
             libxcb \
             xorgproto \
             wayland \
-            wayland-protocols
+            wayland-protocols \
+            libglvnd \
+            libxrandr \
+            libxinerama \
+            libxdamage \
+            libxfixes
           exit 0
           EOF
           
