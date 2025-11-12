@@ -34,15 +34,15 @@ else
 fi
 pacman -R --noconfirm libvorbis flac lame
 # 安装 MangoHud 和 libxkbcommon 的构建依赖
-pacman -S --noconfirm --needed libdrm dbus glm nlohmann-json libxcb xorgproto wayland wayland-protocols
+pacman -S --noconfirm --needed libdrm glm nlohmann-json libxcb xorgproto wayland wayland-protocols
 mkdir -p /data/data/com.winlator/files/rootfs/
 cd /tmp
 if ! wget https://github.com/Waim908/rootfs-custom-winlator/releases/download/ori-b11.0/rootfs.tzst; then
   exit 1
 fi
-#tar -xf rootfs.tzst -C /data/data/com.winlator/files/rootfs/
-#tar -xf data.tar.xz -C /data/data/com.winlator/files/rootfs/
-#tar -xf tzdata-*-.pkg.tar.xz -C /data/data/com.winlator/files/rootfs/
+tar -xf rootfs.tzst -C /data/data/com.winlator/files/rootfs/
+tar -xf data.tar.xz -C /data/data/com.winlator/files/rootfs/
+tar -xf tzdata-*-.pkg.tar.xz -C /data/data/com.winlator/files/rootfs/
 cd /data/data/com.winlator/files/rootfs/etc
 mkdir ca-certificates
 if ! wget https://curl.haxx.se/ca/cacert.pem; then
