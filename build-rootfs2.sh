@@ -1,14 +1,78 @@
 patchelf_fix() {
-LD_RPATH=/data/data/com.winlator/files/rootfs/lib
-LD_FILE=$LD_RPATH/ld-linux-aarch64.so.1
-  find . -type f -exec file {} + | grep -E ":.*ELF" | cut -d: -f1 | while read -r elf_file; do
-    echo "Patching $elf_file..."
-    patchelf --set-rpath "$LD_RPATH" --set-interpreter "$LD_FILE" "$elf_file" || {
-      echo "Failed to patch $elf_file" >&2
-      continue
-    }
+  LD_RPATH="/data/data/com.winlator/files/rootfs/lib"
+  LD_FILE="$LD_RPATH/ld-linux-aarch64.so.1"
+  
+  echo "开始修补 ELF 文件..."
+  find /data/data/com.winlator/files/rootfs -type f -exec file {} + | grep -E ":.*ELF" | cut -d: -f1 | while read -r elf_file; do
+    if [[ -f "$elf_file" && -w "$elf_file" ]]; then
+      echo "修补: $elf_file"
+      # 设置解释器
+      patchelf --set-interpreter "$LD_FILE" "$elf_file" 2>/dev/null || true
+      # 设置 rpath
+      patchelf --set-rpath "$LD_RPATH" "$elf_file" 2>/dev/null || true
+    fi
   done
+  echo "ELF 文件修补完成"
 }
+
+fix_mangohud_script() {
+  local mangohud_script="/data/data/com.winlator/files/rootfs/bin/mangohud"
+  if [[ -f "$mangohud_script" ]]; then
+    echo "修复 MangoHud 启动脚本..."
+    sed -i 's|/\\$LIB|/lib|g' "$mangohud_script"
+    # 确保脚本可执行
+    chmod +x "$mangohud_script"
+  fi
+}
+
+apply_mangohud_patch() {
+  local src_file="$1/src/sysinfo/linux.cpp"
+  if [[ -f "$src_file" ]]; then
+    echo "应用 MangoHud CPU 频率检测补丁..."
+    cp "$src_file" "${src_file}.bak"
+    awk '
+    BEGIN {in_func=0}
+    /^int get_cpu_freq\(int core\)/ {print; in_func=1; next}
+    in_func && /^\{/ {print; print "    int freq = 0; std::string path;"; next}
+    in_func && /return freq;/ {
+        print "    // 尝试 scaling_cur_freq"
+        print "    path = \"/sys/devices/system/cpu/cpu\" + std::to_string(core) + \"/cpufreq/scaling_cur_freq\";"
+        print "    { std::ifstream f(path); if(f.is_open()){ f >> freq; if(freq>0) return freq/1000; } }"
+        print ""
+        print "    // 尝试 cpuinfo_cur_freq"
+        print "    path = \"/sys/devices/system/cpu/cpu\" + std::to_string(core) + \"/cpufreq/cpuinfo_cur_freq\";"
+        print "    { std::ifstream f(path); if(f.is_open()){ f >> freq; if(freq>0) return freq/1000; } }"
+        print ""
+        print "    // 从 /proc/cpuinfo 读取 (非 root fallback)"
+        print "    {"
+        print "        std::ifstream cpuinfo(\"/proc/cpuinfo\");"
+        print "        if(cpuinfo.is_open()){"
+        print "            std::string line; int index=-1;"
+        print "            while(std::getline(cpuinfo,line)){"
+        print "                if(line.find(\"processor\")!=std::string::npos) index++;"
+        print "                if(index==core && line.find(\"cpu MHz\")!=std::string::npos){"
+        print "                    size_t pos=line.find(\":\");"
+        print "                    if(pos!=std::string::npos){"
+        print "                        std::istringstream iss(line.substr(pos+1));"
+                        print "                        iss >> freq; if(freq>0) return (int)freq;"
+        print "                    }"
+        print "                }"
+        print "            }"
+        print "        }"
+        print "    }"
+        print ""
+        print "    // fallback 默认值"
+        print "    return 2000;"
+        in_func=0; next
+    }
+    {print}
+    ' "${src_file}.bak" > "$src_file"
+    echo "✅ CPU 频率检测补丁应用成功"
+  else
+    echo "⚠️ 未找到 $src_file，跳过补丁"
+  fi
+}
+
 create_ver_txt () {
   cat > '/data/data/com.winlator/files/rootfs/_version_.txt' << EOF
 Output Date(UTC+8): $date
@@ -22,19 +86,21 @@ Repo:
   [Waim908/rootfs-custom-winlator](https://github.com/Waim908/rootfs-custom-winlator)
 EOF
 }
+
 if [[ ! -f /tmp/init.sh ]]; then
   exit 1
 else
   source /tmp/init.sh
   echo "gst=> $gstVer"
-  # echo "vorbis=> $vorbisVer"
   echo "xz=> $xzVer"
   echo "libxkbcommon=> $libxkbcommonVer"
   echo "MangoHud=> $mangohudVer"
 fi
+
+# 安装依赖
 pacman -R --noconfirm libvorbis flac lame
-# 安装 MangoHud 和 libxkbcommon 的构建依赖
-pacman -S --noconfirm --needed libdrm glm nlohmann-json libxcb python3 python-mako xorgproto wayland wayland-protocols
+pacman -S --noconfirm --needed libdrm glm nlohmann-json libxcb python3 python-mako xorgproto wayland wayland-protocols libglvnd libxrandr libxinerama libxdamage libxfixes
+
 mkdir -p /data/data/com.winlator/files/rootfs/
 cd /tmp
 if ! wget https://github.com/Waim908/rootfs-custom-winlator/releases/download/ori-b11.0/rootfs.tzst; then
@@ -43,27 +109,28 @@ fi
 tar -xf rootfs.tzst -C /data/data/com.winlator/files/rootfs/
 tar -xf data.tar.xz -C /data/data/com.winlator/files/rootfs/
 tar -xf tzdata-*-.pkg.tar.xz -C /data/data/com.winlator/files/rootfs/
+
+# 安装 CA 证书
 cd /data/data/com.winlator/files/rootfs/etc
-mkdir ca-certificates
+mkdir -p ca-certificates
 if ! wget https://curl.haxx.se/ca/cacert.pem; then
   exit 1
 fi
+
 cd /tmp
 rm -rf /data/data/com.winlator/files/rootfs/lib/libgst*
 rm -rf /data/data/com.winlator/files/rootfs/lib/gstreamer-1.0
-#git clone https://github.com/xiph/flac.git flac-src
+
+# 克隆源码
 if ! git clone -b $xzVer https://github.com/tukaani-project/xz.git xz-src; then
   exit 1
 fi
-# if ! git clone  -b $vorbisVer https://github.com/xiph/vorbis.git vorbis-src; then
-#   exit 1
-# fi
-#git clone https://github.com/xiph/opus.git opus-src
+
 if ! git clone -b $gstVer https://github.com/GStreamer/gstreamer.git gst-src; then
   exit 1
 fi
 
-# Build
+# Build xz
 echo "Build and Compile xz(liblzma)"
 cd /tmp/xz-src
 ./autogen.sh
@@ -102,6 +169,10 @@ cd /tmp
 if ! git clone -b $mangohudVer https://github.com/flightlessmango/MangoHud.git MangoHud-src; then
   exit 1
 fi
+
+# 应用补丁
+apply_mangohud_patch "/tmp/MangoHud-src"
+
 cd MangoHud-src
 meson setup builddir \
   -Ddynamic_string_tokens=false \
@@ -109,7 +180,11 @@ meson setup builddir \
   -Dwith_wayland=disabled \
   -Dwith_nvml=disabled \
   -Dinclude_doc=false \
+  -Dmangoapp=false \
+  -Dmangohudctl=false \
+  -Duse_system_spdlog=enabled \
   --prefix=/data/data/com.winlator/files/rootfs/ || exit 1
+
 if [[ ! -d builddir ]]; then
   exit 1
 fi
@@ -118,18 +193,10 @@ if ! meson compile -C builddir; then
 fi
 meson install -C builddir
 
-# cd /tmp/vorbis-src
-# echo "Build and Compile vorbis"
-# if ! ./autogen.sh; then
-#   exit 1
-# fi
-# if ! ./configure --prefix=/data/data/com.winlator/files/rootfs/; then
-#   exit 1
-# fi
-# if ! make -j$(nproc); then
-#   exit 1
-# fi
-# make install
+# 修复 MangoHud 脚本
+fix_mangohud_script
+
+# Build GStreamer
 cd /tmp/gst-src
 echo "Build and Compile gstreamer"
 meson setup builddir \
@@ -204,6 +271,7 @@ meson setup builddir \
   -Dgst-plugins-bad:webrtcdsp=disabled \
   -Dpackage-origin="[gstremaer-build] (https://github.com/Waim908/gstreamer-build)" \
   --prefix=/data/data/com.winlator/files/rootfs/ || exit 1
+
 if [[ ! -d builddir ]]; then
   exit 1
 fi
@@ -211,29 +279,43 @@ if ! meson compile -C builddir; then
   exit 1
 fi
 meson install -C builddir
+
 export date=$(TZ=Asia/Shanghai date '+%Y-%m-%d %H:%M:%S')
-# package
+
+# Package
 echo "Package"
 mkdir /tmp/output
 cd /data/data/com.winlator/files/rootfs/
+
+# 修补所有 ELF 文件
 patchelf_fix
 create_ver_txt
+
 if ! tar -I 'xz -T8' -cf /tmp/output/output-lite.tar.xz *; then
   exit 1
 fi
+
 cd /tmp
 tar -xf data.tar.xz -C /data/data/com.winlator/files/rootfs/
 tar -xf tzdata-2025b-1-aarch64.pkg.tar.xz -C /data/data/com.winlator/files/rootfs/
+
 cd /data/data/com.winlator/files/rootfs/
 create_ver_txt
+
 if ! tar -I 'xz -T8' -cf /tmp/output/output-full.tar.xz *; then
   exit 1
 fi
-rm -rf /data/data/com.winlator/files/rootfs/*/
+
+# 重新创建 rootfs.tzst
+rm -rf /data/data/com.winlator/files/rootfs/*
 tar -xf rootfs.tzst -C /data/data/com.winlator/files/rootfs/
-tar -xf /tmp/output/output-full.xz -C /data/data/com.winlator/files/rootfs/
+tar -xf /tmp/output/output-full.tar.xz -C /data/data/com.winlator/files/rootfs/
+
 cd /data/data/com.winlator/files/rootfs/
+# 再次修补确保所有文件都正确
+patchelf_fix
 create_ver_txt
+
 if ! tar -I 'zstd -T8' -cf /tmp/output/rootfs.tzst *; then
   exit 1
 fi
