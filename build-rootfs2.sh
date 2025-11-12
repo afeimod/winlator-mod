@@ -175,14 +175,15 @@ apply_mangohud_patch "/tmp/MangoHud-src"
 
 cd MangoHud-src
 meson setup builddir \
-  -Ddynamic_string_tokens=false \
-  -Dwith_xnvctrl=disabled \
+  -Dbuildtype=release \
+  -Dwith_x11=enabled \
   -Dwith_wayland=disabled \
-  -Dwith_nvml=disabled \
-  -Dinclude_doc=false \
+  -Dwith_xnvctrl=disabled \
+  -Dwith_dbus=enabled \
+  -Dmangoplot=enabled \
   -Dmangoapp=false \
   -Dmangohudctl=false \
-  -Duse_system_spdlog=enabled \
+  -Dtests=disabled
   --prefix=/data/data/com.winlator/files/rootfs/ || exit 1
 
 if [[ ! -d builddir ]]; then
