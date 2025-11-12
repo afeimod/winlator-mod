@@ -183,7 +183,7 @@ meson setup builddir \
   -Dmangoplot=enabled \
   -Dmangoapp=false \
   -Dmangohudctl=false \
-  -Dtests=disabled
+  -Dtests=disabled \
   --prefix=/data/data/com.winlator/files/rootfs/ || exit 1
 
 if [[ ! -d builddir ]]; then
