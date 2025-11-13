@@ -1,6 +1,16 @@
 patchelf_fix() {
-LD_RPATH=/data/data/com.winlator/files/rootfs/lib
-LD_FILE=$LD_RPATH/ld-linux-aarch64.so.1
+  LD_RPATH=/data/data/com.winlator/files/rootfs/lib
+  LD_FILE=$LD_RPATH/ld-linux-aarch64.so.1
+  
+  # 特别处理 GStreamer 插件目录
+  if [ -d "/data/data/com.winlator/files/rootfs/lib/gstreamer-1.0" ]; then
+    find "/data/data/com.winlator/files/rootfs/lib/gstreamer-1.0" -name "*.so" -type f | while read -r plugin; do
+      echo "Patching GStreamer plugin: $plugin"
+      patchelf --set-rpath "$LD_RPATH" --set-interpreter "$LD_FILE" "$plugin" || echo "Warning: Failed to patch $plugin"
+    done
+  fi
+  
+  # 原有的 ELF 文件修补
   find . -type f -exec file {} + | grep -E ":.*ELF" | cut -d: -f1 | while read -r elf_file; do
     echo "Patching $elf_file..."
     patchelf --set-rpath "$LD_RPATH" --set-interpreter "$LD_FILE" "$elf_file" || {
