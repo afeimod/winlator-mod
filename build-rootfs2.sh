@@ -190,16 +190,87 @@ if ! git clone -b $mangohudVer https://github.com/flightlessmango/MangoHud.git M
   exit 1
 fi
 
-# 应用补丁
+
+# 添加系统访问补丁函数
+apply_mangohud_sysfs_patch() {
+  echo "应用 MangoHud 系统访问补丁..."
+  
+  # 修改 cpu.cpp 避免访问错误
+  local cpu_file="$1/src/cpu.cpp"
+  if [[ -f "$cpu_file" ]]; then
+    cp "$cpu_file" "${cpu_file}.bak"
+    awk '
+    /std::ifstream stat_file\("\/proc\/stat"\);/ {
+        print "    // Winlator patch - safe /proc/stat access"
+        print "    std::ifstream stat_file(\"/proc/stat\");"
+        print "    if(!stat_file.is_open()) {"
+        print "        LOG_WARNING(\"Cannot open /proc/stat in Winlator environment\");"
+        print "        return;"
+        print "    }"
+        next
+    }
+    {print}
+    ' "${cpu_file}.bak" > "$cpu_file"
+    echo "✅ CPU 统计补丁应用成功"
+  fi
+
+  # 修改 file_utils.cpp 避免目录扫描错误
+  local file_utils="$1/src/file_utils.cpp"
+  if [[ -f "$file_utils" ]]; then
+    cp "$file_utils" "${file_utils}.bak"
+    sed -i 's|if (dir == nullptr)|if (true) { \/\/ Winlator patch - skip directory scanning\n        LOG_WARNING("Skipping directory scan in Winlator");\n        return {};\n    }\n    if (dir == nullptr)|g' "$file_utils"
+    echo "✅ 文件工具补丁应用成功"
+  fi
+}
+
+# 创建虚拟系统文件
+create_virtual_sysfs() {
+  echo "创建虚拟系统文件..."
+  
+  # 创建基础目录
+  mkdir -p "/data/data/com.winlator/files/rootfs/proc"
+  mkdir -p "/data/data/com.winlator/files/rootfs/sys/class/hwmon/hwmon0"
+  
+  # 创建虚拟 /proc/stat
+  cat > "/data/data/com.winlator/files/rootfs/proc/stat" << 'EOF'
+cpu  100000 0 100000 0 0 0 0 0 0 0
+cpu0 100000 0 100000 0 0 0 0 0 0 0
+cpu1 100000 0 100000 0 0 0 0 0 0 0
+cpu2 100000 0 100000 0 0 0 0 0 0 0
+cpu3 100000 0 100000 0 0 0 0 0 0 0
+EOF
+
+  # 创建虚拟温度传感器
+  echo "45000" > "/data/data/com.winlator/files/rootfs/sys/class/hwmon/hwmon0/temp1_input"
+  echo "cpu" > "/data/data/com.winlator/files/rootfs/sys/class/hwmon/hwmon0/name"
+  
+  echo "✅ 虚拟系统文件创建完成"
+}
+
+# 修改 MangoHud 构建部分
+echo "Build and Compile MangoHud"
+cd /tmp
+if ! git clone -b $mangohudVer https://github.com/flightlessmango/MangoHud.git MangoHud-src; then
+  exit 1
+fi
+
+# 应用所有补丁
 apply_mangohud_patch "/tmp/MangoHud-src"
+apply_mangohud_sysfs_patch "/tmp/MangoHud-src"
+# 应用补丁
 apply_winlator_compatibility_patch "/tmp/MangoHud-src"
 cd MangoHud-src
+
+# 极简构建配置
 meson setup builddir \
   -Dbuildtype=release \
   -Dwith_x11=enabled \
   -Dwith_wayland=disabled \
   -Dwith_xnvctrl=disabled \
   -Dwith_dbus=disabled \
+  -Dwith_nvml=disabled \
+  -Dwith_gl=disabled \
+  -Dwith_vulkan=disabled \
   -Dmangoplot=disabled \
   -Dmangoapp=false \
   -Dmangohudctl=false \
@@ -213,6 +284,13 @@ if ! meson compile -C builddir; then
   exit 1
 fi
 meson install -C builddir
+
+# 创建虚拟系统文件
+create_virtual_sysfs
+
+# 修复 MangoHud 脚本
+fix_mangohud_script
+
 
 # 修复 MangoHud 脚本
 fix_mangohud_script
