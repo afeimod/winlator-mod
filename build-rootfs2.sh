@@ -72,6 +72,26 @@ apply_mangohud_patch() {
     echo "⚠️ 未找到 $src_file，跳过补丁"
   fi
 }
+apply_winlator_compatibility_patch() {
+  local src_file="$1/src/overlay.cpp"
+  if [[ -f "$src_file" ]]; then
+    echo "应用 Winlator 兼容性补丁..."
+    cp "$src_file" "${src_file}.bak"
+    
+    # 简化渲染逻辑，避免与 Winlator 的图形层冲突
+    sed -i 's|glFlush();|// glFlush();|g' "$src_file"
+    sed -i 's|glFinish();|// glFinish();|g' "$src_file"
+    
+    # 禁用可能冲突的 OpenGL 扩展
+    sed -i 's|#ifndef GLX_MESA_swap_control|#if 0 // Disabled for Winlator compatibility|g' "$src_file"
+    
+    echo "✅ Winlator 兼容性补丁应用成功"
+  else
+    echo "⚠️ 未找到 $src_file，跳过兼容性补丁"
+  fi
+}
+
+# 在构建 MangoHud 时调用这个新函数
 
 create_ver_txt () {
   cat > '/data/data/com.winlator/files/rootfs/_version_.txt' << EOF
@@ -172,7 +192,7 @@ fi
 
 # 应用补丁
 apply_mangohud_patch "/tmp/MangoHud-src"
-
+apply_winlator_compatibility_patch "/tmp/MangoHud-src"
 cd MangoHud-src
 meson setup builddir \
   -Dbuildtype=release \
@@ -184,8 +204,6 @@ meson setup builddir \
   -Dmangoapp=false \
   -Dmangohudctl=false \
   -Dtests=disabled \
-  -Duse_system_vulkan=disabled \
-  -Duse_system_spdlog=disabled \
   --prefix=/data/data/com.winlator/files/rootfs/ || exit 1
 
 if [[ ! -d builddir ]]; then
