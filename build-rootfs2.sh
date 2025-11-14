@@ -266,8 +266,6 @@ meson setup builddir \
   -Dwith_xnvctrl=disabled \
   -Dwith_dbus=disabled \
   -Dwith_nvml=disabled \
-  -Dwith_gl=disabled \
-  -Dwith_vulkan=disabled \
   -Dmangoplot=disabled \
   -Dmangoapp=false \
   -Dmangohudctl=false \
