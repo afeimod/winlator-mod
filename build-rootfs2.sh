@@ -179,11 +179,13 @@ meson setup builddir \
   -Dwith_x11=enabled \
   -Dwith_wayland=disabled \
   -Dwith_xnvctrl=disabled \
-  -Dwith_dbus=enabled \
-  -Dmangoplot=enabled \
+  -Dwith_dbus=disabled \
+  -Dmangoplot=disabled \
   -Dmangoapp=false \
   -Dmangohudctl=false \
   -Dtests=disabled \
+  -Duse_system_vulkan=disabled \
+  -Duse_system_spdlog=disabled \
   --prefix=/data/data/com.winlator/files/rootfs/ || exit 1
 
 if [[ ! -d builddir ]]; then
