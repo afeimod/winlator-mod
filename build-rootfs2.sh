@@ -185,10 +185,7 @@ meson install -C builddir
 
 # Build MangoHud
 echo "Build and Compile MangoHud"
-cd /tmp
-if ! git clone -b $mangohudVer https://github.com/flightlessmango/MangoHud.git MangoHud-src; then
-  exit 1
-fi
+
 
 
 # 添加系统访问补丁函数
@@ -291,9 +288,6 @@ create_virtual_sysfs
 # 修复 MangoHud 脚本
 fix_mangohud_script
 
-
-# 修复 MangoHud 脚本
-fix_mangohud_script
 
 # Build GStreamer
 cd /tmp/gst-src
