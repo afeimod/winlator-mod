@@ -261,7 +261,6 @@ cd MangoHud-src
 # 极简构建配置
 meson setup builddir \
   -Dbuildtype=release \
-  -Dwith_x11=enabled \
   -Dwith_wayland=disabled \
   -Dwith_xnvctrl=disabled \
   -Dwith_dbus=disabled \
