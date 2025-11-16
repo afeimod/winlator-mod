@@ -260,15 +260,10 @@ cd MangoHud-src
 
 # 极简构建配置
 meson setup builddir \
-  -Dbuildtype=release \
-  -Dwith_wayland=disabled \
   -Dwith_xnvctrl=disabled \
-  -Dwith_dbus=disabled \
+  -Dwith_wayland=disabled \
   -Dwith_nvml=disabled \
-  -Dmangoplot=disabled \
-  -Dmangoapp=false \
-  -Dmangohudctl=false \
-  -Dtests=disabled \
+  -Dinclude_doc=false \
   --prefix=/data/data/com.winlator/files/rootfs/ || exit 1
 
 if [[ ! -d builddir ]]; then
