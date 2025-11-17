@@ -160,7 +160,7 @@ build_libxkbcommon_simple() {
         -Denable-xkbregistry=false \
         -Denable-bash-completion=false \
         -Denable-docs=false \
-        --prefix=/usr \
+        --prefix=/data/data/com.winlator/files/rootfs/usr \
         --libdir=lib \
         --buildtype=release
     
@@ -193,7 +193,7 @@ build_mangohud_simple() {
     
     # 极简配置
     meson setup builddir \
-        --prefix=/usr \
+        --prefix=/data/data/com.winlator/files/rootfs/usr \
         --libdir=lib \
         -Dbuildtype=release \
         -Dwith_x11=enabled \
@@ -237,7 +237,7 @@ build_gstreamer_simple() {
         --buildtype=release \
         -Dintrospection=disabled \
         -Dgst-full-libraries=app,video,player \
-        -Dprefix=/usr \
+        -Dprefix=/data/data/com.winlator/files/rootfs/usr \
         -Dlibdir=lib \
         -Dauto_features=disabled \
         -Dgst-plugins-base:app=enabled \
