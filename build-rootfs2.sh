@@ -683,8 +683,7 @@ meson setup builddir \
   -Denable-xkbregistry=false \
   -Denable-bash-completion=false \
   --prefix=/usr \
-  --libdir=lib \
-  -Ddatarootdir=/usr/share || exit 1
+  --libdir=lib || exit 1
 if [[ ! -d builddir ]]; then
   exit 1
 fi
