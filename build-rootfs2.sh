@@ -17,6 +17,157 @@ patchelf_fix() {
   echo "ELF 文件修补完成"
 }
 
+fix_library_links() {
+  echo "修复库文件链接..."
+  
+  # 确保 /usr/lib 正确链接到 /lib
+  if [[ -d "/data/data/com.winlator/files/rootfs/usr/lib" ]]; then
+    # 备份原始目录
+    mv "/data/data/com.winlator/files/rootfs/usr/lib" "/data/data/com.winlator/files/rootfs/usr/lib.backup"
+    # 创建符号链接
+    ln -sf "/data/data/com.winlator/files/rootfs/lib" "/data/data/com.winlator/files/rootfs/usr/lib"
+    echo "✅ 创建 /usr/lib -> /lib 符号链接"
+  fi
+  
+  # 确保 /usr/bin 中的二进制文件能找到正确的库
+  if [[ -d "/data/data/com.winlator/files/rootfs/usr/bin" ]]; then
+    find "/data/data/com.winlator/files/rootfs/usr/bin" -type f -executable | while read -r bin_file; do
+      if file "$bin_file" | grep -q "ELF"; then
+        patchelf --set-rpath "/data/data/com.winlator/files/rootfs/lib" "$bin_file" 2>/dev/null || true
+      fi
+    done
+    echo "✅ 修复 /usr/bin 二进制文件的 rpath"
+  fi
+  
+  # 修复 pkg-config 路径
+  if [[ -d "/data/data/com.winlator/files/rootfs/usr/lib/pkgconfig" ]]; then
+    # 将 pkgconfig 文件移动到正确位置
+    mkdir -p "/data/data/com.winlator/files/rootfs/lib/pkgconfig"
+    cp -r "/data/data/com.winlator/files/rootfs/usr/lib/pkgconfig/"* "/data/data/com.winlator/files/rootfs/lib/pkgconfig/" 2>/dev/null || true
+    echo "✅ 修复 pkg-config 文件位置"
+  fi
+  
+  # 创建必要的符号链接
+  cd "/data/data/com.winlator/files/rootfs/lib"
+  
+  # 确保 libc.so.6 正确链接
+  if [[ -f "libc.so.6" ]] && [[ ! -L "libc.so.6" ]]; then
+    # 如果是普通文件而不是符号链接，创建备份并建立正确链接
+    mv "libc.so.6" "libc.so.6.original"
+    local libc_target=$(find . -name "libc-*.so" | head -1)
+    if [[ -n "$libc_target" ]]; then
+      ln -sf "$(basename "$libc_target")" "libc.so.6"
+      echo "✅ 修复 libc.so.6 符号链接"
+    else
+      # 如果没有找到目标，恢复原文件
+      mv "libc.so.6.original" "libc.so.6"
+    fi
+  fi
+  
+  echo "✅ 库文件链接修复完成"
+}
+
+fix_python_specific() {
+  echo "修复 Python 特定问题..."
+  
+  local python_bin="/data/data/com.winlator/files/rootfs/usr/bin/python"
+  local python_lib_dir="/data/data/com.winlator/files/rootfs/usr/lib/python3.11"
+  
+  # 修复 Python 二进制文件
+  if [[ -f "$python_bin" ]]; then
+    echo "修复 Python 二进制文件: $python_bin"
+    
+    # 确保使用正确的解释器
+    patchelf --set-interpreter "/data/data/com.winlator/files/rootfs/lib/ld-linux-aarch64.so.1" "$python_bin" 2>/dev/null || true
+    
+    # 设置正确的 rpath
+    patchelf --set-rpath "/data/data/com.winlator/files/rootfs/lib:/data/data/com.winlator/files/rootfs/usr/lib" "$python_bin" 2>/dev/null || true
+    
+    # 检查 Python 依赖的库
+    echo "Python 依赖的库:"
+    ldd "$python_bin" 2>/dev/null || true
+  fi
+  
+  # 修复 Python 库路径
+  if [[ -d "$python_lib_dir" ]]; then
+    # 确保 Python 能找到自己的库
+    local lib_python_path="/data/data/com.winlator/files/rootfs/lib/python3.11"
+    mkdir -p "$(dirname "$lib_python_path")"
+    ln -sf "$python_lib_dir" "$lib_python_path" 2>/dev/null || true
+    echo "✅ 创建 Python 库符号链接"
+  fi
+  
+  # 检查 libc 问题
+  local libc_file="/data/data/com.winlator/files/rootfs/lib/libc.so.6"
+  if [[ -f "$libc_file" ]]; then
+    echo "检查 libc.so.6:"
+    file "$libc_file"
+    # 检查符号
+    echo "检查 libc 中的符号:"
+    nm -D "$libc_file" 2>/dev/null | grep -i nptl_change_stack || echo "未找到 nptl_change_stack 符号"
+  fi
+  
+  echo "✅ Python 特定问题修复完成"
+}
+
+fix_glibc_issue() {
+  echo "修复 GLIBC 问题..."
+  
+  # 重新安装 glibc 以确保完整性
+  pacman -S --noconfirm glibc
+  
+  # 检查并修复 libc.so.6
+  local libc_file="/data/data/com.winlator/files/rootfs/lib/libc.so.6"
+  local libpthread_file="/data/data/com.winlator/files/rootfs/lib/libpthread.so.0"
+  
+  # 确保 libpthread 存在且正确
+  if [[ ! -f "$libpthread_file" ]]; then
+    echo "⚠️ libpthread.so.0 不存在，尝试修复"
+    local libpthread_target=$(find "/data/data/com.winlator/files/rootfs/lib" -name "libpthread-*.so" | head -1)
+    if [[ -n "$libpthread_target" ]]; then
+      ln -sf "$(basename "$libpthread_target")" "$libpthread_file"
+      echo "✅ 创建 libpthread.so.0 符号链接"
+    fi
+  fi
+  
+  # 验证 libc 和 libpthread 的兼容性
+  if [[ -f "$libc_file" ]] && [[ -f "$libpthread_file" ]]; then
+    echo "验证 libc 和 libpthread 版本兼容性..."
+    local libc_version=$(strings "$libc_file" | grep "GLIBC_" | head -1)
+    local libpthread_version=$(strings "$libpthread_file" | grep "GLIBC_" | head -1)
+    echo "libc 版本: $libc_version"
+    echo "libpthread 版本: $libpthread_version"
+  fi
+  
+  # 创建一个简单的测试程序来验证 libc 功能
+  cat > /tmp/test_libc.c << 'EOF'
+#include <stdio.h>
+#include <pthread.h>
+
+void* test_thread(void* arg) {
+    printf("Thread test passed\n");
+    return NULL;
+}
+
+int main() {
+    pthread_t thread;
+    pthread_create(&thread, NULL, test_thread, NULL);
+    pthread_join(thread, NULL);
+    printf("GLIBC thread test completed successfully\n");
+    return 0;
+}
+EOF
+  
+  # 编译测试程序
+  aarch64-linux-gnu-gcc -o /tmp/test_libc /tmp/test_libc.c -pthread -Wl,-rpath,/data/data/com.winlator/files/rootfs/lib
+  
+  # 运行测试（在构建环境中）
+  echo "运行 GLIBC 线程测试..."
+  /tmp/test_libc && echo "✅ GLIBC 线程测试通过" || echo "❌ GLIBC 线程测试失败"
+  
+  echo "✅ GLIBC 问题修复完成"
+}
+
 fix_mangohud_script() {
   local mangohud_script="/data/data/com.winlator/files/rootfs/bin/mangohud"
   if [[ -f "$mangohud_script" ]]; then
@@ -162,56 +313,6 @@ EOF
   echo "✅ 虚拟系统文件创建完成"
 }
 
-# 修复 glibc 兼容性问题
-fix_glibc_compatibility() {
-  echo "修复 glibc 兼容性问题..."
-  
-  # 备份原始 libc
-  if [[ -f "/data/data/com.winlator/files/rootfs/lib/libc.so.6" ]]; then
-    cp "/data/data/com.winlator/files/rootfs/lib/libc.so.6" "/data/data/com.winlator/files/rootfs/lib/libc.so.6.backup"
-  fi
-  
-  # 重新安装 glibc
-  pacman -S --noconfirm glibc
-  
-  # 确保使用正确的动态链接器
-  local ld_file="/data/data/com.winlator/files/rootfs/lib/ld-linux-aarch64.so.1"
-  if [[ -f "$ld_file" ]]; then
-    # 修复所有二进制文件的解释器
-    find /data/data/com.winlator/files/rootfs/bin /data/data/com.winlator/files/rootfs/usr/bin -type f -executable | while read -r bin_file; do
-      if file "$bin_file" | grep -q "ELF"; then
-        patchelf --set-interpreter "$ld_file" "$bin_file" 2>/dev/null || true
-      fi
-    done
-  fi
-  
-  echo "✅ glibc 兼容性修复完成"
-}
-
-# 修复 Python 构建问题
-fix_python_build() {
-  echo "修复 Python 构建问题..."
-  
-  # 重新安装 Python 以确保完整性
-  pacman -S --noconfirm python python-pip
-  
-  # 修复 Python 库路径
-  local python_lib_dir=$(find /data/data/com.winlator/files/rootfs/usr/lib -name "python*" -type d | head -1)
-  if [[ -n "$python_lib_dir" ]]; then
-    # 确保 Python 可以找到其库
-    ln -sf "$python_lib_dir" "/data/data/com.winlator/files/rootfs/lib/python_lib" 2>/dev/null || true
-  fi
-  
-  # 修复 Python 可执行文件
-  local python_bin="/data/data/com.winlator/files/rootfs/usr/bin/python"
-  if [[ -f "$python_bin" ]]; then
-    patchelf --set-interpreter "/data/data/com.winlator/files/rootfs/lib/ld-linux-aarch64.so.1" "$python_bin" 2>/dev/null || true
-    patchelf --set-rpath "/data/data/com.winlator/files/rootfs/lib" "$python_bin" 2>/dev/null || true
-  fi
-  
-  echo "✅ Python 构建修复完成"
-}
-
 apply_mangohud_path_patch() {
   echo "应用 MangoHud 路径补丁..."
   
@@ -320,9 +421,10 @@ if ! wget https://curl.haxx.se/ca/cacert.pem; then
   exit 1
 fi
 
-# 修复 glibc 和 Python 兼容性问题
-fix_glibc_compatibility
-fix_python_build
+# 首先修复库文件链接问题
+fix_library_links
+fix_glibc_issue
+fix_python_specific
 
 cd /tmp
 rm -rf /data/data/com.winlator/files/rootfs/lib/libgst*
@@ -440,9 +542,9 @@ create_virtual_sysfs
 # 修复 MangoHud 脚本
 fix_mangohud_script
 
-# 再次修复 Python 和 glibc 问题
-fix_glibc_compatibility
-fix_python_build
+# 再次修复库链接和 Python 问题
+fix_library_links
+fix_python_specific
 
 # Build GStreamer (简化配置)
 cd /tmp/gst-src
@@ -535,11 +637,10 @@ echo "Package"
 mkdir /tmp/output
 cd /data/data/com.winlator/files/rootfs/
 
-# 最终修复所有 ELF 文件
+# 最终修复所有 ELF 文件和库链接
 patchelf_fix
-
-# 特别修复 Python
-fix_python_build
+fix_library_links
+fix_python_specific
 
 create_ver_txt
 
@@ -566,7 +667,8 @@ tar -xf /tmp/output/output-full.tar.xz -C /data/data/com.winlator/files/rootfs/
 cd /data/data/com.winlator/files/rootfs/
 # 最终修补确保所有文件都正确
 patchelf_fix
-fix_python_build
+fix_library_links
+fix_python_specific
 create_ver_txt
 
 if ! tar -I 'zstd -T8' -cf /tmp/output/rootfs.tzst ./*; then
