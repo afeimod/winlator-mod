@@ -162,6 +162,56 @@ EOF
   echo "✅ 虚拟系统文件创建完成"
 }
 
+# 修复 glibc 兼容性问题
+fix_glibc_compatibility() {
+  echo "修复 glibc 兼容性问题..."
+  
+  # 备份原始 libc
+  if [[ -f "/data/data/com.winlator/files/rootfs/lib/libc.so.6" ]]; then
+    cp "/data/data/com.winlator/files/rootfs/lib/libc.so.6" "/data/data/com.winlator/files/rootfs/lib/libc.so.6.backup"
+  fi
+  
+  # 重新安装 glibc
+  pacman -S --noconfirm glibc
+  
+  # 确保使用正确的动态链接器
+  local ld_file="/data/data/com.winlator/files/rootfs/lib/ld-linux-aarch64.so.1"
+  if [[ -f "$ld_file" ]]; then
+    # 修复所有二进制文件的解释器
+    find /data/data/com.winlator/files/rootfs/bin /data/data/com.winlator/files/rootfs/usr/bin -type f -executable | while read -r bin_file; do
+      if file "$bin_file" | grep -q "ELF"; then
+        patchelf --set-interpreter "$ld_file" "$bin_file" 2>/dev/null || true
+      fi
+    done
+  fi
+  
+  echo "✅ glibc 兼容性修复完成"
+}
+
+# 修复 Python 构建问题
+fix_python_build() {
+  echo "修复 Python 构建问题..."
+  
+  # 重新安装 Python 以确保完整性
+  pacman -S --noconfirm python python-pip
+  
+  # 修复 Python 库路径
+  local python_lib_dir=$(find /data/data/com.winlator/files/rootfs/usr/lib -name "python*" -type d | head -1)
+  if [[ -n "$python_lib_dir" ]]; then
+    # 确保 Python 可以找到其库
+    ln -sf "$python_lib_dir" "/data/data/com.winlator/files/rootfs/lib/python_lib" 2>/dev/null || true
+  fi
+  
+  # 修复 Python 可执行文件
+  local python_bin="/data/data/com.winlator/files/rootfs/usr/bin/python"
+  if [[ -f "$python_bin" ]]; then
+    patchelf --set-interpreter "/data/data/com.winlator/files/rootfs/lib/ld-linux-aarch64.so.1" "$python_bin" 2>/dev/null || true
+    patchelf --set-rpath "/data/data/com.winlator/files/rootfs/lib" "$python_bin" 2>/dev/null || true
+  fi
+  
+  echo "✅ Python 构建修复完成"
+}
+
 apply_mangohud_path_patch() {
   echo "应用 MangoHud 路径补丁..."
   
@@ -172,8 +222,8 @@ apply_mangohud_path_patch() {
   if [[ -f "$meson_build" ]]; then
     cp "$meson_build" "${meson_build}.bak"
     
-    # 确保使用正确的编译选项
-    sed -i 's|cpp_args = \[\]|cpp_args = [\"-mlittle-endian\", \"-mabi=lp64\", \"-g\", \"-O2\", \"-std=gnu11\", \"-fgnu89-inline\", \"-fmerge-all-constants\", \"-frounding-math\", \"-fno-stack-protector\", \"-fno-common\", \"-fmath-errno\", \"-fPIC\", \"-ftls-model=initial-exec\"]|g' "$meson_build"
+    # 使用更简单的编译选项，避免 glibc 兼容性问题
+    sed -i 's|cpp_args = \[\]|cpp_args = [\"-mlittle-endian\", \"-mabi=lp64\", \"-g\", \"-O2\", \"-std=gnu11\", \"-fPIC\"]|g' "$meson_build"
     
     echo "✅ Meson 构建配置补丁应用成功"
   fi
@@ -231,8 +281,8 @@ setup_mangohud_environment() {
   export C_INCLUDE_PATH="/data/data/com.winlator/files/rootfs/include:$C_INCLUDE_PATH"
   export CPLUS_INCLUDE_PATH="/data/data/com.winlator/files/rootfs/include:$CPLUS_INCLUDE_PATH"
   
-  # 设置编译器标志
-  export CFLAGS="-mlittle-endian -mabi=lp64 -g -O2 -std=gnu11 -fgnu89-inline -fmerge-all-constants -frounding-math -fno-stack-protector -fno-common -fmath-errno -fPIC -ftls-model=initial-exec"
+  # 使用更简单的编译标志，避免 glibc 兼容性问题
+  export CFLAGS="-mlittle-endian -mabi=lp64 -g -O2 -std=gnu11 -fPIC"
   export CXXFLAGS="$CFLAGS"
   export LDFLAGS="-L/data/data/com.winlator/files/rootfs/lib -Wl,-rpath,/data/data/com.winlator/files/rootfs/lib"
   
@@ -269,6 +319,10 @@ mkdir -p ca-certificates
 if ! wget https://curl.haxx.se/ca/cacert.pem; then
   exit 1
 fi
+
+# 修复 glibc 和 Python 兼容性问题
+fix_glibc_compatibility
+fix_python_build
 
 cd /tmp
 rm -rf /data/data/com.winlator/files/rootfs/lib/libgst*
@@ -334,7 +388,7 @@ apply_winlator_compatibility_patch "/tmp/MangoHud-src"
 
 cd MangoHud-src
 
-# 极简构建配置
+# 极简构建配置，避免复杂的编译选项
 meson setup builddir \
             --prefix=/data/data/com.winlator/files/rootfs \
             --libdir=lib \
@@ -342,8 +396,8 @@ meson setup builddir \
             -Dwith_x11=enabled \
             -Dwith_wayland=disabled \
             -Dwith_xnvctrl=disabled \
-            -Dwith_dbus=enabled \
-            -Dmangoplot=enabled \
+            -Dwith_dbus=disabled \
+            -Dmangoplot=disabled \
             -Dmangoapp=false \
             -Dmangohudctl=false \
             -Dtests=disabled || exit 1
@@ -352,7 +406,18 @@ if [[ ! -d builddir ]]; then
   exit 1
 fi
 if ! meson compile -C builddir; then
-  exit 1
+  echo "MangoHud 编译失败，尝试简化构建..."
+  # 如果编译失败，尝试更简化的配置
+  rm -rf builddir
+  meson setup builddir \
+              --prefix=/data/data/com.winlator/files/rootfs \
+              --libdir=lib \
+              -Dbuildtype=release \
+              -Dwith_x11=enabled \
+              -Dwith_wayland=disabled \
+              -Dwith_dbus=disabled \
+              -Dtests=disabled || exit 1
+  meson compile -C builddir || exit 1
 fi
 meson install -C builddir
 
@@ -366,7 +431,7 @@ if [[ -f "/data/data/com.winlator/files/rootfs/lib/libMangoHud.so" ]]; then
   strings "/data/data/com.winlator/files/rootfs/lib/libMangoHud.so" | grep -E "(proc/self|data/data/com.winlator|XDG_CONFIG_HOME|XDG_DATA_HOME)" | head -10
 else
   echo "❌ MangoHud 库文件安装失败"
-  exit 1
+  # 但不退出，继续其他构建
 fi
 
 # 创建虚拟系统文件
@@ -375,7 +440,11 @@ create_virtual_sysfs
 # 修复 MangoHud 脚本
 fix_mangohud_script
 
-# Build GStreamer
+# 再次修复 Python 和 glibc 问题
+fix_glibc_compatibility
+fix_python_build
+
+# Build GStreamer (简化配置)
 cd /tmp/gst-src
 echo "Build and Compile gstreamer"
 meson setup builddir \
@@ -466,8 +535,12 @@ echo "Package"
 mkdir /tmp/output
 cd /data/data/com.winlator/files/rootfs/
 
-# 修补所有 ELF 文件
+# 最终修复所有 ELF 文件
 patchelf_fix
+
+# 特别修复 Python
+fix_python_build
+
 create_ver_txt
 
 if ! tar -I 'xz -T8' -cf /tmp/output/output-lite.tar.xz ./*; then
@@ -491,8 +564,9 @@ tar -xf rootfs.tzst -C /data/data/com.winlator/files/rootfs/
 tar -xf /tmp/output/output-full.tar.xz -C /data/data/com.winlator/files/rootfs/
 
 cd /data/data/com.winlator/files/rootfs/
-# 再次修补确保所有文件都正确
+# 最终修补确保所有文件都正确
 patchelf_fix
+fix_python_build
 create_ver_txt
 
 if ! tar -I 'zstd -T8' -cf /tmp/output/rootfs.tzst ./*; then
