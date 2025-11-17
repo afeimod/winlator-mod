@@ -41,6 +41,7 @@ install_minimal_deps() {
         "patchelf"
         "meson"
         "ninja"
+        "python-mako"
     )
     
     for pkg in "${essential_packages[@]}"; do
@@ -158,6 +159,10 @@ fix_basic_environment() {
         ln -sf "../lib" "$rootfs_usr_lib"
     fi
     
+    # 创建 Winlator 特定的配置目录
+    mkdir -p "$rootfs/usr/share/mangohud"
+    mkdir -p "$rootfs/etc/mangohud"
+    
     echo "✅ 基础环境修复完成"
 }
 
@@ -266,7 +271,78 @@ build_libxkbcommon() {
     echo "✅ libxkbcommon 构建完成"
 }
 
-# 构建 MangoHud (使用与原始脚本相同的配置)
+# 创建 MangoHud Winlator 配置文件
+create_mangohud_winlator_config() {
+    echo "创建 MangoHud Winlator 配置文件..."
+    
+    local rootfs="/data/data/com.winlator/files/rootfs"
+    local mangohud_dir="$rootfs/usr/share/mangohud"
+    local config_dir="$rootfs/etc/mangohud"
+    
+    mkdir -p "$mangohud_dir"
+    mkdir -p "$config_dir"
+    
+    # 创建 MangoHud 配置文件
+    cat > "$config_dir/MangoHud.conf" << 'EOF'
+# MangoHud 配置文件 for Winlator
+no_display
+gpu_stats
+gpu_temp
+gpu_core_clock
+gpu_mem_clock
+gpu_power
+gpu_load_change
+gpu_load_value=50,90
+gpu_load_color=FFFFFF,FF7800,CC0000
+cpu_stats
+cpu_temp
+cpu_power
+cpu_mhz
+cpu_load_change
+core_load_change
+io_stats
+vram
+vram_color=2e97cb
+ram
+ram_color=c26693
+fps
+fps_color=2e97cb
+engine_version
+engine_color=2e97cb
+gpu_color=2e97cb
+cpu_color=2e97cb
+vulkan_driver
+wine
+wine_color=eb5b5b
+frame_timing=1
+frametime_color=00ff00
+background_alpha=0.4
+font_size=24
+background_color=020202
+position=top-left
+text_color=ffffff
+round_corners=10
+table_columns=3
+toggle_hud=Shift_R+F12
+toggle_logging=Shift_L+F2
+reload_cfg=Shift_L+F4
+upload_log=F5
+EOF
+
+    # 创建 Winlator 特定的路径配置
+    cat > "$mangohud_dir/winlator-paths.conf" << 'EOF'
+# Winlator 特定路径配置
+WINLATOR_ROOT=/data/data/com.winlator/files/rootfs
+WINLATOR_LIB_PATH=/data/data/com.winlator/files/rootfs/usr/lib
+WINLATOR_BIN_PATH=/data/data/com.winlator/files/rootfs/usr/bin
+XDG_CONFIG_HOME=/data/data/com.winlator/files/rootfs/.config
+XDG_DATA_HOME=/data/data/com.winlator/files/rootfs/.local/share
+EOF
+
+    echo "✅ MangoHud Winlator 配置文件创建完成"
+}
+
+# 构建 MangoHud (修复版本，包含 Winlator 路径)
 build_mangohud() {
     echo "构建 MangoHud..."
     
@@ -285,7 +361,29 @@ build_mangohud() {
     # 应用补丁
     apply_patch mangohud "$mangohudVer"
     
-    # 使用与原始脚本相同的配置
+    # 为 Winlator 创建自定义补丁（如果不存在）
+    if [[ ! -f "/tmp/patches/mangohud/$mangohudVer/winlator-paths.patch" ]]; then
+        echo "创建 Winlator 路径补丁..."
+        cat > /tmp/winlator-paths.patch << 'PATCHEOF'
+--- a/src/overlay.cpp
++++ b/src/overlay.cpp
+@@ -XXX,XX +XXX,XX @@
+     { "/proc/self/exe", true },
++    { "/data/data/com.winlator/files/rootfs/proc/self/exe", true },
+     { (get_wine_exe_name() + "/data/data/com.winlator/files/rootfs" + get_wine_exe_name()).c_str(), true },
+     { "\\??\\" + get_wine_exe_name(), true },
+     { get_game_exe(), false },
+PATCHEOF
+        
+        # 应用临时补丁
+        if patch -p1 < /tmp/winlator-paths.patch; then
+            echo "✅ Winlator 路径补丁应用成功"
+        else
+            echo "⚠️ Winlator 路径补丁应用失败，继续构建..."
+        fi
+    fi
+    
+    # 使用与原始脚本相同的配置，但添加 Winlator 特定路径
     meson setup builddir \
         --buildtype=release \
         --strip \
@@ -295,7 +393,11 @@ build_mangohud() {
         -Dwith_xnvctrl=disabled \
         -Dwith_wayland=disabled \
         -Dwith_nvml=disabled \
-        -Dinclude_doc=false
+        -Dinclude_doc=false \
+        -Dappend_libdir_mangohud=false \
+        -Dmangoapp=false \
+        -Dmangoapp_layer=false \
+        -Dmangohudctl=false
     
     if [[ -d "builddir" ]]; then
         meson compile -C builddir && \
@@ -304,6 +406,9 @@ build_mangohud() {
         echo "❌ MangoHud 构建目录创建失败"
         return 1
     fi
+    
+    # 创建 Winlator 配置文件
+    create_mangohud_winlator_config
     
     echo "✅ MangoHud 构建完成"
 }
@@ -426,7 +531,7 @@ Version:
   rootfs-tag=> $customTag
 Repo:
   [Waim908/rootfs-custom-winlator](https://github.com/Waim908/rootfs-custom-winlator)
-Built with simplified script
+Built with Winlator path fixes
 EOF
     
     echo "✅ 版本信息创建完成"
@@ -499,7 +604,7 @@ package_results() {
 
 # 主构建流程
 main() {
-    echo "开始简化构建流程..."
+    echo "开始 Winlator 路径修复构建流程..."
     
     # 初始化环境
     if [[ ! -f /tmp/init.sh ]]; then
@@ -560,7 +665,7 @@ main() {
     # 打包成品
     package_results
     
-    echo "🎉 构建流程完成！"
+    echo "🎉 Winlator 路径修复构建流程完成！"
     echo "================================="
     echo "输出目录: /tmp/output"
     echo "包含文件:"
