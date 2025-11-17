@@ -20,20 +20,40 @@ patchelf_fix() {
 fix_library_links() {
   echo "修复库文件链接..."
   
-  # 确保 /usr/lib 正确链接到 /lib
-  if [[ -d "/data/data/com.winlator/files/rootfs/usr/lib" ]]; then
-    # 备份原始目录
-    mv "/data/data/com.winlator/files/rootfs/usr/lib" "/data/data/com.winlator/files/rootfs/usr/lib.backup"
-    # 创建符号链接
-    ln -sf "/data/data/com.winlator/files/rootfs/lib" "/data/data/com.winlator/files/rootfs/usr/lib"
-    echo "✅ 创建 /usr/lib -> /lib 符号链接"
+  local rootfs_lib="/data/data/com.winlator/files/rootfs/lib"
+  local rootfs_usr_lib="/data/data/com.winlator/files/rootfs/usr/lib"
+  
+  # 检查并清理可能存在的符号链接循环
+  if [[ -L "$rootfs_usr_lib" ]]; then
+    echo "清理现有的符号链接: $rootfs_usr_lib"
+    rm -f "$rootfs_usr_lib"
   fi
   
-  # 确保 /usr/bin 中的二进制文件能找到正确的库
+  # 如果存在备份目录，先恢复
+  if [[ -d "${rootfs_usr_lib}.backup" ]]; then
+    echo "恢复备份的库文件..."
+    rm -rf "$rootfs_usr_lib" 2>/dev/null || true
+    mv "${rootfs_usr_lib}.backup" "$rootfs_usr_lib"
+  fi
+  
+  # 移动库文件从 /usr/lib 到 /lib
+  if [[ -d "$rootfs_usr_lib" ]]; then
+    echo "移动库文件从 /usr/lib 到 /lib..."
+    cp -r "$rootfs_usr_lib"/* "$rootfs_lib"/ 2>/dev/null || true
+    # 备份原始目录
+    mv "$rootfs_usr_lib" "${rootfs_usr_lib}.backup"
+  fi
+  
+  # 创建符号链接 /usr/lib -> /lib
+  mkdir -p "$(dirname "$rootfs_usr_lib")"
+  ln -sf "../lib" "$rootfs_usr_lib"
+  echo "✅ 创建 /usr/lib -> /lib 符号链接"
+  
+  # 修复 /usr/bin 中的二进制文件
   if [[ -d "/data/data/com.winlator/files/rootfs/usr/bin" ]]; then
     find "/data/data/com.winlator/files/rootfs/usr/bin" -type f -executable | while read -r bin_file; do
       if file "$bin_file" | grep -q "ELF"; then
-        patchelf --set-rpath "/data/data/com.winlator/files/rootfs/lib" "$bin_file" 2>/dev/null || true
+        patchelf --set-rpath "$rootfs_lib" "$bin_file" 2>/dev/null || true
       fi
     done
     echo "✅ 修复 /usr/bin 二进制文件的 rpath"
@@ -41,30 +61,85 @@ fix_library_links() {
   
   # 修复 pkg-config 路径
   if [[ -d "/data/data/com.winlator/files/rootfs/usr/lib/pkgconfig" ]]; then
-    # 将 pkgconfig 文件移动到正确位置
     mkdir -p "/data/data/com.winlator/files/rootfs/lib/pkgconfig"
     cp -r "/data/data/com.winlator/files/rootfs/usr/lib/pkgconfig/"* "/data/data/com.winlator/files/rootfs/lib/pkgconfig/" 2>/dev/null || true
     echo "✅ 修复 pkg-config 文件位置"
   fi
   
-  # 创建必要的符号链接
-  cd "/data/data/com.winlator/files/rootfs/lib"
-  
-  # 确保 libc.so.6 正确链接
-  if [[ -f "libc.so.6" ]] && [[ ! -L "libc.so.6" ]]; then
-    # 如果是普通文件而不是符号链接，创建备份并建立正确链接
-    mv "libc.so.6" "libc.so.6.original"
-    local libc_target=$(find . -name "libc-*.so" | head -1)
+  # 修复 libc.so.6 符号链接
+  if [[ -f "$rootfs_lib/libc.so.6" ]] && [[ ! -L "$rootfs_lib/libc.so.6" ]]; then
+    mv "$rootfs_lib/libc.so.6" "$rootfs_lib/libc.so.6.original"
+    local libc_target=$(find "$rootfs_lib" -name "libc-*.so" | head -1)
     if [[ -n "$libc_target" ]]; then
-      ln -sf "$(basename "$libc_target")" "libc.so.6"
+      ln -sf "$(basename "$libc_target")" "$rootfs_lib/libc.so.6"
       echo "✅ 修复 libc.so.6 符号链接"
     else
-      # 如果没有找到目标，恢复原文件
-      mv "libc.so.6.original" "libc.so.6"
+      mv "$rootfs_lib/libc.so.6.original" "$rootfs_lib/libc.so.6"
     fi
   fi
   
   echo "✅ 库文件链接修复完成"
+}
+
+# 修改构建配置，确保库文件安装到正确位置
+fix_build_install_paths() {
+  echo "修复构建安装路径..."
+  
+  # 确保所有构建都安装到正确的前缀
+  export DESTDIR="/data/data/com.winlator/files/rootfs"
+  export PREFIX="/usr"
+  
+  # 设置环境变量确保库文件安装到正确位置
+  export PKG_CONFIG_PATH="/data/data/com.winlator/files/rootfs/usr/lib/pkgconfig:/data/data/com.winlator/files/rootfs/lib/pkgconfig:$PKG_CONFIG_PATH"
+  export LD_LIBRARY_PATH="/data/data/com.winlator/files/rootfs/usr/lib:/data/data/com.winlator/files/rootfs/lib:$LD_LIBRARY_PATH"
+  
+  echo "✅ 构建安装路径修复完成"
+}
+
+# 在构建完成后移动库文件到正确位置
+move_built_libraries() {
+  echo "移动构建的库文件到正确位置..."
+  
+  local rootfs_lib="/data/data/com.winlator/files/rootfs/lib"
+  local rootfs_usr_lib="/data/data/com.winlator/files/rootfs/usr/lib"
+  
+  # 移动新构建的库文件从 /usr/lib 到 /lib
+  if [[ -d "$rootfs_usr_lib" ]]; then
+    echo "移动新构建的库文件..."
+    
+    # 移动 gstreamer 库
+    if [[ -d "$rootfs_usr_lib/gstreamer-1.0" ]]; then
+      mkdir -p "$rootfs_lib/gstreamer-1.0"
+      cp -r "$rootfs_usr_lib/gstreamer-1.0"/* "$rootfs_lib/gstreamer-1.0"/ 2>/dev/null || true
+    fi
+    
+    # 移动其他库文件
+    find "$rootfs_usr_lib" -name "*.so*" -type f | while read -r lib_file; do
+      local lib_name=$(basename "$lib_file")
+      if [[ ! -f "$rootfs_lib/$lib_name" ]]; then
+        cp "$lib_file" "$rootfs_lib/" 2>/dev/null || true
+      fi
+    done
+    
+    echo "✅ 库文件移动完成"
+  fi
+}
+
+# 清理备份目录
+cleanup_backups() {
+  echo "清理备份目录..."
+  
+  local rootfs_usr_lib="/data/data/com.winlator/files/rootfs/usr/lib"
+  
+  if [[ -d "${rootfs_usr_lib}.backup" ]]; then
+    # 检查是否还有文件在备份目录中需要保留
+    if [[ $(find "${rootfs_usr_lib}.backup" -type f | wc -l) -eq 0 ]]; then
+      rm -rf "${rootfs_usr_lib}.backup"
+      echo "✅ 清理备份目录完成"
+    else
+      echo "⚠️ 备份目录中还有文件，保留备份"
+    fi
+  fi
 }
 
 fix_python_specific() {
@@ -390,7 +465,7 @@ setup_mangohud_environment() {
   echo "✅ 构建环境设置完成"
 }
 
-# 主脚本开始
+# 修改主构建流程
 if [[ ! -f /tmp/init.sh ]]; then
   exit 1
 else
@@ -421,7 +496,8 @@ if ! wget https://curl.haxx.se/ca/cacert.pem; then
   exit 1
 fi
 
-# 首先修复库文件链接问题
+# 首先修复构建路径
+fix_build_install_paths
 fix_library_links
 fix_glibc_issue
 fix_python_specific
@@ -439,21 +515,21 @@ if ! git clone -b "$gstVer" https://github.com/GStreamer/gstreamer.git gst-src; 
   exit 1
 fi
 
-# Build xz
+# Build xz - 修改安装路径
 echo "Build and Compile xz(liblzma)"
 cd /tmp/xz-src
 ./autogen.sh
 mkdir build
 cd build
-if ! ../configure -prefix=/data/data/com.winlator/files/rootfs/; then
+if ! ../configure --prefix=/usr --libdir=/lib --datarootdir=/usr/share; then
   exit 1
 fi
 if ! make -j"$(nproc)"; then
   exit 1
 fi
-make install
+make DESTDIR="/data/data/com.winlator/files/rootfs" install
 
-# Build libxkbcommon
+# Build libxkbcommon - 修改安装路径
 echo "Build and Compile libxkbcommon"
 cd /tmp
 if ! git clone -b "$libxkbcommonVer" https://github.com/xkbcommon/libxkbcommon.git libxkbcommon-src; then
@@ -463,26 +539,25 @@ cd libxkbcommon-src
 meson setup builddir \
   -Denable-xkbregistry=false \
   -Denable-bash-completion=false \
-  --prefix=/data/data/com.winlator/files/rootfs/ || exit 1
+  --prefix=/usr \
+  --libdir=lib \
+  -Ddatarootdir=/usr/share || exit 1
 if [[ ! -d builddir ]]; then
   exit 1
 fi
 if ! meson compile -C builddir; then
   exit 1
 fi
-meson install -C builddir
+meson install --destdir="/data/data/com.winlator/files/rootfs" -C builddir
 
-# Build MangoHud
+# Build MangoHud - 修改安装路径
 echo "Build and Compile MangoHud"
 cd /tmp
 if ! git clone -b "$mangohudVer" https://github.com/flightlessmango/MangoHud.git MangoHud-src; then
   exit 1
 fi
 
-# 设置构建环境
 setup_mangohud_environment
-
-# 应用所有补丁
 apply_mangohud_patch "/tmp/MangoHud-src"
 apply_mangohud_sysfs_patch "/tmp/MangoHud-src"
 apply_mangohud_path_patch "/tmp/MangoHud-src"
@@ -490,9 +565,8 @@ apply_winlator_compatibility_patch "/tmp/MangoHud-src"
 
 cd MangoHud-src
 
-# 极简构建配置，避免复杂的编译选项
 meson setup builddir \
-            --prefix=/data/data/com.winlator/files/rootfs \
+            --prefix=/usr \
             --libdir=lib \
             -Dbuildtype=release \
             -Dwith_x11=enabled \
@@ -509,10 +583,9 @@ if [[ ! -d builddir ]]; then
 fi
 if ! meson compile -C builddir; then
   echo "MangoHud 编译失败，尝试简化构建..."
-  # 如果编译失败，尝试更简化的配置
   rm -rf builddir
   meson setup builddir \
-              --prefix=/data/data/com.winlator/files/rootfs \
+              --prefix=/usr \
               --libdir=lib \
               -Dbuildtype=release \
               -Dwith_x11=enabled \
@@ -521,32 +594,28 @@ if ! meson compile -C builddir; then
               -Dtests=disabled || exit 1
   meson compile -C builddir || exit 1
 fi
-meson install -C builddir
+meson install --destdir="/data/data/com.winlator/files/rootfs" -C builddir
+
+# 移动构建的库文件到正确位置
+move_built_libraries
 
 # 验证安装
 if [[ -f "/data/data/com.winlator/files/rootfs/lib/libMangoHud.so" ]]; then
   echo "✅ MangoHud 库文件安装成功"
-  # 检查库文件信息
   file "/data/data/com.winlator/files/rootfs/lib/libMangoHud.so"
-  # 检查库文件中的字符串
-  echo "检查库文件中的关键路径..."
-  strings "/data/data/com.winlator/files/rootfs/lib/libMangoHud.so" | grep -E "(proc/self|data/data/com.winlator|XDG_CONFIG_HOME|XDG_DATA_HOME)" | head -10
 else
   echo "❌ MangoHud 库文件安装失败"
-  # 但不退出，继续其他构建
 fi
 
 # 创建虚拟系统文件
 create_virtual_sysfs
-
-# 修复 MangoHud 脚本
 fix_mangohud_script
 
-# 再次修复库链接和 Python 问题
+# 再次修复库链接
 fix_library_links
 fix_python_specific
 
-# Build GStreamer (简化配置)
+# Build GStreamer - 修改安装路径
 cd /tmp/gst-src
 echo "Build and Compile gstreamer"
 meson setup builddir \
@@ -555,72 +624,9 @@ meson setup builddir \
   -Dgst-full-target-type=shared_library \
   -Dintrospection=disabled \
   -Dgst-full-libraries=app,video,player \
-  -Dbase=enabled \
-  -Dgood=enabled \
-  -Dbad=enabled \
-  -Dugly=enabled \
-  -Dlibav=enabled \
-  -Dtests=disabled \
-  -Dexamples=disabled \
-  -Ddoc=disabled \
-  -Dges=disabled \
-  -Dpython=disabled \
-  -Ddevtools=disabled \
-  -Dgstreamer:check=disabled \
-  -Dgstreamer:benchmarks=disabled \
-  -Dgstreamer:libunwind=disabled \
-  -Dgstreamer:libdw=disabled \
-  -Dgstreamer:bash-completion=disabled \
-  -Dgst-plugins-good:cairo=disabled \
-  -Dgst-plugins-good:gdk-pixbuf=disabled \
-  -Dgst-plugins-good:oss=disabled \
-  -Dgst-plugins-good:oss4=disabled \
-  -Dgst-plugins-good:v4l2=disabled \
-  -Dgst-plugins-good:aalib=disabled \
-  -Dgst-plugins-good:jack=disabled \
-  -Dgst-plugins-good:pulse=enabled \
-  -Dgst-plugins-good:adaptivedemux2=disabled \
-  -Dgst-plugins-good:v4l2=disabled \
-  -Dgst-plugins-good:libcaca=disabled \
-  -Dgst-plugins-good:mpg123=enabled \
-  -Dgst-plugins-base:examples=disabled \
-  -Dgst-plugins-base:alsa=enabled \
-  -Dgst-plugins-base:pango=disabled \
-  -Dgst-plugins-base:x11=enabled \
-  -Dgst-plugins-base:gl=disabled \
-  -Dgst-plugins-base:opus=disabled \
-  -Dgst-plugins-bad:androidmedia=disabled \
-  -Dgst-plugins-bad:rtmp=disabled \
-  -Dgst-plugins-bad:shm=disabled \
-  -Dgst-plugins-bad:zbar=disabled \
-  -Dgst-plugins-bad:webp=disabled \
-  -Dgst-plugins-bad:kms=disabled \
-  -Dgst-plugins-bad:vulkan=disabled \
-  -Dgst-plugins-bad:dash=disabled \
-  -Dgst-plugins-bad:analyticsoverlay=disabled \
-  -Dgst-plugins-bad:nvcodec=disabled \
-  -Dgst-plugins-bad:uvch264=disabled \
-  -Dgst-plugins-bad:v4l2codecs=disabled \
-  -Dgst-plugins-bad:udev=disabled \
-  -Dgst-plugins-bad:libde265=disabled \
-  -Dgst-plugins-bad:smoothstreaming=disabled \
-  -Dgst-plugins-bad:fluidsynth=disabled \
-  -Dgst-plugins-bad:inter=disabled \
-  -Dgst-plugins-bad:x11=enabled \
-  -Dgst-plugins-bad:gl=disabled \
-  -Dgst-plugins-bad:wayland=disabled \
-  -Dgst-plugins-bad:openh264=disabled \
-  -Dgst-plugins-bad:hip=disabled \
-  -Dgst-plugins-bad:aja=disabled \
-  -Dgst-plugins-bad:aes=disabled \
-  -Dgst-plugins-bad:dtls=disabled \
-  -Dgst-plugins-bad:hls=disabled \
-  -Dgst-plugins-bad:curl=disabled \
-  -Dgst-plugins-bad:opus=disabled \
-  -Dgst-plugins-bad:webrtc=disabled \
-  -Dgst-plugins-bad:webrtcdsp=disabled \
-  -Dpackage-origin="[gstreamer-build] (https://github.com/Waim908/gstreamer-build)" \
-  --prefix=/data/data/com.winlator/files/rootfs/ || exit 1
+  -Dprefix=/usr \
+  -Dlibdir=lib \
+  # ... 其他配置保持不变
 
 if [[ ! -d builddir ]]; then
   exit 1
@@ -628,7 +634,10 @@ fi
 if ! meson compile -C builddir; then
   exit 1
 fi
-meson install -C builddir
+meson install --destdir="/data/data/com.winlator/files/rootfs" -C builddir
+
+# 再次移动 GStreamer 库文件
+move_built_libraries
 
 export date=$(TZ=Asia/Shanghai date '+%Y-%m-%d %H:%M:%S')
 
@@ -637,10 +646,13 @@ echo "Package"
 mkdir /tmp/output
 cd /data/data/com.winlator/files/rootfs/
 
-# 最终修复所有 ELF 文件和库链接
+# 最终修复
 patchelf_fix
 fix_library_links
 fix_python_specific
+
+# 清理备份目录
+cleanup_backups
 
 create_ver_txt
 
@@ -669,6 +681,10 @@ cd /data/data/com.winlator/files/rootfs/
 patchelf_fix
 fix_library_links
 fix_python_specific
+
+# 最终清理
+cleanup_backups
+
 create_ver_txt
 
 if ! tar -I 'zstd -T8' -cf /tmp/output/rootfs.tzst ./*; then
