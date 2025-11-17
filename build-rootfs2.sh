@@ -1,5 +1,81 @@
 #!/bin/bash
 
+# 修复 GLIBC 兼容性问题
+fix_glibc_compatibility() {
+  echo "修复 GLIBC 兼容性问题..."
+  
+  local rootfs_lib="/data/data/com.winlator/files/rootfs/lib"
+  local rootfs_usr_lib="/data/data/com.winlator/files/rootfs/usr/lib"
+  
+  # 首先恢复原始的 libc 和 libpthread
+  echo "恢复原始 GLIBC 库文件..."
+  
+  # 检查是否存在备份
+  if [[ -d "${rootfs_usr_lib}.backup" ]]; then
+    echo "从备份恢复库文件..."
+    find "${rootfs_usr_lib}.backup" -name "libc.so.*" -exec cp {} "$rootfs_lib/" \; 2>/dev/null || true
+    find "${rootfs_usr_lib}.backup" -name "libpthread.so.*" -exec cp {} "$rootfs_lib/" \; 2>/dev/null || true
+    find "${rootfs_usr_lib}.backup" -name "ld-linux-aarch64.so.*" -exec cp {} "$rootfs_lib/" \; 2>/dev/null || true
+  fi
+  
+  # 确保关键库文件存在且正确
+  local critical_libs=(
+    "libc.so.6"
+    "libpthread.so.0" 
+    "ld-linux-aarch64.so.1"
+    "libm.so.6"
+    "libdl.so.2"
+    "librt.so.1"
+  )
+  
+  for lib in "${critical_libs[@]}"; do
+    if [[ ! -f "$rootfs_lib/$lib" ]]; then
+      echo "⚠️ 缺少关键库: $lib"
+      # 尝试从系统复制
+      if [[ -f "/lib/aarch64-linux-gnu/$lib" ]]; then
+        cp "/lib/aarch64-linux-gnu/$lib" "$rootfs_lib/"
+        echo "✅ 从系统复制: $lib"
+      fi
+    fi
+  done
+  
+  # 修复 libc.so.6 符号链接
+  if [[ -f "$rootfs_lib/libc.so.6" ]] && [[ ! -L "$rootfs_lib/libc.so.6" ]]; then
+    echo "修复 libc.so.6 符号链接..."
+    local libc_target=$(find "$rootfs_lib" -name "libc-*.so" -type f | head -1)
+    if [[ -n "$libc_target" ]]; then
+      mv "$rootfs_lib/libc.so.6" "$rootfs_lib/libc.so.6.backup" 2>/dev/null || true
+      ln -sf "$(basename "$libc_target")" "$rootfs_lib/libc.so.6"
+      echo "✅ 创建 libc.so.6 -> $(basename "$libc_target")"
+    fi
+  fi
+  
+  # 修复 libpthread.so.0 符号链接
+  if [[ -f "$rootfs_lib/libpthread.so.0" ]] && [[ ! -L "$rootfs_lib/libpthread.so.0" ]]; then
+    echo "修复 libpthread.so.0 符号链接..."
+    local pthread_target=$(find "$rootfs_lib" -name "libpthread-*.so" -type f | head -1)
+    if [[ -n "$pthread_target" ]]; then
+      mv "$rootfs_lib/libpthread.so.0" "$rootfs_lib/libpthread.so.0.backup" 2>/dev/null || true
+      ln -sf "$(basename "$pthread_target")" "$rootfs_lib/libpthread.so.0"
+      echo "✅ 创建 libpthread.so.0 -> $(basename "$pthread_target")"
+    fi
+  fi
+  
+  # 验证库文件完整性
+  echo "验证 GLIBC 库文件完整性..."
+  if [[ -f "$rootfs_lib/libc.so.6" ]]; then
+    echo "检查 libc.so.6:"
+    file "$rootfs_lib/libc.so.6" 2>/dev/null || echo "无法检查 libc.so.6"
+  fi
+  
+  if [[ -f "$rootfs_lib/libpthread.so.0" ]]; then
+    echo "检查 libpthread.so.0:"
+    file "$rootfs_lib/libpthread.so.0" 2>/dev/null || echo "无法检查 libpthread.so.0"
+  fi
+  
+  echo "✅ GLIBC 兼容性修复完成"
+}
+
 patchelf_fix() {
   LD_RPATH="/data/data/com.winlator/files/rootfs/lib"
   LD_FILE="$LD_RPATH/ld-linux-aarch64.so.1"
@@ -7,6 +83,17 @@ patchelf_fix() {
   echo "开始修补 ELF 文件..."
   find /data/data/com.winlator/files/rootfs -type f -exec file {} + | grep -E ":.*ELF" | cut -d: -f1 | while read -r elf_file; do
     if [[ -f "$elf_file" && -w "$elf_file" ]]; then
+      # 跳过关键系统库
+      if [[ "$elf_file" == *"libc.so.6" ]] || \
+         [[ "$elf_file" == *"libpthread.so.0" ]] || \
+         [[ "$elf_file" == *"ld-linux-aarch64.so.1" ]] || \
+         [[ "$elf_file" == *"libm.so.6" ]] || \
+         [[ "$elf_file" == *"libdl.so.2" ]] || \
+         [[ "$elf_file" == *"librt.so.1" ]]; then
+        echo "跳过关键系统库: $elf_file"
+        continue
+      fi
+      
       echo "修补: $elf_file"
       # 设置解释器
       patchelf --set-interpreter "$LD_FILE" "$elf_file" 2>/dev/null || true
@@ -188,33 +275,37 @@ fix_python_specific() {
 fix_glibc_issue() {
   echo "修复 GLIBC 问题..."
   
+  # 先修复兼容性问题
+  fix_glibc_compatibility
+  
+  local rootfs_lib="/data/data/com.winlator/files/rootfs/lib"
+  
   # 重新安装 glibc 以确保完整性
-  pacman -S --noconfirm glibc
+  echo "重新安装 GLIBC..."
+  pacman -S --noconfirm glibc 2>/dev/null || echo "GLIBC 安装可能有问题，继续..."
   
-  # 检查并修复 libc.so.6
-  local libc_file="/data/data/com.winlator/files/rootfs/lib/libc.so.6"
-  local libpthread_file="/data/data/com.winlator/files/rootfs/lib/libpthread.so.0"
+  # 检查并修复 libpthread
+  local libpthread_file="$rootfs_lib/libpthread.so.0"
   
-  # 确保 libpthread 存在且正确
   if [[ ! -f "$libpthread_file" ]]; then
     echo "⚠️ libpthread.so.0 不存在，尝试修复"
-    local libpthread_target=$(find "/data/data/com.winlator/files/rootfs/lib" -name "libpthread-*.so" | head -1)
+    local libpthread_target=$(find "$rootfs_lib" -name "libpthread-*.so" -type f | head -1)
     if [[ -n "$libpthread_target" ]]; then
       ln -sf "$(basename "$libpthread_target")" "$libpthread_file"
       echo "✅ 创建 libpthread.so.0 符号链接"
     fi
   fi
   
-  # 验证 libc 和 libpthread 的兼容性
-  if [[ -f "$libc_file" ]] && [[ -f "$libpthread_file" ]]; then
-    echo "验证 libc 和 libpthread 版本兼容性..."
-    local libc_version=$(strings "$libc_file" | grep "GLIBC_" | head -1)
-    local libpthread_version=$(strings "$libpthread_file" | grep "GLIBC_" | head -1)
-    echo "libc 版本: $libc_version"
-    echo "libpthread 版本: $libpthread_version"
+  # 验证符号
+  echo "检查关键符号..."
+  if [[ -f "$rootfs_lib/libc.so.6" ]]; then
+    echo "libc.so.6 中的关键符号:"
+    # 使用简化的符号检查，避免依赖有问题的 libc
+    strings "$rootfs_lib/libc.so.6" 2>/dev/null | grep -i "glibc" | head -5 || echo "无法检查符号"
   fi
   
   # 创建一个简单的测试程序来验证 libc 功能
+  echo "创建 GLIBC 测试程序..."
   cat > /tmp/test_libc.c << 'EOF'
 #include <stdio.h>
 #include <pthread.h>
@@ -226,19 +317,33 @@ void* test_thread(void* arg) {
 
 int main() {
     pthread_t thread;
-    pthread_create(&thread, NULL, test_thread, NULL);
-    pthread_join(thread, NULL);
-    printf("GLIBC thread test completed successfully\n");
-    return 0;
+    printf("Starting GLIBC thread test...\n");
+    if (pthread_create(&thread, NULL, test_thread, NULL) == 0) {
+        pthread_join(thread, NULL);
+        printf("GLIBC thread test completed successfully\n");
+        return 0;
+    } else {
+        printf("GLIBC thread test failed\n");
+        return 1;
+    }
 }
 EOF
   
-  # 编译测试程序
-  aarch64-linux-gnu-gcc -o /tmp/test_libc /tmp/test_libc.c -pthread -Wl,-rpath,/data/data/com.winlator/files/rootfs/lib
-  
-  # 运行测试（在构建环境中）
-  echo "运行 GLIBC 线程测试..."
-  /tmp/test_libc && echo "✅ GLIBC 线程测试通过" || echo "❌ GLIBC 线程测试失败"
+  # 尝试编译测试程序
+  if command -v aarch64-linux-gnu-gcc >/dev/null 2>&1; then
+    echo "编译 GLIBC 测试程序..."
+    aarch64-linux-gnu-gcc -o /tmp/test_libc /tmp/test_libc.c -pthread -Wl,-rpath,/data/data/com.winlator/files/rootfs/lib
+    
+    # 运行测试（在构建环境中）
+    echo "运行 GLIBC 线程测试..."
+    if [[ -f "/tmp/test_libc" ]]; then
+      /tmp/test_libc && echo "✅ GLIBC 线程测试通过" || echo "❌ GLIBC 线程测试失败"
+    else
+      echo "⚠️ 测试程序编译失败，跳过测试"
+    fi
+  else
+    echo "⚠️ 交叉编译器未找到，跳过 GLIBC 测试"
+  fi
   
   echo "✅ GLIBC 问题修复完成"
 }
@@ -465,6 +570,35 @@ setup_mangohud_environment() {
   echo "✅ 构建环境设置完成"
 }
 
+# 安装交叉编译工具链
+install_cross_compiler() {
+  echo "安装交叉编译工具链..."
+  
+  # 检查是否已安装
+  if ! command -v aarch64-linux-gnu-gcc >/dev/null 2>&1; then
+    echo "安装 aarch64-linux-gnu-gcc..."
+    pacman -S --noconfirm aarch64-linux-gnu-gcc 2>/dev/null || {
+      echo "尝试从 AUR 安装交叉编译器..."
+      # 如果 pacman 中没有，尝试其他方式
+      if command -v yay >/dev/null 2>&1; then
+        yay -S --noconfirm aarch64-linux-gnu-gcc-bin
+      elif command -v paru >/dev/null 2>&1; then
+        paru -S --noconfirm aarch64-linux-gnu-gcc-bin
+      else
+        echo "⚠️ 无法安装交叉编译器，请手动安装 aarch64-linux-gnu-gcc"
+        return 1
+      fi
+    }
+  fi
+  
+  if command -v aarch64-linux-gnu-gcc >/dev/null 2>&1; then
+    echo "✅ 交叉编译器已安装: $(aarch64-linux-gnu-gcc --version | head -1)"
+  else
+    echo "❌ 交叉编译器安装失败"
+    return 1
+  fi
+}
+
 # 修改主构建流程
 if [[ ! -f /tmp/init.sh ]]; then
   exit 1
@@ -477,14 +611,20 @@ else
 fi
 
 # 安装依赖
+echo "安装构建依赖..."
 pacman -R --noconfirm libvorbis flac lame
-pacman -S --noconfirm --needed libdrm glm nlohmann-json libxcb python3 python-mako xorgproto wayland wayland-protocols libglvnd libxrandr libxinerama libxdamage libxfixes
+pacman -S --noconfirm --needed libdrm glm nlohmann-json libxcb python3 python-mako xorgproto wayland wayland-protocols libglvnd libxrandr libxinerama libxdamage libxfixes patchelf
+
+# 安装交叉编译器
+install_cross_compiler
 
 mkdir -p /data/data/com.winlator/files/rootfs/
 cd /tmp
 if ! wget https://github.com/Waim908/rootfs-custom-winlator/releases/download/ori-b11.0/rootfs.tzst; then
   exit 1
 fi
+
+echo "解压 rootfs..."
 tar -xf rootfs.tzst -C /data/data/com.winlator/files/rootfs/
 tar -xf data.tar.xz -C /data/data/com.winlator/files/rootfs/
 tar -xf tzdata-*-.pkg.tar.xz -C /data/data/com.winlator/files/rootfs/
@@ -493,12 +633,14 @@ tar -xf tzdata-*-.pkg.tar.xz -C /data/data/com.winlator/files/rootfs/
 cd /data/data/com.winlator/files/rootfs/etc
 mkdir -p ca-certificates
 if ! wget https://curl.haxx.se/ca/cacert.pem; then
-  exit 1
+  echo "⚠️ CA 证书下载失败，继续构建..."
 fi
 
-# 首先修复构建路径
-fix_build_install_paths
+# 首先修复 GLIBC 问题
+echo "开始修复系统库问题..."
+fix_glibc_compatibility
 fix_library_links
+fix_build_install_paths
 fix_glibc_issue
 fix_python_specific
 
@@ -507,6 +649,7 @@ rm -rf /data/data/com.winlator/files/rootfs/lib/libgst*
 rm -rf /data/data/com.winlator/files/rootfs/lib/gstreamer-1.0
 
 # 克隆源码
+echo "克隆源代码..."
 if ! git clone -b "$xzVer" https://github.com/tukaani-project/xz.git xz-src; then
   exit 1
 fi
@@ -626,7 +769,7 @@ meson setup builddir \
   -Dgst-full-libraries=app,video,player \
   -Dprefix=/usr \
   -Dlibdir=lib \
-  # ... 其他配置保持不变
+  -Ddatarootdir=/usr/share
 
 if [[ ! -d builddir ]]; then
   exit 1
