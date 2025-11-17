@@ -53,6 +53,92 @@ install_minimal_deps() {
     echo "✅ 最小化依赖安装完成"
 }
 
+# 创建根文件系统目录结构
+create_rootfs_dir() {
+    echo "创建根文件系统目录结构..."
+    
+    local RootDirectories=(
+        etc
+        home
+        opt
+        tmp
+        var
+        usr/bin
+        usr/lib
+        usr/share
+        usr/local
+        usr/libexec
+        usr/include
+        usr/games
+        usr/src
+        usr/sbin
+    )
+    
+    local rootfs="/data/data/com.winlator/files/rootfs"
+    local nowPath=$(pwd)
+    
+    mkdir -p "$rootfs"
+    
+    for dir in "${RootDirectories[@]}"; do
+        mkdir -p "$rootfs/$dir"
+    done
+    
+    cd "$rootfs"
+    ln -sf usr/bin bin
+    ln -sf usr/lib lib
+    ln -sf usr/sbin sbin
+    cd "$nowPath"
+    
+    echo "✅ 根文件系统目录结构创建完成"
+}
+
+# 应用补丁函数
+apply_patch() {
+    if [[ ! -d /tmp/patches ]]; then
+        echo "⚠️ 补丁目录不存在，跳过补丁应用"
+        return 0
+    fi
+    
+    if [[ -d "/tmp/patches/$1/$2" ]]; then
+        for patch_file in /tmp/patches/$1/$2/*; do
+            if [[ -f "$patch_file" ]]; then
+                echo "应用补丁: $patch_file"
+                if ! patch -p1 < "$patch_file"; then
+                    echo "❌ 应用补丁 $patch_file 失败"
+                    return 1
+                fi
+            fi
+        done
+    else
+        echo "⚠️ 没有找到 $1/$2 的补丁文件"
+    fi
+    
+    return 0
+}
+
+# 修复 ELF 文件（完整版本）
+patchelf_fix() {
+    echo "修复 ELF 文件..."
+    
+    local LD_RPATH="/data/data/com.winlator/files/rootfs/usr/lib"
+    local LD_FILE="$LD_RPATH/ld-linux-aarch64.so.1"
+    local rootfs="/data/data/com.winlator/files/rootfs"
+    
+    if [[ ! -f "$LD_FILE" ]]; then
+        echo "⚠️ 解释器不存在，跳过 ELF 修复"
+        return 0
+    fi
+    
+    find "$rootfs" -type f -exec file {} + | grep -E ":.*ELF" | cut -d: -f1 | while read -r elf_file; do
+        echo "修复: $elf_file"
+        patchelf --set-rpath "$LD_RPATH" --set-interpreter "$LD_FILE" "$elf_file" 2>/dev/null || {
+            echo "⚠️ 修复 $elf_file 失败，继续..."
+        }
+    done
+    
+    echo "✅ ELF 文件修复完成"
+}
+
 # 修复基础环境
 fix_basic_environment() {
     echo "修复基础环境..."
@@ -96,14 +182,16 @@ download_prebuilt_libraries() {
     echo "解压 rootfs..."
     tar -xf rootfs.tzst -C "$rootfs"
     
-    # 下载必要的附加文件
-    if [[ -f "data.tar.xz" ]]; then
-        tar -xf data.tar.xz -C "$rootfs"
+    # 下载 CA 证书
+    echo "下载 CA 证书..."
+    cd "$rootfs/etc"
+    mkdir -p ca-certificates
+    cd ca-certificates
+    if ! wget -q https://curl.haxx.se/ca/cacert.pem; then
+        echo "⚠️ CA 证书下载失败，继续构建..."
     fi
     
-    if [[ -f "tzdata-"*".pkg.tar.xz" ]]; then
-        tar -xf tzdata-*.pkg.tar.xz -C "$rootfs"
-    fi
+    cd /tmp
     
     echo "✅ 预编译库文件下载完成"
 }
@@ -129,8 +217,8 @@ build_xz() {
     mkdir -p build
     cd build
     
-    if ../configure --prefix=/usr --libdir=/lib; then
-        make -j2 && make DESTDIR="/data/data/com.winlator/files/rootfs" install
+    if ../configure --prefix=/data/data/com.winlator/files/rootfs/usr; then
+        make -j$(nproc) && make install
     else
         echo "❌ xz 配置失败"
         return 1
@@ -139,34 +227,37 @@ build_xz() {
     echo "✅ xz 构建完成"
 }
 
-# 构建 libxkbcommon (简化版本)
-build_libxkbcommon_simple() {
+# 构建 libxkbcommon (使用与原始脚本相同的配置)
+build_libxkbcommon() {
     echo "构建 libxkbcommon..."
     
     cd /tmp
     
     # 克隆源码
-    if [[ ! -d "libxkbcommon-src" ]]; then
-        if ! git clone -b "$libxkbcommonVer" https://github.com/xkbcommon/libxkbcommon.git libxkbcommon-src; then
+    if [[ ! -d "xkbcommon-src" ]]; then
+        if ! git clone -b "$xkbcommonVer" https://github.com/xkbcommon/libxkbcommon.git xkbcommon-src; then
             echo "❌ libxkbcommon 源码克隆失败"
             return 1
         fi
     fi
     
-    cd libxkbcommon-src
+    cd xkbcommon-src
     
-    # 简化构建配置
+    # 使用与原始脚本相同的配置
     meson setup builddir \
-        -Denable-xkbregistry=false \
-        -Denable-bash-completion=false \
-        -Denable-docs=false \
+        --buildtype=release \
+        --strip \
         --prefix=/data/data/com.winlator/files/rootfs/usr \
-        --libdir=lib \
-        --buildtype=release
+        --libdir=/data/data/com.winlator/files/rootfs/usr/lib \
+        -Dbash-completion-path=false \
+        -Denable-xkbregistry=false \
+        -Denable-wayland=false \
+        -Denable-tools=false \
+        -Denable-bash-completion=false
     
     if [[ -d "builddir" ]]; then
         meson compile -C builddir && \
-        meson install --destdir="/data/data/com.winlator/files/rootfs" -C builddir
+        meson install -C builddir
     else
         echo "❌ libxkbcommon 构建目录创建失败"
         return 1
@@ -175,39 +266,40 @@ build_libxkbcommon_simple() {
     echo "✅ libxkbcommon 构建完成"
 }
 
-# 构建 MangoHud (简化版本)
-build_mangohud_simple() {
+# 构建 MangoHud (使用与原始脚本相同的配置)
+build_mangohud() {
     echo "构建 MangoHud..."
     
     cd /tmp
     
     # 克隆源码
-    if [[ ! -d "MangoHud-src" ]]; then
-        if ! git clone -b "$mangohudVer" https://github.com/flightlessmango/MangoHud.git MangoHud-src; then
+    if [[ ! -d "mangohud-src" ]]; then
+        if ! git clone -b "$mangohudVer" https://github.com/flightlessmango/MangoHud.git mangohud-src; then
             echo "❌ MangoHud 源码克隆失败"
             return 1
         fi
     fi
     
-    cd MangoHud-src
+    cd mangohud-src
     
-    # 极简配置
+    # 应用补丁
+    apply_patch mangohud "$mangohudVer"
+    
+    # 使用与原始脚本相同的配置
     meson setup builddir \
+        --buildtype=release \
+        --strip \
         --prefix=/data/data/com.winlator/files/rootfs/usr \
-        --libdir=lib \
-        -Dbuildtype=release \
-        -Dwith_x11=enabled \
-        -Dwith_wayland=disabled \
+        --libdir=/data/data/com.winlator/files/rootfs/usr/lib \
+        -Ddynamic_string_tokens=false \
         -Dwith_xnvctrl=disabled \
-        -Dwith_dbus=disabled \
-        -Dmangoplot=disabled \
-        -Dmangoapp=false \
-        -Dmangohudctl=false \
-        -Dtests=disabled
+        -Dwith_wayland=disabled \
+        -Dwith_nvml=disabled \
+        -Dinclude_doc=false
     
     if [[ -d "builddir" ]]; then
         meson compile -C builddir && \
-        meson install --destdir="/data/data/com.winlator/files/rootfs" -C builddir
+        meson install -C builddir
     else
         echo "❌ MangoHud 构建目录创建失败"
         return 1
@@ -216,8 +308,8 @@ build_mangohud_simple() {
     echo "✅ MangoHud 构建完成"
 }
 
-# 构建 GStreamer (简化版本)
-build_gstreamer_simple() {
+# 构建 GStreamer (使用与原始脚本相同的配置)
+build_gstreamer() {
     echo "构建 GStreamer..."
     
     cd /tmp
@@ -232,50 +324,90 @@ build_gstreamer_simple() {
     
     cd gst-src
     
-    # 简化配置
+    # 使用与原始脚本相同的配置
     meson setup builddir \
         --buildtype=release \
+        --strip \
+        --prefix=/data/data/com.winlator/files/rootfs/usr \
+        --libdir=/data/data/com.winlator/files/rootfs/usr/lib \
+        -Dgst-full-target-type=shared_library \
         -Dintrospection=disabled \
         -Dgst-full-libraries=app,video,player \
-        -Dprefix=/data/data/com.winlator/files/rootfs/usr \
-        -Dlibdir=lib \
-        -Dauto_features=disabled \
-        -Dgst-plugins-base:app=enabled \
-        -Dgst-plugins-base:video=enabled
+        -Dbase=enabled \
+        -Dgood=enabled \
+        -Dbad=enabled \
+        -Dugly=enabled \
+        -Dlibav=enabled \
+        -Dtests=disabled \
+        -Dexamples=disabled \
+        -Ddoc=disabled \
+        -Dges=disabled \
+        -Dpython=disabled \
+        -Ddevtools=disabled \
+        -Dgstreamer:check=disabled \
+        -Dgstreamer:benchmarks=disabled \
+        -Dgstreamer:libunwind=disabled \
+        -Dgstreamer:libdw=disabled \
+        -Dgstreamer:bash-completion=disabled \
+        -Dgst-plugins-good:cairo=disabled \
+        -Dgst-plugins-good:gdk-pixbuf=disabled \
+        -Dgst-plugins-good:oss=disabled \
+        -Dgst-plugins-good:oss4=disabled \
+        -Dgst-plugins-good:v4l2=disabled \
+        -Dgst-plugins-good:aalib=disabled \
+        -Dgst-plugins-good:jack=disabled \
+        -Dgst-plugins-good:pulse=enabled \
+        -Dgst-plugins-good:adaptivedemux2=disabled \
+        -Dgst-plugins-good:v4l2=disabled \
+        -Dgst-plugins-good:libcaca=disabled \
+        -Dgst-plugins-good:mpg123=enabled \
+        -Dgst-plugins-base:examples=disabled \
+        -Dgst-plugins-base:alsa=enabled \
+        -Dgst-plugins-base:pango=disabled \
+        -Dgst-plugins-base:x11=enabled \
+        -Dgst-plugins-base:gl=disabled \
+        -Dgst-plugins-base:opus=disabled \
+        -Dgst-plugins-bad:androidmedia=disabled \
+        -Dgst-plugins-bad:rtmp=disabled \
+        -Dgst-plugins-bad:shm=disabled \
+        -Dgst-plugins-bad:zbar=disabled \
+        -Dgst-plugins-bad:webp=disabled \
+        -Dgst-plugins-bad:kms=disabled \
+        -Dgst-plugins-bad:vulkan=disabled \
+        -Dgst-plugins-bad:dash=disabled \
+        -Dgst-plugins-bad:analyticsoverlay=disabled \
+        -Dgst-plugins-bad:nvcodec=disabled \
+        -Dgst-plugins-bad:uvch264=disabled \
+        -Dgst-plugins-bad:v4l2codecs=disabled \
+        -Dgst-plugins-bad:udev=disabled \
+        -Dgst-plugins-bad:libde265=disabled \
+        -Dgst-plugins-bad:smoothstreaming=disabled \
+        -Dgst-plugins-bad:fluidsynth=disabled \
+        -Dgst-plugins-bad:inter=disabled \
+        -Dgst-plugins-bad:x11=enabled \
+        -Dgst-plugins-bad:gl=disabled \
+        -Dgst-plugins-bad:wayland=disabled \
+        -Dgst-plugins-bad:openh264=disabled \
+        -Dgst-plugins-bad:hip=disabled \
+        -Dgst-plugins-bad:aja=disabled \
+        -Dgst-plugins-bad:aes=disabled \
+        -Dgst-plugins-bad:dtls=disabled \
+        -Dgst-plugins-bad:hls=disabled \
+        -Dgst-plugins-bad:curl=disabled \
+        -Dgst-plugins-bad:opus=disabled \
+        -Dgst-plugins-bad:webrtc=disabled \
+        -Dgst-plugins-bad:webrtcdsp=disabled \
+        -Dpackage-origin="[rootfs-custom-winlator](https://github.com/Waim908/rootfs-custom-winlator)"
     
     if [[ -d "builddir" ]]; then
         meson compile -C builddir && \
-        meson install --destdir="/data/data/com.winlator/files/rootfs" -C builddir
+        meson install -C builddir
     else
         echo "❌ GStreamer 构建目录创建失败"
         return 1
     fi
     
     echo "✅ GStreamer 构建完成"
-}
-
-# 修复 ELF 文件 (简化版本)
-fix_elf_files() {
-    echo "修复 ELF 文件..."
-    
-    local rootfs="/data/data/com.winlator/files/rootfs"
-    local interpreter="$rootfs/lib/ld-linux-aarch64.so.1"
-    
-    if [[ ! -f "$interpreter" ]]; then
-        echo "⚠️ 解释器不存在，跳过 ELF 修复"
-        return 0
-    fi
-    
-    # 只修复可执行文件，不修复库文件
-    find "$rootfs/usr/bin" "$rootfs/bin" -type f -executable 2>/dev/null | while read -r file; do
-        if file "$file" | grep -q "ELF"; then
-            echo "修复: $file"
-            patchelf --set-interpreter "$interpreter" "$file" 2>/dev/null || true
-            patchelf --set-rpath "/data/data/com.winlator/files/rootfs/lib" "$file" 2>/dev/null || true
-        fi
-    done
-    
-    echo "✅ ELF 文件修复完成"
 }
 
 # 创建版本信息
@@ -289,7 +421,7 @@ Output Date(UTC+8): $date
 Version:
   gstreamer=> $gstVer
   xz=> $xzVer
-  libxkbcommon=> $libxkbcommonVer
+  libxkbcommon=> $xkbcommonVer
   MangoHud=> $mangohudVer
   rootfs-tag=> $customTag
 Repo:
@@ -314,28 +446,48 @@ package_results() {
     # 创建精简版
     echo "创建精简版包..."
     if command -v xz >/dev/null 2>&1; then
-        tar -cf - ./* | xz -T0 -c > "$output_dir/output-lite.tar.xz"
+        tar -I 'xz -T0 -9' -cf "$output_dir/output-lite.tar.xz" ./*
     else
         tar -czf "$output_dir/output-lite.tar.gz" ./*
     fi
     
-    # 创建完整版（如果有附加数据）
-    if [[ -f "/tmp/data.tar.xz" ]]; then
-        tar -xf /tmp/data.tar.xz -C "$rootfs"
-        create_version_info
-        
-        echo "创建完整版包..."
-        if command -v xz >/dev/null 2>&1; then
-            tar -cf - ./* | xz -T0 -c > "$output_dir/output-full.tar.xz"
-        else
-            tar -czf "$output_dir/output-full.tar.gz" ./*
-        fi
+    # 添加附加数据并创建完整版
+    echo "添加附加数据..."
+    cd /tmp
+    if [[ -f "data.tar.xz" ]]; then
+        tar -xf data.tar.xz -C "$rootfs"
+    fi
+    
+    if ls tzdata-*.pkg.tar.xz 1> /dev/null 2>&1; then
+        tar -xf tzdata-*.pkg.tar.xz -C "$rootfs"
+    fi
+    
+    # 复制字体和其他资源
+    if [[ -d "fonts" ]]; then
+        cp -r -p fonts "$rootfs/usr/share/"
+    fi
+    
+    if [[ -d "extra" ]]; then
+        cp -r -p extra "$rootfs/"
+    fi
+    
+    # 更新版本信息
+    create_version_info
+    
+    cd "$rootfs"
+    
+    # 创建完整版包
+    echo "创建完整版包..."
+    if command -v xz >/dev/null 2>&1; then
+        tar -I 'xz -T0 -9' -cf "$output_dir/output-full.tar.xz" ./*
+    else
+        tar -czf "$output_dir/output-full.tar.gz" ./*
     fi
     
     # 创建最终的 rootfs.tzst
     echo "创建 rootfs.tzst..."
     if command -v zstd >/dev/null 2>&1; then
-        tar -cf - ./* | zstd -T0 -c > "$output_dir/rootfs.tzst"
+        tar -I 'zstd -T0 -9' -cf "$output_dir/rootfs.tzst" ./*
     else
         tar -czf "$output_dir/rootfs.tar.gz" ./*
     fi
@@ -359,7 +511,7 @@ main() {
     echo "版本信息:"
     echo "  gstreamer=> $gstVer"
     echo "  xz=> $xzVer"
-    echo "  libxkbcommon=> $libxkbcommonVer"
+    echo "  libxkbcommon=> $xkbcommonVer"
     echo "  MangoHud=> $mangohudVer"
     
     # 设置镜像源
@@ -367,6 +519,9 @@ main() {
     
     # 安装最小化依赖
     install_minimal_deps
+    
+    # 创建根文件系统目录结构
+    create_rootfs_dir
     
     # 修复基础环境
     fix_basic_environment
@@ -384,20 +539,20 @@ main() {
         echo "⚠️ xz 构建失败，继续其他组件"
     fi
     
-    if ! build_libxkbcommon_simple; then
+    if ! build_libxkbcommon; then
         echo "⚠️ libxkbcommon 构建失败，继续其他组件"
     fi
     
-    if ! build_mangohud_simple; then
+    if ! build_mangohud; then
         echo "⚠️ MangoHud 构建失败，继续其他组件"
     fi
     
-    if ! build_gstreamer_simple; then
+    if ! build_gstreamer; then
         echo "⚠️ GStreamer 构建失败，继续其他组件"
     fi
     
     # 修复 ELF 文件
-    fix_elf_files
+    patchelf_fix
     
     # 创建版本信息
     create_version_info
