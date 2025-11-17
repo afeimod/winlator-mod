@@ -1,3 +1,5 @@
+#!/bin/bash
+
 patchelf_fix() {
   LD_RPATH="/data/data/com.winlator/files/rootfs/lib"
   LD_FILE="$LD_RPATH/ld-linux-aarch64.so.1"
@@ -54,7 +56,7 @@ apply_mangohud_patch() {
         print "                    size_t pos=line.find(\":\");"
         print "                    if(pos!=std::string::npos){"
         print "                        std::istringstream iss(line.substr(pos+1));"
-                        print "                        iss >> freq; if(freq>0) return (int)freq;"
+        print "                        iss >> freq; if(freq>0) return (int)freq;"
         print "                    }"
         print "                }"
         print "            }"
@@ -72,6 +74,7 @@ apply_mangohud_patch() {
     echo "⚠️ 未找到 $src_file，跳过补丁"
   fi
 }
+
 apply_winlator_compatibility_patch() {
   local src_file="$1/src/overlay.cpp"
   if [[ -f "$src_file" ]]; then
@@ -91,9 +94,7 @@ apply_winlator_compatibility_patch() {
   fi
 }
 
-# 在构建 MangoHud 时调用这个新函数
-
-create_ver_txt () {
+create_ver_txt() {
   cat > '/data/data/com.winlator/files/rootfs/_version_.txt' << EOF
 Output Date(UTC+8): $date
 Version:
@@ -107,6 +108,138 @@ Repo:
 EOF
 }
 
+apply_mangohud_sysfs_patch() {
+  echo "应用 MangoHud 系统访问补丁..."
+  
+  # 修改 cpu.cpp 避免访问错误
+  local cpu_file="$1/src/cpu.cpp"
+  if [[ -f "$cpu_file" ]]; then
+    cp "$cpu_file" "${cpu_file}.bak"
+    awk '
+    /std::ifstream stat_file\("\/proc\/stat"\);/ {
+        print "    // Winlator patch - safe /proc/stat access"
+        print "    std::ifstream stat_file(\"/proc/stat\");"
+        print "    if(!stat_file.is_open()) {"
+        print "        LOG_WARNING(\"Cannot open /proc/stat in Winlator environment\");"
+        print "        return;"
+        print "    }"
+        next
+    }
+    {print}
+    ' "${cpu_file}.bak" > "$cpu_file"
+    echo "✅ CPU 统计补丁应用成功"
+  fi
+
+  # 修改 file_utils.cpp 避免目录扫描错误
+  local file_utils="$1/src/file_utils.cpp"
+  if [[ -f "$file_utils" ]]; then
+    cp "$file_utils" "${file_utils}.bak"
+    sed -i 's|if (dir == nullptr)|if (true) { \/\/ Winlator patch - skip directory scanning\n        LOG_WARNING("Skipping directory scan in Winlator");\n        return {};\n    }\n    if (dir == nullptr)|g' "$file_utils"
+    echo "✅ 文件工具补丁应用成功"
+  fi
+}
+
+create_virtual_sysfs() {
+  echo "创建虚拟系统文件..."
+  
+  # 创建基础目录
+  mkdir -p "/data/data/com.winlator/files/rootfs/proc"
+  mkdir -p "/data/data/com.winlator/files/rootfs/sys/class/hwmon/hwmon0"
+  
+  # 创建虚拟 /proc/stat
+  cat > "/data/data/com.winlator/files/rootfs/proc/stat" << 'EOF'
+cpu  100000 0 100000 0 0 0 0 0 0 0
+cpu0 100000 0 100000 0 0 0 0 0 0 0
+cpu1 100000 0 100000 0 0 0 0 0 0 0
+cpu2 100000 0 100000 0 0 0 0 0 0 0
+cpu3 100000 0 100000 0 0 0 0 0 0 0
+EOF
+
+  # 创建虚拟温度传感器
+  echo "45000" > "/data/data/com.winlator/files/rootfs/sys/class/hwmon/hwmon0/temp1_input"
+  echo "cpu" > "/data/data/com.winlator/files/rootfs/sys/class/hwmon/hwmon0/name"
+  
+  echo "✅ 虚拟系统文件创建完成"
+}
+
+apply_mangohud_path_patch() {
+  echo "应用 MangoHud 路径补丁..."
+  
+  local meson_build="$1/meson.build"
+  local src_files=("$1/src/overlay.cpp" "$1/src/loaders/loader.cpp" "$1/src/mangohud.cpp")
+  
+  # 修复 meson.build 中的路径设置
+  if [[ -f "$meson_build" ]]; then
+    cp "$meson_build" "${meson_build}.bak"
+    
+    # 确保使用正确的编译选项
+    sed -i 's|cpp_args = \[\]|cpp_args = [\"-mlittle-endian\", \"-mabi=lp64\", \"-g\", \"-O2\", \"-std=gnu11\", \"-fgnu89-inline\", \"-fmerge-all-constants\", \"-frounding-math\", \"-fno-stack-protector\", \"-fno-common\", \"-fmath-errno\", \"-fPIC\", \"-ftls-model=initial-exec\"]|g' "$meson_build"
+    
+    echo "✅ Meson 构建配置补丁应用成功"
+  fi
+
+  # 修复源码中的路径
+  for src_file in "${src_files[@]}"; do
+    if [[ -f "$src_file" ]]; then
+      cp "$src_file" "${src_file}.bak"
+      
+      # 替换硬编码路径为 Winlator 路径
+      sed -i 's|/usr/lib|/data/data/com.winlator/files/rootfs/lib|g' "$src_file"
+      sed -i 's|/etc|/data/data/com.winlator/files/rootfs/etc|g' "$src_file"
+      sed -i 's|/usr/share|/data/data/com.winlator/files/rootfs/usr/share|g' "$src_file"
+      sed -i 's|/usr/local|/data/data/com.winlator/files/rootfs/usr/local|g' "$src_file"
+      
+      # 修复配置路径
+      sed -i 's|"\.config"|"/data/data/com.winlator/files/rootfs/.config"|g' "$src_file"
+      sed -i 's|"\.local/share"|"/data/data/com.winlator/files/rootfs/.local/share"|g' "$src_file"
+      
+      echo "✅ 修复 $(basename "$src_file") 中的路径"
+    fi
+  done
+
+  # 修复数据文件路径
+  local data_meson_build="$1/data/meson.build"
+  if [[ -f "$data_meson_build" ]]; then
+    cp "$data_meson_build" "${data_meson_build}.bak"
+    sed -i 's|install_dir : join_paths(datadir, .MangoHud.)|install_dir : '\''/data/data/com.winlator/files/rootfs/share/MangoHud'\''|g' "$data_meson_build"
+    echo "✅ 数据文件路径补丁应用成功"
+  fi
+
+  # 创建必要的配置文件目录
+  mkdir -p "/data/data/com.winlator/files/rootfs/.config/MangoHud"
+  mkdir -p "/data/data/com.winlator/files/rootfs/.local/share/MangoHud"
+  mkdir -p "/data/data/com.winlator/files/rootfs/share/MangoHud"
+  
+  # 创建默认配置文件
+  cat > "/data/data/com.winlator/files/rootfs/.config/MangoHud/MangoHud.conf" << 'EOF'
+# MangoHud 配置文件
+output_folder=/data/data/com.winlator/files/rootfs/tmp/mangohud
+gpu_stats
+cpu_stats
+ram_stats
+fps
+frame_timing
+histogram
+EOF
+}
+
+setup_mangohud_environment() {
+  echo "设置 MangoHud 构建环境..."
+  
+  export PKG_CONFIG_PATH="/data/data/com.winlator/files/rootfs/lib/pkgconfig:$PKG_CONFIG_PATH"
+  export LD_LIBRARY_PATH="/data/data/com.winlator/files/rootfs/lib:$LD_LIBRARY_PATH"
+  export C_INCLUDE_PATH="/data/data/com.winlator/files/rootfs/include:$C_INCLUDE_PATH"
+  export CPLUS_INCLUDE_PATH="/data/data/com.winlator/files/rootfs/include:$CPLUS_INCLUDE_PATH"
+  
+  # 设置编译器标志
+  export CFLAGS="-mlittle-endian -mabi=lp64 -g -O2 -std=gnu11 -fgnu89-inline -fmerge-all-constants -frounding-math -fno-stack-protector -fno-common -fmath-errno -fPIC -ftls-model=initial-exec"
+  export CXXFLAGS="$CFLAGS"
+  export LDFLAGS="-L/data/data/com.winlator/files/rootfs/lib -Wl,-rpath,/data/data/com.winlator/files/rootfs/lib"
+  
+  echo "✅ 构建环境设置完成"
+}
+
+# 主脚本开始
 if [[ ! -f /tmp/init.sh ]]; then
   exit 1
 else
@@ -142,11 +275,11 @@ rm -rf /data/data/com.winlator/files/rootfs/lib/libgst*
 rm -rf /data/data/com.winlator/files/rootfs/lib/gstreamer-1.0
 
 # 克隆源码
-if ! git clone -b $xzVer https://github.com/tukaani-project/xz.git xz-src; then
+if ! git clone -b "$xzVer" https://github.com/tukaani-project/xz.git xz-src; then
   exit 1
 fi
 
-if ! git clone -b $gstVer https://github.com/GStreamer/gstreamer.git gst-src; then
+if ! git clone -b "$gstVer" https://github.com/GStreamer/gstreamer.git gst-src; then
   exit 1
 fi
 
@@ -159,7 +292,7 @@ cd build
 if ! ../configure -prefix=/data/data/com.winlator/files/rootfs/; then
   exit 1
 fi
-if ! make -j$(nproc); then
+if ! make -j"$(nproc)"; then
   exit 1
 fi
 make install
@@ -167,7 +300,7 @@ make install
 # Build libxkbcommon
 echo "Build and Compile libxkbcommon"
 cd /tmp
-if ! git clone -b $libxkbcommonVer https://github.com/xkbcommon/libxkbcommon.git libxkbcommon-src; then
+if ! git clone -b "$libxkbcommonVer" https://github.com/xkbcommon/libxkbcommon.git libxkbcommon-src; then
   exit 1
 fi
 cd libxkbcommon-src
@@ -185,77 +318,20 @@ meson install -C builddir
 
 # Build MangoHud
 echo "Build and Compile MangoHud"
-
-
-
-# 添加系统访问补丁函数
-apply_mangohud_sysfs_patch() {
-  echo "应用 MangoHud 系统访问补丁..."
-  
-  # 修改 cpu.cpp 避免访问错误
-  local cpu_file="$1/src/cpu.cpp"
-  if [[ -f "$cpu_file" ]]; then
-    cp "$cpu_file" "${cpu_file}.bak"
-    awk '
-    /std::ifstream stat_file\("\/proc\/stat"\);/ {
-        print "    // Winlator patch - safe /proc/stat access"
-        print "    std::ifstream stat_file(\"/proc/stat\");"
-        print "    if(!stat_file.is_open()) {"
-        print "        LOG_WARNING(\"Cannot open /proc/stat in Winlator environment\");"
-        print "        return;"
-        print "    }"
-        next
-    }
-    {print}
-    ' "${cpu_file}.bak" > "$cpu_file"
-    echo "✅ CPU 统计补丁应用成功"
-  fi
-
-  # 修改 file_utils.cpp 避免目录扫描错误
-  local file_utils="$1/src/file_utils.cpp"
-  if [[ -f "$file_utils" ]]; then
-    cp "$file_utils" "${file_utils}.bak"
-    sed -i 's|if (dir == nullptr)|if (true) { \/\/ Winlator patch - skip directory scanning\n        LOG_WARNING("Skipping directory scan in Winlator");\n        return {};\n    }\n    if (dir == nullptr)|g' "$file_utils"
-    echo "✅ 文件工具补丁应用成功"
-  fi
-}
-
-# 创建虚拟系统文件
-create_virtual_sysfs() {
-  echo "创建虚拟系统文件..."
-  
-  # 创建基础目录
-  mkdir -p "/data/data/com.winlator/files/rootfs/proc"
-  mkdir -p "/data/data/com.winlator/files/rootfs/sys/class/hwmon/hwmon0"
-  
-  # 创建虚拟 /proc/stat
-  cat > "/data/data/com.winlator/files/rootfs/proc/stat" << 'EOF'
-cpu  100000 0 100000 0 0 0 0 0 0 0
-cpu0 100000 0 100000 0 0 0 0 0 0 0
-cpu1 100000 0 100000 0 0 0 0 0 0 0
-cpu2 100000 0 100000 0 0 0 0 0 0 0
-cpu3 100000 0 100000 0 0 0 0 0 0 0
-EOF
-
-  # 创建虚拟温度传感器
-  echo "45000" > "/data/data/com.winlator/files/rootfs/sys/class/hwmon/hwmon0/temp1_input"
-  echo "cpu" > "/data/data/com.winlator/files/rootfs/sys/class/hwmon/hwmon0/name"
-  
-  echo "✅ 虚拟系统文件创建完成"
-}
-
-# 修改 MangoHud 构建部分
-echo "Build and Compile MangoHud"
 cd /tmp
-if ! git clone -b $mangohudVer https://github.com/flightlessmango/MangoHud.git MangoHud-src; then
+if ! git clone -b "$mangohudVer" https://github.com/flightlessmango/MangoHud.git MangoHud-src; then
   exit 1
 fi
+
+# 设置构建环境
+setup_mangohud_environment
 
 # 应用所有补丁
 apply_mangohud_patch "/tmp/MangoHud-src"
 apply_mangohud_sysfs_patch "/tmp/MangoHud-src"
-# 应用补丁
+apply_mangohud_path_patch "/tmp/MangoHud-src"
 apply_winlator_compatibility_patch "/tmp/MangoHud-src"
+
 cd MangoHud-src
 
 # 极简构建配置
@@ -263,6 +339,10 @@ meson setup builddir \
             --prefix=/data/data/com.winlator/files/rootfs \
             --libdir=lib \
             -Dbuildtype=release \
+            -Dwith_x11=enabled \
+            -Dwith_wayland=disabled \
+            -Dwith_xnvctrl=disabled \
+            -Dwith_dbus=enabled \
             -Dmangoplot=enabled \
             -Dmangoapp=false \
             -Dmangohudctl=false \
@@ -276,12 +356,24 @@ if ! meson compile -C builddir; then
 fi
 meson install -C builddir
 
+# 验证安装
+if [[ -f "/data/data/com.winlator/files/rootfs/lib/libMangoHud.so" ]]; then
+  echo "✅ MangoHud 库文件安装成功"
+  # 检查库文件信息
+  file "/data/data/com.winlator/files/rootfs/lib/libMangoHud.so"
+  # 检查库文件中的字符串
+  echo "检查库文件中的关键路径..."
+  strings "/data/data/com.winlator/files/rootfs/lib/libMangoHud.so" | grep -E "(proc/self|data/data/com.winlator|XDG_CONFIG_HOME|XDG_DATA_HOME)" | head -10
+else
+  echo "❌ MangoHud 库文件安装失败"
+  exit 1
+fi
+
 # 创建虚拟系统文件
 create_virtual_sysfs
 
 # 修复 MangoHud 脚本
 fix_mangohud_script
-
 
 # Build GStreamer
 cd /tmp/gst-src
@@ -356,7 +448,7 @@ meson setup builddir \
   -Dgst-plugins-bad:opus=disabled \
   -Dgst-plugins-bad:webrtc=disabled \
   -Dgst-plugins-bad:webrtcdsp=disabled \
-  -Dpackage-origin="[gstremaer-build] (https://github.com/Waim908/gstreamer-build)" \
+  -Dpackage-origin="[gstreamer-build] (https://github.com/Waim908/gstreamer-build)" \
   --prefix=/data/data/com.winlator/files/rootfs/ || exit 1
 
 if [[ ! -d builddir ]]; then
@@ -378,7 +470,7 @@ cd /data/data/com.winlator/files/rootfs/
 patchelf_fix
 create_ver_txt
 
-if ! tar -I 'xz -T8' -cf /tmp/output/output-lite.tar.xz *; then
+if ! tar -I 'xz -T8' -cf /tmp/output/output-lite.tar.xz ./*; then
   exit 1
 fi
 
@@ -389,7 +481,7 @@ tar -xf tzdata-2025b-1-aarch64.pkg.tar.xz -C /data/data/com.winlator/files/rootf
 cd /data/data/com.winlator/files/rootfs/
 create_ver_txt
 
-if ! tar -I 'xz -T8' -cf /tmp/output/output-full.tar.xz *; then
+if ! tar -I 'xz -T8' -cf /tmp/output/output-full.tar.xz ./*; then
   exit 1
 fi
 
@@ -403,6 +495,8 @@ cd /data/data/com.winlator/files/rootfs/
 patchelf_fix
 create_ver_txt
 
-if ! tar -I 'zstd -T8' -cf /tmp/output/rootfs.tzst *; then
+if ! tar -I 'zstd -T8' -cf /tmp/output/rootfs.tzst ./*; then
   exit 1
 fi
+
+echo "✅ 所有构建步骤完成"
