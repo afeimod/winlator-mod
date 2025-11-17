@@ -263,7 +263,6 @@ meson setup builddir \
             --prefix=/data/data/com.winlator/files/rootfs \
             --libdir=lib \
             -Dbuildtype=release \
-            -Dwith_dbus=enabled \
             -Dmangoplot=enabled \
             -Dmangoapp=false \
             -Dmangohudctl=false \
