@@ -4,7 +4,7 @@
 
 # 介绍
 
-Winlator-Amod是一个 Winlaor的mod版。
+Winlator-Amod是一个 Winlaor的mod版。10.0以后用的是hostei的改版apk
  [**百度网盘更新地址**](https://pan.baidu.com/s/18HZiF4W4iwpoD7wXEk4YDQ?pwd=48ds) 
 
 
@@ -46,4 +46,5 @@ Winlator-Amod是一个 Winlaor的mod版。
 感谢 [ptitSeb](https://github.com/ptitSeb) (Box86/Box64), [Danylo](https://blogs.igalia.com/dpiliaiev/tags/mesa/) (Turnip), [alexvorxx](https://github.com/alexvorxx) (Mods/Tips) 和其他贡献者。
 
 感谢所有相信这个项目的人。
+
 
