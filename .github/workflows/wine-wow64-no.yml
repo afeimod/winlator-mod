@@ -23,6 +23,7 @@ on:
         type: choice
         options:
         - proton_10.0
+        - proton_9.0
         - experimental_10.0
         - bleeding-edge
       wine_branch:
