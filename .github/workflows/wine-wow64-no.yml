@@ -125,18 +125,9 @@ jobs:
               libunwind-dev \
               libgstreamer1.0-dev \
               libgstreamer-plugins-base1.0-dev \
-              libgstreamer-plugins-good1.0-dev \
-              libgstreamer-plugins-bad1.0-dev \
               gstreamer1.0-* \
               libmpg123-dev \
-              libopenal-dev \
-              libfaad-dev \
-              libflac-dev \
-              libvorbis-dev \
-              libx264-dev \
-              libx265-dev \
-              libvpx-dev \
-              libtheora-dev
+              libopenal-dev
 
       - name: 设置中文语言环境
         run: |
@@ -171,33 +162,13 @@ jobs:
             echo "切换到分支: $PROTON_BRANCH"
             git checkout $PROTON_BRANCH
             
-
-            
-            # 修复所有硬编码的 Linux 路径
-            find . -type f \( -name "*.c" -o -name "*.h" -o -name "*.in" -o -name "*.spec" -o -name "*.ac" -o -name "*.m4" \) \
-              -exec grep -l "/usr" {} \; | xargs sed -i \
-              -e 's|/usr/lib|/data/data/com.winlator/files/rootfs/usr/lib|g' \
-              -e 's|/usr/include|/data/data/com.winlator/files/rootfs/usr/include|g' \
-              -e 's|/usr/share|/data/data/com.winlator/files/rootfs/usr/share|g' \
-              -e 's|/usr/bin|/data/data/com.winlator/files/rootfs/usr/bin|g' \
-              -e 's|/usr/local|/data/data/com.winlator/files/rootfs/usr/local|g'
-            
-            # 修复标准路径
-            find . -type f \( -name "*.c" -o -name "*.h" -o -name "*.in" -o -name "*.spec" \) \
-              -exec sed -i \
-              -e 's|/etc/|/data/data/com.winlator/files/rootfs/etc/|g' \
-              -e 's|/var/|/data/data/com.winlator/files/rootfs/var/|g' \
-              -e 's|/lib/|/data/data/com.winlator/files/rootfs/lib/|g' \
-              -e 's|/bin/|/data/data/com.winlator/files/rootfs/bin/|g' \
-              -e 's|/sbin/|/data/data/com.winlator/files/rootfs/sbin/|g' \
-              -e 's|/opt/|/data/data/com.winlator/files/rootfs/opt/|g' \
-              -e 's|/home/|/data/data/com.winlator/files/rootfs/home/|g' \
-              -e 's|/root/|/data/data/com.winlator/files/rootfs/root/|g' {} +
-            
-            # 修复临时文件路径
-            find . -type f \( -name "*.c" -o -name "*.h" -o -name "*.in" -o -name "*.spec" \) \
-              -exec sed -i 's|/tmp/|/data/data/com.winlator/files/rootfs/tmp/|g' {} +
-            
+            echo "修复 Winlator 路径问题..."
+            find . -type f \( -name "*.c" -o -name "*.h" -o -name "*.in" -o -name "*.spec" \) -exec grep -l "/tmp" {} \; | xargs sed -i 's|/tmp/|/data/data/com.winlator/files/rootfs/usr/tmp/|g'
+            find server -type f \( -name "*.c" -o -name "*.h" \) -exec sed -i 's|"/tmp"|"/data/data/com.winlator/files/rootfs/usr/tmp"|g' {} +
+            find . -name "file.c" -exec sed -i 's|"/tmp"|"/data/data/com.winlator/files/rootfs/usr/tmp"|g' {} +
+            find . -name "loader.c" -exec sed -i 's|"/tmp"|"/data/data/com.winlator/files/rootfs/usr/tmp"|g' {} +
+            find . -name "server.c" -exec sed -i 's|"/tmp"|"/data/data/com.winlator/files/rootfs/usr/tmp"|g' {} +
+          
             echo "路径修复完成"
             
             # 生成 configure 脚本
@@ -214,11 +185,7 @@ jobs:
             export CXXFLAGS="-march=x86-64 -msse3 -mfpmath=sse -O3 -ftree-vectorize -pipe"
             export CROSSCFLAGS="-march=x86-64 -msse3 -mfpmath=sse -O3 -ftree-vectorize -pipe"
             export CROSSCXXFLAGS="-march=x86-64 -msse3 -mfpmath=sse -O3 -ftree-vectorize -pipe"
-            
-            # 添加 GStreamer 库路径到链接器搜索路径
-            export LDFLAGS="-Wl,-rpath,/data/data/com.winlator/files/rootfs/usr/lib/gstreamer-1.0 -Wl,-rpath,/data/data/com.winlator/files/rootfs/usr/lib"
-            export GST_PLUGIN_PATH="/data/data/com.winlator/files/rootfs/usr/lib/gstreamer-1.0"
-            
+
             # 配置真正的 WOW64 Proton，启用 Vulkan 和完整 GStreamer 支持，禁用 Steam 特定功能
             ../configure \
               --enable-win64 \
@@ -612,15 +579,14 @@ jobs:
           echo "当前源码目录: $(pwd)"
           echo "构建名称: $BUILD_NAME"
           
-          # 修复 Termux 路径问题
-          echo "修复 Termux 路径问题..."
-          find . -type f \( -name "*.c" -o -name "*.h" -o -name "*.in" -o -name "*.spec" \) -exec grep -l "/tmp" {} \; | xargs sed -i 's|/tmp/|/data/data/com.winlator/files/rootfs/tmp/|g'
-          find server -type f \( -name "*.c" -o -name "*.h" \) -exec sed -i 's|"/tmp"|"/data/data/com.winlator/files/rootfs/tmp"|g' {} +
-          find . -name "file.c" -exec sed -i 's|"/tmp"|"/data/data/com.winlator/files/rootfs/tmp"|g' {} +
-          find . -name "loader.c" -exec sed -i 's|"/tmp"|"/data/data/com.winlator/files/rootfs/tmp"|g' {} +
-          find . -name "server.c" -exec sed -i 's|"/tmp"|"/data/data/com.winlator/files/rootfs/tmp"|g' {} +
+          echo "修复 Winlator 路径问题..."
+            find . -type f \( -name "*.c" -o -name "*.h" -o -name "*.in" -o -name "*.spec" \) -exec grep -l "/tmp" {} \; | xargs sed -i 's|/tmp/|/data/data/com.winlator/files/rootfs/usr/tmp/|g'
+            find server -type f \( -name "*.c" -o -name "*.h" \) -exec sed -i 's|"/tmp"|"/data/data/com.winlator/files/rootfs/usr/tmp"|g' {} +
+            find . -name "file.c" -exec sed -i 's|"/tmp"|"/data/data/com.winlator/files/rootfs/usr/tmp"|g' {} +
+            find . -name "loader.c" -exec sed -i 's|"/tmp"|"/data/data/com.winlator/files/rootfs/usr/tmp"|g' {} +
+            find . -name "server.c" -exec sed -i 's|"/tmp"|"/data/data/com.winlator/files/rootfs/usr/tmp"|g' {} +
           
-          echo "路径修复完成"
+            echo "路径修复完成"
           
           # 根据版本选择修复方式
           # 从 WINE_VERSION_ACTUAL 中提取纯数字版本号
