@@ -1,0 +1,376 @@
+diff --git a/drivers/gpu/drm/msm/adreno/a6xx_gmu.c b/drivers/gpu/drm/msm/adreno/a6xx_gmu.c
+index a5aceb906827..e566f3b7eab4 100644
+--- a/drivers/gpu/drm/msm/adreno/a6xx_gmu.c
++++ b/drivers/gpu/drm/msm/adreno/a6xx_gmu.c
+@@ -224,14 +224,19 @@ unsigned long a6xx_gmu_get_freq(struct msm_gpu *gpu)
+ 
+ static bool a6xx_gmu_check_idle_level(struct a6xx_gmu *gmu)
+ {
+-	u32 val;
++	struct a6xx_gpu *a6xx_gpu = container_of(gmu, struct a6xx_gpu, gmu);
++	struct adreno_gpu *adreno_gpu = &a6xx_gpu->base;
+ 	int local = gmu->idle_level;
++	u32 val;
+ 
+ 	/* SPTP and IFPC both report as IFPC */
+ 	if (gmu->idle_level == GMU_IDLE_STATE_SPTP)
+ 		local = GMU_IDLE_STATE_IFPC;
+ 
+-	val = gmu_read(gmu, REG_A6XX_GPU_GMU_CX_GMU_RPMH_POWER_STATE);
++	if (adreno_is_a8xx(adreno_gpu))
++		val = gmu_read(gmu, REG_A8XX_GPU_GMU_CX_GMU_RPMH_POWER_STATE);
++	else
++		val = gmu_read(gmu, REG_A6XX_GPU_GMU_CX_GMU_RPMH_POWER_STATE);
+ 
+ 	if (val == local) {
+ 		if (gmu->idle_level != GMU_IDLE_STATE_IFPC ||
+@@ -269,7 +274,9 @@ static int a6xx_gmu_start(struct a6xx_gmu *gmu)
+ 	/* Set the log wptr index
+ 	 * note: downstream saves the value in poweroff and restores it here
+ 	 */
+-	if (adreno_is_a7xx(adreno_gpu))
++	if (adreno_is_a8xx(adreno_gpu))
++		gmu_write(gmu, REG_A8XX_GMU_GENERAL_9, 0);
++	else if (adreno_is_a7xx(adreno_gpu))
+ 		gmu_write(gmu, REG_A7XX_GMU_GENERAL_9, 0);
+ 	else
+ 		gmu_write(gmu, REG_A6XX_GPU_GMU_CX_GMU_PWR_COL_CP_RESP, 0);
+@@ -511,7 +518,9 @@ static void a6xx_gemnoc_workaround(struct a6xx_gmu *gmu)
+ 	 * in the power down sequence not being fully executed. That in turn can
+ 	 * prevent CX_GDSC from collapsing. Assert Qactive to avoid this.
+ 	 */
+-	if (adreno_is_a7xx(adreno_gpu) || (adreno_is_a621(adreno_gpu) ||
++	if (adreno_is_a8xx(adreno_gpu))
++		gmu_write(gmu, REG_A8XX_GPU_GMU_CX_GMU_CX_FALNEXT_INTF, BIT(0));
++	else if (adreno_is_a7xx(adreno_gpu) || (adreno_is_a621(adreno_gpu) ||
+ 				adreno_is_7c3(adreno_gpu)))
+ 		gmu_write(gmu, REG_A6XX_GPU_GMU_CX_GMU_CX_FALNEXT_INTF, BIT(0));
+ }
+@@ -519,10 +528,15 @@ static void a6xx_gemnoc_workaround(struct a6xx_gmu *gmu)
+ /* Let the GMU know that we are about to go into slumber */
+ static int a6xx_gmu_notify_slumber(struct a6xx_gmu *gmu)
+ {
++	struct a6xx_gpu *a6xx_gpu = container_of(gmu, struct a6xx_gpu, gmu);
++	struct adreno_gpu *adreno_gpu = &a6xx_gpu->base;
+ 	int ret;
+ 
+ 	/* Disable the power counter so the GMU isn't busy */
+-	gmu_write(gmu, REG_A6XX_GMU_CX_GMU_POWER_COUNTER_ENABLE, 0);
++	if (adreno_is_a8xx(adreno_gpu))
++		gmu_write(gmu, REG_A8XX_GMU_CX_GMU_POWER_COUNTER_ENABLE, 0);
++	else
++		gmu_write(gmu, REG_A6XX_GMU_CX_GMU_POWER_COUNTER_ENABLE, 0);
+ 
+ 	/* Disable SPTP_PC if the CPU is responsible for it */
+ 	if (gmu->idle_level < GMU_IDLE_STATE_SPTP)
+@@ -615,12 +629,17 @@ static void a6xx_gmu_rpmh_init(struct a6xx_gmu *gmu)
+ 	struct a6xx_gpu *a6xx_gpu = container_of(gmu, struct a6xx_gpu, gmu);
+ 	struct adreno_gpu *adreno_gpu = &a6xx_gpu->base;
+ 	struct platform_device *pdev = to_platform_device(gmu->dev);
+-	void __iomem *pdcptr = devm_platform_ioremap_resource_byname(pdev, "gmu_pdc");
+ 	u32 seqmem0_drv0_reg = REG_A6XX_RSCC_SEQ_MEM_0_DRV0;
+ 	void __iomem *seqptr = NULL;
+ 	uint32_t pdc_address_offset;
++	void __iomem *pdcptr;
+ 	bool pdc_in_aop = false;
+ 
++	/* On A8x and above, RPMH/PDC configurations are entirely configured in AOP */
++	if (adreno_is_a8xx(adreno_gpu))
++		return;
++
++	pdcptr = devm_platform_ioremap_resource_byname(pdev, "gmu_pdc");
+ 	if (IS_ERR(pdcptr))
+ 		return;
+ 
+@@ -749,7 +768,7 @@ static void a6xx_gmu_power_config(struct a6xx_gmu *gmu)
+ 	gmu_write(gmu, REG_A6XX_GMU_DCACHE_CONFIG, 0x1);
+ 
+ 	/* A7xx knows better by default! */
+-	if (adreno_is_a7xx(adreno_gpu))
++	if (adreno_is_a7xx(adreno_gpu) || adreno_is_a8xx(adreno_gpu))
+ 		return;
+ 
+ 	gmu_write(gmu, REG_A6XX_GMU_PWR_COL_INTER_FRAME_CTRL, 0x9c40400);
+@@ -812,7 +831,9 @@ static int a6xx_gmu_fw_load(struct a6xx_gmu *gmu)
+ 	u32 itcm_base = 0x00000000;
+ 	u32 dtcm_base = 0x00040000;
+ 
+-	if (adreno_is_a650_family(adreno_gpu) || adreno_is_a7xx(adreno_gpu))
++	if (adreno_is_a650_family(adreno_gpu) ||
++	    adreno_is_a7xx(adreno_gpu) ||
++	    adreno_is_a8xx(adreno_gpu))
+ 		dtcm_base = 0x10004000;
+ 
+ 	if (gmu->legacy) {
+@@ -876,12 +897,15 @@ static int a6xx_gmu_fw_start(struct a6xx_gmu *gmu, unsigned int state)
+ 	if (adreno_is_a650_family(adreno_gpu) || adreno_is_a7xx(adreno_gpu)) {
+ 		gmu_write(gmu, REG_A6XX_GPU_GMU_CX_GMU_CX_FALNEXT_INTF, 1);
+ 		gmu_write(gmu, REG_A6XX_GPU_GMU_CX_GMU_CX_FAL_INTF, 1);
++	} else if (adreno_is_a8xx(adreno_gpu)) {
++		gmu_write(gmu, REG_A8XX_GPU_GMU_CX_GMU_CX_FALNEXT_INTF, 1);
++		gmu_write(gmu, REG_A8XX_GPU_GMU_CX_GMU_CX_FAL_INTF, 1);
+ 	}
+ 
+ 	/* Turn on TCM (Tightly Coupled Memory) retention */
+ 	if (adreno_is_a7xx(adreno_gpu))
+ 		a6xx_llc_write(a6xx_gpu, REG_A7XX_CX_MISC_TCM_RET_CNTL, 1);
+-	else
++	else if (!adreno_is_a8xx(adreno_gpu))
+ 		gmu_write(gmu, REG_A6XX_GMU_GENERAL_7, 1);
+ 
+ 	ret = a6xx_rpmh_start(gmu);
+@@ -906,7 +930,10 @@ static int a6xx_gmu_fw_start(struct a6xx_gmu *gmu, unsigned int state)
+ 	gmu_write(gmu, REG_A6XX_GMU_HFI_QTBL_ADDR, gmu->hfi.iova);
+ 	gmu_write(gmu, REG_A6XX_GMU_HFI_QTBL_INFO, 1);
+ 
+-	if (adreno_is_a7xx(adreno_gpu)) {
++	if (adreno_is_a8xx(adreno_gpu)) {
++		fence_range_upper = 0x32;
++		fence_range_lower = 0x8c0;
++	} else if (adreno_is_a7xx(adreno_gpu)) {
+ 		fence_range_upper = 0x32;
+ 		fence_range_lower = 0x8a0;
+ 	} else {
+@@ -940,7 +967,12 @@ static int a6xx_gmu_fw_start(struct a6xx_gmu *gmu, unsigned int state)
+ 		chipid |= (adreno_gpu->chip_id << 8) & 0x0f00; /* patchid */
+ 	}
+ 
+-	if (adreno_is_a7xx(adreno_gpu)) {
++	if (adreno_is_a8xx(adreno_gpu)) {
++		gmu_write(gmu, REG_A8XX_GMU_GENERAL_10, chipid);
++		gmu_write(gmu, REG_A8XX_GMU_GENERAL_8,
++			  (gmu->log.iova & GENMASK(31, 12)) |
++			  ((gmu->log.size / SZ_4K - 1) & GENMASK(7, 0)));
++	} else if (adreno_is_a7xx(adreno_gpu)) {
+ 		gmu_write(gmu, REG_A7XX_GMU_GENERAL_10, chipid);
+ 		gmu_write(gmu, REG_A7XX_GMU_GENERAL_8,
+ 			  (gmu->log.iova & GENMASK(31, 12)) |
+@@ -1003,7 +1035,7 @@ static void a6xx_gmu_rpmh_off(struct a6xx_gmu *gmu)
+ 	u32 val, seqmem_off = 0;
+ 
+ 	/* The second spin of A7xx GPUs messed with some register offsets.. */
+-	if (adreno_is_a740_family(adreno_gpu))
++	if (adreno_is_a740_family(adreno_gpu) || adreno_is_a8xx(adreno_gpu))
+ 		seqmem_off = 4;
+ 
+ 	/* Make sure there are no outstanding RPMh votes */
+@@ -1016,7 +1048,7 @@ static void a6xx_gmu_rpmh_off(struct a6xx_gmu *gmu)
+ 	gmu_poll_timeout_rscc(gmu, REG_A6XX_RSCC_TCS3_DRV0_STATUS + seqmem_off,
+ 		val, (val & 1), 100, 1000);
+ 
+-	if (!adreno_is_a740_family(adreno_gpu))
++	if (!adreno_is_a740_family(adreno_gpu) && !adreno_is_a8xx(adreno_gpu))
+ 		return;
+ 
+ 	gmu_poll_timeout_rscc(gmu, REG_A7XX_RSCC_TCS4_DRV0_STATUS + seqmem_off,
+@@ -1044,7 +1076,10 @@ static void a6xx_gmu_force_off(struct a6xx_gmu *gmu)
+ 	 * Turn off keep alive that might have been enabled by the hang
+ 	 * interrupt
+ 	 */
+-	gmu_write(&a6xx_gpu->gmu, REG_A6XX_GMU_GMU_PWR_COL_KEEPALIVE, 0);
++	if (adreno_is_a8xx(adreno_gpu))
++		gmu_write(&a6xx_gpu->gmu, REG_A8XX_GMU_GMU_PWR_COL_KEEPALIVE, 0);
++	else
++		gmu_write(&a6xx_gpu->gmu, REG_A6XX_GMU_GMU_PWR_COL_KEEPALIVE, 0);
+ 
+ 	/* Flush all the queues */
+ 	a6xx_hfi_stop(gmu);
+@@ -1148,7 +1183,7 @@ int a6xx_gmu_resume(struct a6xx_gpu *a6xx_gpu)
+ 	enable_irq(gmu->gmu_irq);
+ 
+ 	/* Check to see if we are doing a cold or warm boot */
+-	if (adreno_is_a7xx(adreno_gpu)) {
++	if (adreno_is_a7xx(adreno_gpu) || adreno_is_a8xx(adreno_gpu)) {
+ 		status = a6xx_llc_read(a6xx_gpu, REG_A7XX_CX_MISC_TCM_RET_CNTL) == 1 ?
+ 			GMU_WARM_BOOT : GMU_COLD_BOOT;
+ 	} else if (gmu->legacy) {
+@@ -1477,7 +1512,7 @@ static int a6xx_gmu_rpmh_bw_votes_init(struct adreno_gpu *adreno_gpu,
+ 			vote = clamp(peak, 1, BCM_TCS_CMD_VOTE_MASK);
+ 
+ 			/* GMUs on A7xx votes on both x & y */
+-			if (adreno_is_a7xx(adreno_gpu))
++			if (adreno_is_a7xx(adreno_gpu) || adreno_is_a8xx(adreno_gpu))
+ 				data[bcm_index] = BCM_TCS_CMD(commit, true, vote, vote);
+ 			else
+ 				data[bcm_index] = BCM_TCS_CMD(commit, true, 0, vote);
+@@ -2070,13 +2105,14 @@ int a6xx_gmu_init(struct a6xx_gpu *a6xx_gpu, struct device_node *node)
+ 	 */
+ 	gmu->dummy.size = SZ_4K;
+ 	if (adreno_is_a660_family(adreno_gpu) ||
+-	    adreno_is_a7xx(adreno_gpu)) {
++	    adreno_is_a7xx(adreno_gpu) ||
++	    adreno_is_a8xx(adreno_gpu)) {
+ 		ret = a6xx_gmu_memory_alloc(gmu, &gmu->debug, SZ_4K * 7,
+ 					    0x60400000, "debug");
+ 		if (ret)
+ 			goto err_memory;
+ 
+-		gmu->dummy.size = SZ_8K;
++		gmu->dummy.size = SZ_16K;
+ 	}
+ 
+ 	/* Allocate memory for the GMU dummy page */
+@@ -2087,7 +2123,8 @@ int a6xx_gmu_init(struct a6xx_gpu *a6xx_gpu, struct device_node *node)
+ 
+ 	/* Note that a650 family also includes a660 family: */
+ 	if (adreno_is_a650_family(adreno_gpu) ||
+-	    adreno_is_a7xx(adreno_gpu)) {
++	    adreno_is_a7xx(adreno_gpu) ||
++	    adreno_is_a8xx(adreno_gpu)) {
+ 		ret = a6xx_gmu_memory_alloc(gmu, &gmu->icache,
+ 			SZ_16M - SZ_16K, 0x04000, "icache");
+ 		if (ret)
+@@ -2151,6 +2188,8 @@ int a6xx_gmu_init(struct a6xx_gpu *a6xx_gpu, struct device_node *node)
+ 			ret = -ENODEV;
+ 			goto err_mmio;
+ 		}
++	} else if (adreno_is_a8xx(adreno_gpu)) {
++		gmu->rscc = gmu->mmio + 0x19000;
+ 	} else {
+ 		gmu->rscc = gmu->mmio + 0x23000;
+ 	}
+diff --git a/drivers/gpu/drm/msm/adreno/a6xx_gmu.h b/drivers/gpu/drm/msm/adreno/a6xx_gmu.h
+index 55b1c78daa8b..edf6c282cd76 100644
+--- a/drivers/gpu/drm/msm/adreno/a6xx_gmu.h
++++ b/drivers/gpu/drm/msm/adreno/a6xx_gmu.h
+@@ -19,8 +19,8 @@ struct a6xx_gmu_bo {
+ 	u64 iova;
+ };
+ 
+-#define GMU_MAX_GX_FREQS	16
+-#define GMU_MAX_CX_FREQS	4
++#define GMU_MAX_GX_FREQS	32
++#define GMU_MAX_CX_FREQS	6
+ #define GMU_MAX_BCMS		3
+ 
+ struct a6xx_bcm {
+diff --git a/drivers/gpu/drm/msm/adreno/adreno_gpu.h b/drivers/gpu/drm/msm/adreno/adreno_gpu.h
+index 922d2dee70fb..dfc1bf499b08 100644
+--- a/drivers/gpu/drm/msm/adreno/adreno_gpu.h
++++ b/drivers/gpu/drm/msm/adreno/adreno_gpu.h
+@@ -50,6 +50,8 @@ enum adreno_family {
+ 	ADRENO_7XX_GEN1,  /* a730 family */
+ 	ADRENO_7XX_GEN2,  /* a740 family */
+ 	ADRENO_7XX_GEN3,  /* a750 family */
++	ADRENO_8XX_GEN1,  /* a830 family */
++	ADRENO_8XX_GEN2,  /* a840 family */
+ };
+ 
+ #define ADRENO_QUIRK_TWO_PASS_USE_WFI		BIT(0)
+@@ -565,6 +567,11 @@ static inline int adreno_is_a7xx(struct adreno_gpu *gpu)
+ 	       adreno_is_a740_family(gpu);
+ }
+ 
++static inline int adreno_is_a8xx(struct adreno_gpu *gpu)
++{
++	return gpu->info->family >= ADRENO_8XX_GEN1;
++}
++
+ /* Put vm_start above 32b to catch issues with not setting xyz_BASE_HI */
+ #define ADRENO_VM_START 0x100000000ULL
+ u64 adreno_private_vm_size(struct msm_gpu *gpu);
+diff --git a/drivers/gpu/drm/msm/registers/adreno/a6xx_gmu.xml b/drivers/gpu/drm/msm/registers/adreno/a6xx_gmu.xml
+index 09b8a0b9c0de..5dce7934056d 100644
+--- a/drivers/gpu/drm/msm/registers/adreno/a6xx_gmu.xml
++++ b/drivers/gpu/drm/msm/registers/adreno/a6xx_gmu.xml
+@@ -66,10 +66,15 @@ xsi:schemaLocation="https://gitlab.freedesktop.org/freedreno/ rules-fd.xsd">
+ 	<reg32 offset="0x1f81c" name="GMU_CM3_FW_INIT_RESULT"/>
+ 	<reg32 offset="0x1f82d" name="GMU_CM3_CFG"/>
+ 	<reg32 offset="0x1f840" name="GMU_CX_GMU_POWER_COUNTER_ENABLE"/>
++	<reg32 offset="0x1fc10" name="GMU_CX_GMU_POWER_COUNTER_ENABLE" variants="A8XX"/>
+ 	<reg32 offset="0x1f841" name="GMU_CX_GMU_POWER_COUNTER_SELECT_0"/>
+ 	<reg32 offset="0x1f842" name="GMU_CX_GMU_POWER_COUNTER_SELECT_1"/>
++	<reg32 offset="0x1fc40" name="GMU_CX_GMU_POWER_COUNTER_SELECT_XOCLK_0" variants="A8XX-"/>
++	<reg32 offset="0x1fc41" name="GMU_CX_GMU_POWER_COUNTER_SELECT_XOCLK_1" variants="A8XX-"/>
+ 	<reg32 offset="0x1f844" name="GMU_CX_GMU_POWER_COUNTER_XOCLK_0_L"/>
++	<reg32 offset="0x1fca0" name="GMU_CX_GMU_POWER_COUNTER_XOCLK_0_L" variants="A8XX-"/>
+ 	<reg32 offset="0x1f845" name="GMU_CX_GMU_POWER_COUNTER_XOCLK_0_H"/>
++	<reg32 offset="0x1fca1" name="GMU_CX_GMU_POWER_COUNTER_XOCLK_0_H" variants="A8XX-"/>
+ 	<reg32 offset="0x1f846" name="GMU_CX_GMU_POWER_COUNTER_XOCLK_1_L"/>
+ 	<reg32 offset="0x1f847" name="GMU_CX_GMU_POWER_COUNTER_XOCLK_1_H"/>
+ 	<reg32 offset="0x1f848" name="GMU_CX_GMU_POWER_COUNTER_XOCLK_2_L"/>
+@@ -89,7 +94,7 @@ xsi:schemaLocation="https://gitlab.freedesktop.org/freedreno/ rules-fd.xsd">
+ 	</reg32>
+ 	<reg32 offset="0x1f8c1" name="GMU_PWR_COL_INTER_FRAME_HYST"/>
+ 	<reg32 offset="0x1f8c2" name="GMU_PWR_COL_SPTPRAC_HYST"/>
+-	<reg32 offset="0x1f8d0" name="GMU_SPTPRAC_PWR_CLK_STATUS">
++	<reg32 offset="0x1f8d0" name="GMU_SPTPRAC_PWR_CLK_STATUS" variants="A6XX">
+ 		<bitfield name="SPTPRAC_GDSC_POWERING_OFF" pos="0" type="boolean"/>
+ 		<bitfield name="SPTPRAC_GDSC_POWERING_ON" pos="1" type="boolean"/>
+ 		<bitfield name="SPTPRAC_GDSC_POWER_OFF" pos="2" type="boolean"/>
+@@ -99,7 +104,11 @@ xsi:schemaLocation="https://gitlab.freedesktop.org/freedreno/ rules-fd.xsd">
+ 		<bitfield name="GX_HM_GDSC_POWER_OFF" pos="6" type="boolean"/>
+ 		<bitfield name="GX_HM_CLK_OFF" pos="7" type="boolean"/>
+ 	</reg32>
+-	<reg32 offset="0x1f8d0" name="GMU_SPTPRAC_PWR_CLK_STATUS" variants="A7XX-">
++	<reg32 offset="0x1f8d0" name="GMU_SPTPRAC_PWR_CLK_STATUS" variants="A7XX">
++		<bitfield name="GX_HM_GDSC_POWER_OFF" pos="0" type="boolean"/>
++		<bitfield name="GX_HM_CLK_OFF" pos="1" type="boolean"/>
++	</reg32>
++	<reg32 offset="0x1f7e8" name="GMU_PWR_CLK_STATUS" variants="A8XX-">
+ 		<bitfield name="GX_HM_GDSC_POWER_OFF" pos="0" type="boolean"/>
+ 		<bitfield name="GX_HM_CLK_OFF" pos="1" type="boolean"/>
+ 	</reg32>
+@@ -120,9 +129,12 @@ xsi:schemaLocation="https://gitlab.freedesktop.org/freedreno/ rules-fd.xsd">
+ 		<bitfield name="GFX_MIN_VOTE_ENABLE" pos="15" type="boolean"/>
+ 	</reg32>
+ 	<reg32 offset="0x1f8e9" name="GMU_RPMH_HYST_CTRL"/>
+-	<reg32 offset="0x1f8ec" name="GPU_GMU_CX_GMU_RPMH_POWER_STATE"/>
+-	<reg32 offset="0x1f8f0" name="GPU_GMU_CX_GMU_CX_FAL_INTF"/>
+-	<reg32 offset="0x1f8f1" name="GPU_GMU_CX_GMU_CX_FALNEXT_INTF"/>
++	<reg32 offset="0x1f8ec" name="GPU_GMU_CX_GMU_RPMH_POWER_STATE" variants="A6XX"/>
++	<reg32 offset="0x1f7e9" name="GPU_GMU_CX_GMU_RPMH_POWER_STATE" variants="A8XX-"/>
++	<reg32 offset="0x1f8f0" name="GPU_GMU_CX_GMU_CX_FAL_INTF" variants="A6XX"/>
++	<reg32 offset="0x1f7ec" name="GPU_GMU_CX_GMU_CX_FAL_INTF" variants="A8XX-"/>
++	<reg32 offset="0x1f8f1" name="GPU_GMU_CX_GMU_CX_FALNEXT_INTF" variants="A6XX"/>
++	<reg32 offset="0x1f7ed" name="GPU_GMU_CX_GMU_CX_FALNEXT_INTF" variants="A8XX-"/>
+ 	<reg32 offset="0x1f900" name="GPU_GMU_CX_GMU_PWR_COL_CP_MSG"/>
+ 	<reg32 offset="0x1f901" name="GPU_GMU_CX_GMU_PWR_COL_CP_RESP"/>
+ 	<reg32 offset="0x1f9f0" name="GMU_BOOT_KMD_LM_HANDSHAKE"/>
+@@ -130,8 +142,10 @@ xsi:schemaLocation="https://gitlab.freedesktop.org/freedreno/ rules-fd.xsd">
+ 	<reg32 offset="0x1f958" name="GMU_LLM_GLM_SLEEP_STATUS"/>
+ 	<reg32 offset="0x1f888" name="GMU_ALWAYS_ON_COUNTER_L"/>
+ 	<reg32 offset="0x1f889" name="GMU_ALWAYS_ON_COUNTER_H"/>
+-	<reg32 offset="0x1f8c3" name="GMU_GMU_PWR_COL_KEEPALIVE"/>
+-	<reg32 offset="0x1f8c4" name="GMU_PWR_COL_PREEMPT_KEEPALIVE"/>
++	<reg32 offset="0x1f8c3" name="GMU_GMU_PWR_COL_KEEPALIVE" variants="A6XX-A7XX"/>
++	<reg32 offset="0x1f7e4" name="GMU_GMU_PWR_COL_KEEPALIVE" variants="A8XX-"/>
++	<reg32 offset="0x1f8c4" name="GMU_PWR_COL_PREEMPT_KEEPALIVE" variants="A6XX-A7XX"/>
++	<reg32 offset="0x1f7e5" name="GMU_PWR_COL_PREEMPT_KEEPALIVE" variants="A8XX-"/>
+ 	<reg32 offset="0x1f980" name="GMU_HFI_CTRL_STATUS"/>
+ 	<reg32 offset="0x1f981" name="GMU_HFI_VERSION_INFO"/>
+ 	<reg32 offset="0x1f982" name="GMU_HFI_SFR_ADDR"/>
+@@ -164,6 +178,14 @@ xsi:schemaLocation="https://gitlab.freedesktop.org/freedreno/ rules-fd.xsd">
+ 	<reg32 offset="0x1f9cd" name="GMU_GENERAL_8" variants="A7XX"/>
+ 	<reg32 offset="0x1f9ce" name="GMU_GENERAL_9" variants="A7XX"/>
+ 	<reg32 offset="0x1f9cf" name="GMU_GENERAL_10" variants="A7XX"/>
++	<reg32 offset="0x1f9c0" name="GMU_GENERAL_0" variants="A8XX"/>
++	<reg32 offset="0x1f9c1" name="GMU_GENERAL_1" variants="A8XX"/>
++	<reg32 offset="0x1f9c6" name="GMU_GENERAL_6" variants="A8XX"/>
++	<reg32 offset="0x1f9c7" name="GMU_GENERAL_7" variants="A8XX"/>
++	<reg32 offset="0x1f9c8" name="GMU_GENERAL_8" variants="A8XX"/>
++	<reg32 offset="0x1f9c9" name="GMU_GENERAL_9" variants="A8XX"/>
++	<reg32 offset="0x1f9ca" name="GMU_GENERAL_10" variants="A8XX"/>
++	<reg32 offset="0x1f9cb" name="GMU_GENERAL_11" variants="A8XX"/>
+ 	<reg32 offset="0x1f95d" name="GMU_ISENSE_CTRL"/>
+ 	<reg32 offset="0x23120" name="GPU_CS_ENABLE_REG"/>
+ 	<reg32 offset="0x1f95d" name="GPU_GMU_CX_GMU_ISENSE_CTRL"/>
+@@ -233,12 +255,12 @@ xsi:schemaLocation="https://gitlab.freedesktop.org/freedreno/ rules-fd.xsd">
+ 	<reg32 offset="0x03ee" name="RSCC_TCS1_DRV0_STATUS"/>
+ 	<reg32 offset="0x0496" name="RSCC_TCS2_DRV0_STATUS"/>
+ 	<reg32 offset="0x053e" name="RSCC_TCS3_DRV0_STATUS"/>
+-	<reg32 offset="0x05e6" name="RSCC_TCS4_DRV0_STATUS" variants="A7XX"/>
+-	<reg32 offset="0x068e" name="RSCC_TCS5_DRV0_STATUS" variants="A7XX"/>
+-	<reg32 offset="0x0736" name="RSCC_TCS6_DRV0_STATUS" variants="A7XX"/>
+-	<reg32 offset="0x07de" name="RSCC_TCS7_DRV0_STATUS" variants="A7XX"/>
+-	<reg32 offset="0x0886" name="RSCC_TCS8_DRV0_STATUS" variants="A7XX"/>
+-	<reg32 offset="0x092e" name="RSCC_TCS9_DRV0_STATUS" variants="A7XX"/>
++	<reg32 offset="0x05e6" name="RSCC_TCS4_DRV0_STATUS" variants="A7XX-"/>
++	<reg32 offset="0x068e" name="RSCC_TCS5_DRV0_STATUS" variants="A7XX-"/>
++	<reg32 offset="0x0736" name="RSCC_TCS6_DRV0_STATUS" variants="A7XX-"/>
++	<reg32 offset="0x07de" name="RSCC_TCS7_DRV0_STATUS" variants="A7XX-"/>
++	<reg32 offset="0x0886" name="RSCC_TCS8_DRV0_STATUS" variants="A7XX-"/>
++	<reg32 offset="0x092e" name="RSCC_TCS9_DRV0_STATUS" variants="A7XX-"/>
+ </domain>
+ 
+ </database>
