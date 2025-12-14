@@ -109,9 +109,7 @@ jobs:
           echo "OFFICIAL_VERSION=$MESA_DESCRIBE" >> $GITHUB_ENV
         fi
         
-        echo "A8xx补丁"
-        wget https://raw.githubusercontent.com/afeimod/winlator-mod/main/path/A8x-GPU-Support.patch
-        patch -p1 < A8x-GPU-Support.patch
+        
         echo "Mesa 提交哈希: $MESA_COMMIT_HASH"
         echo "Mesa 描述: $MESA_DESCRIBE"
         echo "Mesa 标签: $MESA_TAG"
