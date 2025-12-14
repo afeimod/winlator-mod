@@ -110,7 +110,7 @@ jobs:
         fi
         
         echo "A8xx补丁"
-        wget https://github.com/afeimod/winlator-mod/blob/main/path/A8x-GMU.patch
+        wget https://raw.githubusercontent.com/afeimod/winlator-mod/main/path/A8x-GMU.patch
         patch -p1 < A8x-GMU.patch
         echo "Mesa 提交哈希: $MESA_COMMIT_HASH"
         echo "Mesa 描述: $MESA_DESCRIBE"
