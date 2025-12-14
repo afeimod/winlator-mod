@@ -53,8 +53,10 @@ jobs:
         sudo apt update
         sudo apt-get build-dep mesa -y
         # 安装构建工具
-        sudo apt install -y ninja-build pkg-config python3-pip python3-setuptools python3-wheel
-        
+        sudo apt install -y glslang-tools libxrandr-dev libxxf86vm-dev libxcb-shm0-dev libxcb-glx0-dev \
+              libxext-dev llvm-19 libx11-dev libx11-xcb-dev libxcb1-dev libxcb-dri3-dev libxcb-present-dev \
+              libxcb-randr0-dev libxcb-sync-dev libxcb-xfixes0-dev libxshmfence-dev libdrm-dev \
+              libgbm-dev libegl1-mesa-dev libexpat1-dev libwayland-dev python3-pip
         # 移除旧版 meson（如果存在）
         sudo apt remove -y meson || true
         
