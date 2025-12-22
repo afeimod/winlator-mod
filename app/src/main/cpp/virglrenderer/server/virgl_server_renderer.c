@@ -48,6 +48,8 @@
 
 #include <jni.h>
 
+extern EGLContext globalEGLContext;
+
 static void virgl_server_write_fence(struct virgl_client *client, uint32_t fence_id)
 {
    client->renderer->last_fence_id = fence_id;
@@ -122,13 +124,7 @@ static bool virgl_server_egl_init(struct virgl_server_renderer *renderer)
     if (!success || num_configs != 1)
         return false;
 
-    jlong shared_egl_ctx_ptr = (*jni_info.env)->CallLongMethod(jni_info.env, jni_info.obj, jni_info.get_shared_egl_context);
-    EGLContext shared_egl_ctx = (EGLContext)shared_egl_ctx_ptr;
-
-    renderer->egl_ctx = eglCreateContext(renderer->egl_display,
-                                         renderer->egl_conf,
-                                         shared_egl_ctx ? shared_egl_ctx : EGL_NO_CONTEXT,
-                                         ctx_att);
+    renderer->egl_ctx = eglCreateContext(renderer->egl_display, renderer->egl_conf, globalEGLContext, ctx_att);
 
     eglMakeCurrent(renderer->egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, renderer->egl_ctx);
     if (!renderer->egl_ctx)

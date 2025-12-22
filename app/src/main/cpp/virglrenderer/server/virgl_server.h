@@ -41,7 +41,6 @@ struct jni_info {
    jobject obj;
    JNIEnv *env;
    jmethodID kill_connection;
-   jmethodID get_shared_egl_context;
    jmethodID flush_frontbuffer;
 };
 
