@@ -1,11 +1,10 @@
 package com.winlator.renderer.effects;
 
 import com.winlator.renderer.material.ScreenMaterial;
-import com.winlator.renderer.material.ShaderMaterial;
 
 public class CRTEffect extends Effect {
     @Override
-    protected ShaderMaterial createMaterial() {
+    protected ScreenMaterial createMaterial() {
         return new ScreenMaterial() {
             @Override
             protected String getFragmentShader() {

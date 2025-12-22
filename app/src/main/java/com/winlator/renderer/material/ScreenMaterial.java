@@ -1,8 +1,11 @@
 package com.winlator.renderer.material;
 
 public class ScreenMaterial extends ShaderMaterial {
-    public ScreenMaterial() {
-        setUniformNames("resolution", "screenTexture");
+    public final Uniforms uniforms = new Uniforms();
+
+    public static class Uniforms {
+        public final Uniform resolution = new Uniform("resolution");
+        public final Uniform screenTexture = new Uniform("screenTexture");
     }
 
     @Override

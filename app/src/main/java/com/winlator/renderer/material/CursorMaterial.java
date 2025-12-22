@@ -1,8 +1,14 @@
 package com.winlator.renderer.material;
 
 public class CursorMaterial extends ShaderMaterial {
-    public CursorMaterial() {
-        setUniformNames("xform", "viewSize", "texture", "backColor", "foreColor");
+    public final Uniforms uniforms = new Uniforms();
+
+    public static class Uniforms {
+        public final Uniform xform = new Uniform("xform");
+        public final Uniform viewSize = new Uniform("viewSize");
+        public final Uniform texture = new Uniform("texture");
+        public final Uniform backColor = new Uniform("backColor");
+        public final Uniform foreColor = new Uniform("foreColor");
     }
 
     @Override

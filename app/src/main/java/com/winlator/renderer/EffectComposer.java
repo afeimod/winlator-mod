@@ -3,7 +3,7 @@ package com.winlator.renderer;
 import android.opengl.GLES20;
 
 import com.winlator.renderer.effects.Effect;
-import com.winlator.renderer.material.ShaderMaterial;
+import com.winlator.renderer.material.ScreenMaterial;
 
 import java.util.ArrayList;
 
@@ -45,15 +45,16 @@ public class EffectComposer {
     }
 
     private void renderEffect(Effect effect) {
-        ShaderMaterial material = effect.getMaterial();
+        ScreenMaterial material = effect.getMaterial();
         material.use();
         renderer.quadVertices.bind(material.programId);
 
-        material.setUniformVec2("resolution", renderer.surfaceWidth, renderer.surfaceHeight);
+        material.setUniformVec2(material.uniforms.resolution, renderer.surfaceWidth, renderer.surfaceHeight);
+
 
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, readBuffer.getTextureId());
-        material.setUniformInt("screenTexture", 0);
+        material.setUniformInt(material.uniforms.screenTexture, 0);
         GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, renderer.quadVertices.count());
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, 0);
     }

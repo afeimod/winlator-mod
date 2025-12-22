@@ -9,8 +9,12 @@ public class ColorEffect extends Effect {
     private float gamma = 1.0f;
 
     @Override
-    public ShaderMaterial createMaterial() {
-        ScreenMaterial material = new ScreenMaterial() {
+    public ScreenMaterial createMaterial() {
+        final ShaderMaterial.Uniform brightnessUniform = new ShaderMaterial.Uniform("brightness");
+        final ShaderMaterial.Uniform contrastUniform = new ShaderMaterial.Uniform("contrast");
+        final ShaderMaterial.Uniform gammaUniform = new ShaderMaterial.Uniform("gamma");
+
+        return new ScreenMaterial() {
             @Override
             protected String getFragmentShader() {
                 return String.join("\n",
@@ -40,14 +44,11 @@ public class ColorEffect extends Effect {
             public void use() {
                 super.use();
 
-                setUniformFloat("brightness", brightness);
-                setUniformFloat("contrast", contrast);
-                setUniformFloat("gamma", gamma);
+                setUniformFloat(brightnessUniform, brightness);
+                setUniformFloat(contrastUniform, contrast);
+                setUniformFloat(gammaUniform, gamma);
             }
         };
-
-        material.setUniformNames("brightness", "contrast", "gamma", "screenTexture");
-        return material;
     }
 
     public float getBrightness() {

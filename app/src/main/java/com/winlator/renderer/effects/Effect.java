@@ -1,15 +1,15 @@
 package com.winlator.renderer.effects;
 
-import com.winlator.renderer.material.ShaderMaterial;
+import com.winlator.renderer.material.ScreenMaterial;
 
 public abstract class Effect {
-    private ShaderMaterial material;
+    private ScreenMaterial material;
 
-    protected ShaderMaterial createMaterial() {
+    protected ScreenMaterial createMaterial() {
         return null;
     }
 
-    public ShaderMaterial getMaterial() {
+    public ScreenMaterial getMaterial() {
         if (material == null) material = createMaterial();
         return material;
     }
