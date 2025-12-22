@@ -11,12 +11,15 @@ public class XClientConnectionHandler implements ConnectionHandler {
     }
 
     @Override
-    public void handleNewConnection(ConnectedClient client) {
-        client.setTag(new XClient(xServer, client.getInputStream(), client.getOutputStream()));
+    public ConnectedClient newConnectedClient(long clientPtr, int fd) {
+        return new XClient(clientPtr, fd, xServer);
     }
 
     @Override
+    public void handleNewConnection(ConnectedClient client) {}
+
+    @Override
     public void handleConnectionShutdown(ConnectedClient client) {
-        ((XClient)client.getTag()).freeResources();
+        ((XClient)client).freeResources();
     }
 }

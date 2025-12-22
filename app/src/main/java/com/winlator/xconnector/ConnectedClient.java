@@ -3,8 +3,8 @@ package com.winlator.xconnector;
 public class ConnectedClient {
     protected final long nativePtr;
     public final int fd;
-    private XInputStream inputStream;
-    private XOutputStream outputStream;
+    protected XInputStream inputStream;
+    protected XOutputStream outputStream;
     private Object tag;
 
     public ConnectedClient(long nativePtr, int fd) {

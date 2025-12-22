@@ -56,7 +56,7 @@ public class XConnectorEpoll {
 
     @Keep
     private Object handleNewConnection(long clientPtr, int fd) {
-        ConnectedClient client = new ConnectedClient(clientPtr, fd);
+        ConnectedClient client = connectionHandler.newConnectedClient(clientPtr, fd);
         client.createInputStream(initialInputBufferCapacity);
         client.createOutputStream(initialOutputBufferCapacity);
         connectionHandler.handleNewConnection(client);
