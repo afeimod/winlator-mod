@@ -55,6 +55,10 @@ public class XOutputStream {
         for (int i = offset; i < length; i++) writeByte(nativePtr, data[i]);
     }
 
+    public void writeAt(int position, byte[] data) {
+        writeAt(nativePtr, position, data);
+    }
+
     public void write(ByteBuffer data) {
         if (data.isDirect()) {
             writeByteBuffer(nativePtr, data, data.position(), data.remaining());
@@ -94,6 +98,10 @@ public class XOutputStream {
         }
     }
 
+    public int length() {
+        return length(nativePtr);
+    }
+
     private native long nativeAllocate(int fd, int initialCapacity);
 
     @CriticalNative
@@ -114,9 +122,14 @@ public class XOutputStream {
     @CriticalNative
     private static native void writePad(long nativePtr, int length);
 
+    private static native void writeAt(long nativePtr, int position, byte[] data);
+
     private static native void writeByteBuffer(long nativePtr, ByteBuffer data, int offset, int length);
 
     private static native boolean sendData(long nativePtr);
 
     private static native void destroy(long nativePtr);
+
+    @CriticalNative
+    private static native int length(long nativePtr);
 }
