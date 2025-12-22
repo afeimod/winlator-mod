@@ -52,7 +52,7 @@ Java_com_winlator_core_WineRegistryEditor_getKeyLocation(JNIEnv *env, jobject ob
         lineLen = wcslen(lineRead);
 
         if (location.start == -1) {
-            if (wstrstarts(wkey, lineRead)) {
+            if (wcstartswith(wkey, lineRead)) {
                 location.offset = totalLen - 1;
                 location.start = totalLen + lineLen;
             }
@@ -60,7 +60,7 @@ Java_com_winlator_core_WineRegistryEditor_getKeyLocation(JNIEnv *env, jobject ob
             location.mbCount += mbclen(lineRead);
         }
         else {
-            if (wstrstarts(L"[", lineRead)) {
+            if (wcstartswith(L"[", lineRead)) {
                 location.end = totalLen - emptyLines - 1;
                 if (location.end < -1) location.end = -1;
                 break;
@@ -108,7 +108,7 @@ Java_com_winlator_core_WineRegistryEditor_getValueLocation(JNIEnv *env, jobject 
         lineLen = wcslen(lineRead);
 
         if (valueLocation.start == -1) {
-            if (wstrstarts(wname, lineRead)) {
+            if (wcstartswith(wname, lineRead)) {
                 valueLocation.offset = totalLen - 1;
                 valueLocation.start = totalLen + wcslen(wname);
             }

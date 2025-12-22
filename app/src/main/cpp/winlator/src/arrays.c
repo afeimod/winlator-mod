@@ -6,6 +6,139 @@
 
 #include "arrays.h"
 #include "string_utils.h"
+#include "winlator.h"
+
+#define ARRAY_BUFFER_PUT_TYPE(arrayBuffer, type, value) \
+    int targetSize = arrayBuffer->size + sizeof(type); \
+    ENSURE_ARRAY_CAPACITY(targetSize, arrayBuffer->capacity, arrayBuffer->buffer, 1); \
+    *(type*)(arrayBuffer->buffer + arrayBuffer->size) = value; \
+    arrayBuffer->size = targetSize
+
+#define ARRAY_BUFFER_GET_TYPE(arrayBuffer, type) \
+    type value = *(type*)(arrayBuffer->buffer + arrayBuffer->position); \
+    arrayBuffer->position += sizeof(type); \
+    return value
+
+void ArrayBuffer_put(ArrayBuffer* arrayBuffer, char value) {
+    ENSURE_ARRAY_CAPACITY(arrayBuffer->size + 1, arrayBuffer->capacity, arrayBuffer->buffer, 1);
+    arrayBuffer->buffer[arrayBuffer->size++] = value;
+}
+
+void ArrayBuffer_putShort(ArrayBuffer* arrayBuffer, short value) {
+    ARRAY_BUFFER_PUT_TYPE(arrayBuffer, short, value);
+}
+
+void ArrayBuffer_putInt(ArrayBuffer* arrayBuffer, int value) {
+    ARRAY_BUFFER_PUT_TYPE(arrayBuffer, int, value);
+}
+
+void ArrayBuffer_putLong(ArrayBuffer* arrayBuffer, long value) {
+    ARRAY_BUFFER_PUT_TYPE(arrayBuffer, long, value);
+}
+
+void ArrayBuffer_putFloat(ArrayBuffer* arrayBuffer, float value) {
+    ARRAY_BUFFER_PUT_TYPE(arrayBuffer, float, value);
+}
+
+float* ArrayBuffer_putFloat2(ArrayBuffer* arrayBuffer, float x, float y) {
+    int targetSize = arrayBuffer->size + 2 * sizeof(float);
+    ENSURE_ARRAY_CAPACITY(targetSize, arrayBuffer->capacity, arrayBuffer->buffer, 1);
+    float* vec2 = (float*)(arrayBuffer->buffer + arrayBuffer->size);
+    vec2[0] = x;
+    vec2[1] = y;
+    arrayBuffer->size = targetSize;
+    return vec2;
+}
+
+float* ArrayBuffer_putFloat3(ArrayBuffer* arrayBuffer, float x, float y, float z) {
+    int targetSize = arrayBuffer->size + 3 * sizeof(float);
+    ENSURE_ARRAY_CAPACITY(targetSize, arrayBuffer->capacity, arrayBuffer->buffer, 1);
+    float* vec3 = (float*)(arrayBuffer->buffer + arrayBuffer->size);
+    vec3[0] = x;
+    vec3[1] = y;
+    vec3[2] = z;
+    arrayBuffer->size = targetSize;
+    return vec3;
+}
+
+float* ArrayBuffer_putFloat4(ArrayBuffer* arrayBuffer, float x, float y, float z, float w) {
+    int targetSize = arrayBuffer->size + 4 * sizeof(float);
+    ENSURE_ARRAY_CAPACITY(targetSize, arrayBuffer->capacity, arrayBuffer->buffer, 1);
+    float* vec4 = (float*)(arrayBuffer->buffer + arrayBuffer->size);
+    vec4[0] = x;
+    vec4[1] = y;
+    vec4[2] = z;
+    vec4[3] = w;
+    arrayBuffer->size = targetSize;
+    return vec4;
+}
+
+void ArrayBuffer_putDouble(ArrayBuffer* arrayBuffer, double value) {
+    ARRAY_BUFFER_PUT_TYPE(arrayBuffer, double, value);
+}
+
+void ArrayBuffer_putBytes(ArrayBuffer* arrayBuffer, const void* bytes, int size) {
+    ENSURE_ARRAY_CAPACITY(arrayBuffer->size + size, arrayBuffer->capacity, arrayBuffer->buffer, 1);
+    if (!bytes) {
+        memset(arrayBuffer->buffer + arrayBuffer->size, 0, size);
+    }
+    else memcpy(arrayBuffer->buffer + arrayBuffer->size, bytes, size);
+    arrayBuffer->size += size;
+}
+
+char ArrayBuffer_get(ArrayBuffer* arrayBuffer) {
+    return arrayBuffer->buffer[arrayBuffer->position++];
+}
+
+short ArrayBuffer_getShort(ArrayBuffer* arrayBuffer) {
+    ARRAY_BUFFER_GET_TYPE(arrayBuffer, short);
+}
+
+int ArrayBuffer_getInt(ArrayBuffer* arrayBuffer) {
+    ARRAY_BUFFER_GET_TYPE(arrayBuffer, int);
+}
+
+long ArrayBuffer_getLong(ArrayBuffer* arrayBuffer) {
+    ARRAY_BUFFER_GET_TYPE(arrayBuffer, long);
+}
+
+float ArrayBuffer_getFloat(ArrayBuffer* arrayBuffer) {
+    ARRAY_BUFFER_GET_TYPE(arrayBuffer, float);
+}
+
+double ArrayBuffer_getDouble(ArrayBuffer* arrayBuffer) {
+    ARRAY_BUFFER_GET_TYPE(arrayBuffer, double);
+}
+
+void* ArrayBuffer_getBytes(ArrayBuffer* arrayBuffer, int size) {
+    char* bytes = arrayBuffer->buffer + arrayBuffer->position;
+    arrayBuffer->position += size;
+    return bytes;
+}
+
+void ArrayBuffer_skip(ArrayBuffer* arrayBuffer, int length) {
+    arrayBuffer->position += length;
+}
+
+int ArrayBuffer_available(ArrayBuffer* arrayBuffer) {
+    return arrayBuffer->size - arrayBuffer->position;
+}
+
+void ArrayBuffer_rewind(ArrayBuffer* arrayBuffer) {
+    arrayBuffer->position = 0;
+    arrayBuffer->size = 0;
+}
+
+void ArrayBuffer_free(ArrayBuffer* arrayBuffer) {
+    if (arrayBuffer && arrayBuffer->buffer) {
+        free(arrayBuffer->buffer);
+        arrayBuffer->buffer = NULL;
+    }
+
+    arrayBuffer->capacity = 0;
+    arrayBuffer->position = 0;
+    arrayBuffer->size = 0;
+}
 
 static int intCompare(const void * a, const void * b) {
     return (*(int*)a - *(int*)b);
@@ -20,6 +153,18 @@ static int hashCode(const char* key) {
 void IntArray_add(IntArray* intArray, int value) {
     ENSURE_ARRAY_CAPACITY(intArray->size + 1, intArray->capacity, intArray->values, sizeof(int));
     intArray->values[intArray->size++] = value;
+}
+
+void IntArray_addAt(IntArray* intArray, int index, int value) {
+    if (index < 0 || index >= intArray->size) {
+        IntArray_add(intArray, value);
+        return;
+    }
+
+    ENSURE_ARRAY_CAPACITY(intArray->size + 1, intArray->capacity, intArray->values, sizeof(int));
+    memmove(intArray->values + index + 1, intArray->values + index, (intArray->size - index) * sizeof(int));
+    intArray->values[index] = value;
+    intArray->size++;
 }
 
 void IntArray_addAll(IntArray* intArray, int valueCount, ...) {
@@ -77,6 +222,19 @@ void ArrayList_add(ArrayList* arrayList, void* element) {
     if (!element) return;
     ENSURE_ARRAY_CAPACITY(arrayList->size + 1, arrayList->capacity, arrayList->elements, sizeof(void*));
     arrayList->elements[arrayList->size++] = element;
+}
+
+void ArrayList_addAt(ArrayList* arrayList, int index, void* element) {
+    if (!element) return;
+    if (index < 0 || index >= arrayList->size) {
+        ArrayList_add(arrayList, element);
+        return;
+    }
+
+    ENSURE_ARRAY_CAPACITY(arrayList->size + 1, arrayList->capacity, arrayList->elements, sizeof(void*));
+    memmove(arrayList->elements + index + 1, arrayList->elements + index, (arrayList->size - index) * sizeof(void*));
+    arrayList->elements[index] = element;
+    arrayList->size++;
 }
 
 void ArrayList_fill(ArrayList* arrayList, int size, void* element) {

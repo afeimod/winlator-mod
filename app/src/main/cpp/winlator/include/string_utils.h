@@ -1,7 +1,40 @@
 #ifndef WINLATOR_STRING_UTILS_H
 #define WINLATOR_STRING_UTILS_H
 
+#include <ctype.h>
+#include <stdarg.h>
+
 #include "arrays.h"
+
+#define INT2CHR(x) ('0' + x)
+#define FOREACH_LINE(input, inputSize, content) \
+    do { \
+        int pos = 0; \
+        int lnStart = 0;  \
+        int inputLimit = inputSize; \
+        char* lastLine = NULL; \
+        while (pos < inputLimit) { \
+            if (input[pos] == '\n' || pos == inputLimit-1) { \
+                bool wasNewLine = input[pos] == '\n'; \
+                if (wasNewLine) input[pos] = '\0'; \
+                char* line = input + lnStart; \
+                int lineLen = pos - lnStart + (input[pos] != '\0' ? 1 : 0); \
+                if (pos == inputLimit-1) { \
+                    if (lineLen == 0) break; \
+                    if (input[pos] != '\0') line = lastLine = substr(line, 0, lineLen); \
+                } \
+                content \
+                if (wasNewLine) input[pos] = '\n';\
+                if (lastLine) { \
+                    if (memcmp(input + lnStart, lastLine, lineLen) != 0) memcpy(input + lnStart, lastLine, lineLen); \
+                    free(lastLine); \
+                } \
+                lnStart = pos + 1; \
+            } \
+            pos++; \
+        } \
+    } \
+    while (0)
 
 #ifdef __ANDROID__
 #include <jni.h>
@@ -38,7 +71,12 @@ static inline wchar_t* jstringToWChars(JNIEnv* env, jstring string) {
 }
 #endif
 
-static inline bool wstrstarts(wchar_t* prefix, wchar_t* string) {
+static inline bool cstartswith(char* prefix, char* string) {
+    while (*prefix) if (*prefix++ != *string++) return false;
+    return true;
+}
+
+static inline bool wcstartswith(wchar_t* prefix, wchar_t* string) {
     while (*prefix) if (*prefix++ != *string++) return false;
     return true;
 }
@@ -75,6 +113,150 @@ static inline void* memdup(const void* src, size_t size) {
     void* dst = malloc(size);
     if (dst != NULL) memcpy(dst, src, size);
     return dst;
+}
+
+static inline char* ltrim(char* s) {
+    while(isspace(*s)) s++;
+    return s;
+}
+
+static inline char* rtrim(char* s) {
+    char* back = s + strlen(s);
+    while (isspace(*--back));
+    *(back+1) = '\0';
+    return s;
+}
+
+static inline char* trim(char* s) {
+    return ltrim(rtrim(s));
+}
+
+static inline void strsplit(char* input, char delimiter, ArrayList* outStrings) { // TODO improve
+    char* index;
+    while ((index = strchr(input, delimiter)) != NULL) {
+        int len = index - input;
+        char* string = malloc(len + 1);
+        memcpy(string, input, len);
+        string[len] = '\0';
+        ArrayList_add(outStrings, string);
+        input = index + 1;
+    }
+
+    if (*input != '\0') {
+        int len = strlen(input);
+        char* string = malloc(len + 1);
+        memcpy(string, input, len);
+        string[len] = '\0';
+        ArrayList_add(outStrings, string);
+    }
+}
+
+static inline char* strjoin(char delimiter, int count, ...) {
+    va_list valist;
+    va_start(valist, count);
+
+    int size = 0;
+    for (int i = 0; i < count; i++) {
+        char* string = va_arg(valist, char*);
+        size += (i > 0 && delimiter ? 1 : 0) + strlen(string);
+    }
+
+    va_start(valist, count);
+
+    char* result = malloc(size + 1);
+    for (int i = 0, j = 0; i < count; i++) {
+        char* string = va_arg(valist, char*);
+        if (i > 0 && delimiter) result[j++] = delimiter;
+        int len = strlen(string);
+        memcpy(result + j, string, len);
+        j += len;
+    }
+
+    result[size] = '\0';
+    va_end(valist);
+    return result;
+}
+
+static inline char* str_replace(char* search, char* replace, char* subject) {
+    int strSize = strlen(subject) + 1;
+    char* result = malloc(strSize);
+    int offset = 0;
+
+    char* str;
+    while ((str = strstr(subject, search))) {
+        memcpy(result + offset, subject, str - subject);
+        offset += str - subject;
+        subject = str + strlen(search);
+        strSize = strSize - strlen(search) + strlen(replace);
+        result = realloc(result, strSize);
+        memcpy(result + offset, replace, strlen(replace));
+        offset += strlen(replace);
+    }
+
+    strcpy(result + offset, subject);
+    return result;
+}
+
+static inline char* substr_replace(char* replace, int start, int end, char* subject) {
+    char prefix[start + 1];
+    memcpy(prefix, subject, start);
+    prefix[start] = '\0';
+    return strjoin(0, 3, prefix, replace, subject + end);
+}
+
+static inline char* substr(char* string, int offset, int length) {
+    char* result = malloc(length + 1);
+    memcpy(result, string + offset, length);
+    result[length] = '\0';
+    return result;
+}
+
+static inline void substrv(char* string, char delimStart, char delimEnd, char* outString) { // FIXME should stay here?
+    char* start = strchr(string, delimStart) + 1;
+    char* end = strchr(start, delimEnd);
+
+    if (start && end) {
+        int len = end - start;
+        strncpy(outString, start, len);
+        outString[len] = '\0';
+    }
+    else outString[0] = '\0';
+}
+
+static inline bool is_int(char* string) {
+    if (string[0] == '-') string++;
+    bool hasDigit = false;
+    while (*string) {
+        if (!isdigit(*string)) return false;
+        hasDigit = true;
+        string++;
+    }
+    return hasDigit;
+}
+
+static inline bool is_numeric(char* string) {
+    if (string[0] == '-') string++;
+    bool hasDigit = false;
+    while (*string) {
+        if (*string == '.') continue;
+        if (!isdigit(*string)) return false;
+        hasDigit = true;
+        string++;
+    }
+    return hasDigit;
+}
+
+static inline uint32_t fnv1aHash32(const void* data, int len) {
+#define FNV_PRIME_32 0x1000193
+
+    uint32_t hash = 0x811c9dc5;
+    const uint8_t* bytes = (const uint8_t*)data;
+
+    for (int i = 0; i < len; i++) {
+        hash ^= bytes[i];
+        hash *= FNV_PRIME_32;
+    }
+    return hash;
 }
 
 // MurmurHash2, 64-bit version, by Austin Appleby

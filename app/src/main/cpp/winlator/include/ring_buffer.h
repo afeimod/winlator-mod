@@ -1,7 +1,8 @@
-#ifndef VORTEK_RING_BUFFER_H
-#define VORTEK_RING_BUFFER_H
+#ifndef WINLATOR_RING_BUFFER_H
+#define WINLATOR_RING_BUFFER_H
 
 #include <stdatomic.h>
+#include <stdint.h>
 
 typedef struct RingBuffer {
     atomic_uint* head;

@@ -85,7 +85,7 @@ RingBuffer* RingBuffer_create(int shmFd, uint32_t bufferSize) {
 }
 
 uint32_t RingBuffer_size(RingBuffer* ring) {
-    return (RingBuffer_getTail(ring) - RingBuffer_getHead(ring)) & (ring->bufferSize - 1);
+    return RingBuffer_getTail(ring) - RingBuffer_getHead(ring);
 }
 
 uint32_t RingBuffer_freeSpace(RingBuffer* ring) {
@@ -100,17 +100,18 @@ bool RingBuffer_read(RingBuffer* ring, void* data, uint32_t size) {
 
     COND_WAIT(RingBuffer_size(ring) >= size);
     uint32_t head = RingBuffer_getHead(ring);
+    uint32_t offset = head & (ring->bufferSize - 1);
 
-    if ((head + size) <= ring->bufferSize) {
-        memcpy(data, ring->buffer + head, size);
+    if ((offset + size) <= ring->bufferSize) {
+        memcpy(data, ring->buffer + offset, size);
     }
     else {
-        uint32_t start = ring->bufferSize - head;
-        memcpy(data, ring->buffer + head, start);
+        uint32_t start = ring->bufferSize - offset;
+        memcpy(data, ring->buffer + offset, start);
         memcpy(data + start, ring->buffer, size - start);
     }
 
-    RingBuffer_setHead(ring, (head + size) & (ring->bufferSize - 1));
+    RingBuffer_setHead(ring, head + size);
     return true;
 }
 
@@ -122,17 +123,18 @@ bool RingBuffer_write(RingBuffer* ring, const void* data, uint32_t size) {
 
     COND_WAIT(RingBuffer_freeSpace(ring) >= size);
     uint32_t tail = RingBuffer_getTail(ring);
+    uint32_t offset = tail & (ring->bufferSize - 1);
 
-    if ((tail + size) <= ring->bufferSize) {
-        memcpy(ring->buffer + tail, data, size);
+    if ((offset + size) <= ring->bufferSize) {
+        memcpy(ring->buffer + offset, data, size);
     }
     else {
-        uint32_t start = ring->bufferSize - tail;
-        memcpy(ring->buffer + tail, data, start);
+        uint32_t start = ring->bufferSize - offset;
+        memcpy(ring->buffer + offset, data, start);
         memcpy(ring->buffer, data + start, size - start);
     }
 
-    RingBuffer_setTail(ring, (tail + size) & (ring->bufferSize - 1));
+    RingBuffer_setTail(ring, tail + size);
     return true;
 }
 

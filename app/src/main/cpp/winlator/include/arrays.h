@@ -4,6 +4,35 @@
 #include <malloc.h>
 #include <stdbool.h>
 
+typedef struct ArrayBuffer {
+    int size;
+    int position;
+    int capacity;
+    char* buffer;
+} ArrayBuffer;
+
+extern void ArrayBuffer_put(ArrayBuffer* arrayBuffer, char value);
+extern void ArrayBuffer_putShort(ArrayBuffer* arrayBuffer, short value);
+extern void ArrayBuffer_putInt(ArrayBuffer* arrayBuffer, int value);
+extern void ArrayBuffer_putLong(ArrayBuffer* arrayBuffer, long value);
+extern void ArrayBuffer_putFloat(ArrayBuffer* arrayBuffer, float value);
+extern float* ArrayBuffer_putFloat2(ArrayBuffer* arrayBuffer, float x, float y);
+extern float* ArrayBuffer_putFloat3(ArrayBuffer* arrayBuffer, float x, float y, float z);
+extern float* ArrayBuffer_putFloat4(ArrayBuffer* arrayBuffer, float x, float y, float z, float w);
+extern void ArrayBuffer_putDouble(ArrayBuffer* arrayBuffer, double value);
+extern void ArrayBuffer_putBytes(ArrayBuffer* arrayBuffer, const void* bytes, int size);
+extern char ArrayBuffer_get(ArrayBuffer* arrayBuffer);
+extern short ArrayBuffer_getShort(ArrayBuffer* arrayBuffer);
+extern int ArrayBuffer_getInt(ArrayBuffer* arrayBuffer);
+extern long ArrayBuffer_getLong(ArrayBuffer* arrayBuffer);
+extern float ArrayBuffer_getFloat(ArrayBuffer* arrayBuffer);
+extern double ArrayBuffer_getDouble(ArrayBuffer* arrayBuffer);
+extern void* ArrayBuffer_getBytes(ArrayBuffer* arrayBuffer, int size);
+extern void ArrayBuffer_skip(ArrayBuffer* arrayBuffer, int length);
+extern int ArrayBuffer_available(ArrayBuffer* arrayBuffer);
+extern void ArrayBuffer_rewind(ArrayBuffer* arrayBuffer);
+extern void ArrayBuffer_free(ArrayBuffer* arrayBuffer);
+
 typedef struct IntArray {
     int size;
     int capacity;
@@ -11,6 +40,7 @@ typedef struct IntArray {
 } IntArray;
 
 extern void IntArray_add(IntArray* intArray, int value);
+extern void IntArray_addAt(IntArray* intArray, int index, int value);
 extern void IntArray_addAll(IntArray* intArray, int valueCount, ...);
 extern void IntArray_remove(IntArray* intArray, int offset, int count);
 extern int IntArray_removeAt(IntArray* intArray, int index);
@@ -25,6 +55,7 @@ typedef struct ArrayList {
 
 extern int ArrayList_indexOf(ArrayList* arrayList, void* element);
 extern void ArrayList_add(ArrayList* arrayList, void* element);
+extern void ArrayList_addAt(ArrayList* arrayList, int index, void* element);
 extern void ArrayList_fill(ArrayList* arrayList, int size, void* element);
 extern void* ArrayList_removeAt(ArrayList* arrayList, int index);
 extern void ArrayList_remove(ArrayList* arrayList, void* element);
@@ -84,7 +115,7 @@ extern void* ArrayDeque_removeFirst(ArrayDeque* arrayDeque);
 extern void* ArrayDeque_removeLast(ArrayDeque* arrayDeque);
 extern void ArrayDeque_free(ArrayDeque* arrayDeque);
 
-#define DEFAULT_ARRAY_CAPACITY 5
+#define DEFAULT_ARRAY_CAPACITY 4
 #define ENSURE_ARRAY_CAPACITY(targetSize, capacity, elements, elementSize) \
     do { \
         if (targetSize > capacity) { \
