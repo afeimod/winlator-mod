@@ -7,9 +7,12 @@
 
 #define VK_NO_PROTOTYPES 1
 #include <vulkan/vulkan.h>
+#include <EGL/egl.h>
 
 #include "winlator.h"
 #include "file_utils.h"
+
+EGLContext globalEGLContext = EGL_NO_CONTEXT;
 
 JNIEXPORT jobjectArray JNICALL
 Java_com_winlator_core_GPUHelper_vkGetDeviceExtensions(JNIEnv *env, jclass obj) {
@@ -119,4 +122,9 @@ done:
     if (instance) vkDestroyInstance(instance, NULL);
     if (libvulkan) dlclose(libvulkan);
     return version;
+}
+
+JNIEXPORT void JNICALL
+Java_com_winlator_core_GPUHelper_setGlobalEGLContext(JNIEnv *env, jclass obj) {
+    globalEGLContext = eglGetCurrentContext();
 }

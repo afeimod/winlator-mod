@@ -11,6 +11,7 @@ import androidx.core.graphics.ColorUtils;
 import com.winlator.R;
 import com.winlator.core.Bitmask;
 import com.winlator.core.Callback;
+import com.winlator.core.GPUHelper;
 import com.winlator.core.ImageUtils;
 import com.winlator.math.Mathf;
 import com.winlator.math.XForm;
@@ -80,6 +81,7 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
     @Override
     public void onSurfaceCreated(GL10 gl, EGLConfig config) {
         GPUImage.checkIsSupported();
+        GPUHelper.setGlobalEGLContext();
 
         GLES20.glFrontFace(GLES20.GL_CCW);
         GLES20.glDisable(GLES20.GL_CULL_FACE);

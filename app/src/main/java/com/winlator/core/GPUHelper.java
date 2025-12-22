@@ -158,4 +158,6 @@ public abstract class GPUHelper {
 
     @CriticalNative
     public static native int vkGetApiVersion();
+
+    public static native void setGlobalEGLContext();
 }
