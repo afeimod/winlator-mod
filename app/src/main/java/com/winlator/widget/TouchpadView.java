@@ -29,6 +29,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
     private final Finger[] fingers = new Finger[MAX_FINGERS];
     private byte numFingers = 0;
     private float sensitivity = 1.0f;
+    private Finger mouseMoveFinger = null;
     private boolean pointerButtonLeftEnabled = true;
     private boolean pointerButtonRightEnabled = true;
     private boolean moveCursorToTouchpoint = false;
@@ -264,25 +265,19 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
     }
 
     public void mouseMove(float x, float y, int action) {
-        Finger finger1;
         switch (action) {
             case MotionEvent.ACTION_DOWN:
-                fingers[0] = new Finger(x, y);
-                numFingers = 1;
+                mouseMoveFinger = new Finger(x, y);
                 break;
             case MotionEvent.ACTION_MOVE:
-                finger1 = fingers[0];
-                if (finger1 != null) {
-                    finger1.update(x, y);
-                    handleFingerMove(finger1);
+                if (mouseMoveFinger != null) {
+                    mouseMoveFinger.update(x, y);
+                    handleFingerMove(mouseMoveFinger);
                 }
                 break;
             case MotionEvent.ACTION_UP:
-                finger1 = fingers[0];
-                if (finger1 != null) {
-                    fingers[0] = null;
-                    numFingers = 0;
-                }
+            case MotionEvent.ACTION_CANCEL:
+                mouseMoveFinger = null;
                 break;
         }
     }
