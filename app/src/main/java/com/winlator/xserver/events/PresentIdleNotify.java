@@ -9,14 +9,16 @@ import com.winlator.xserver.extensions.PresentExtension;
 import java.io.IOException;
 
 public class PresentIdleNotify extends Event {
+    private final PresentExtension presentExtension;
     private final int eventId;
     private final Window window;
     private final Pixmap pixmap;
     private final int serial;
     private final int idleFence;
 
-    public PresentIdleNotify(int eventId, Window window, Pixmap pixmap, int serial, int idleFence) {
+    public PresentIdleNotify(PresentExtension presentExtension, int eventId, Window window, Pixmap pixmap, int serial, int idleFence) {
         super(35);
+        this.presentExtension = presentExtension;
         this.eventId = eventId;
         this.window = window;
         this.serial = serial;
@@ -28,7 +30,7 @@ public class PresentIdleNotify extends Event {
     public void send(short sequenceNumber, XOutputStream outputStream) throws IOException {
         try (XStreamLock lock = outputStream.lock()) {
             outputStream.writeByte(code);
-            outputStream.writeByte(PresentExtension.MAJOR_OPCODE);
+            outputStream.writeByte(presentExtension.getMajorOpcode());
             outputStream.writeShort(sequenceNumber);
             outputStream.writeInt(0);
             outputStream.writeShort(getEventType());

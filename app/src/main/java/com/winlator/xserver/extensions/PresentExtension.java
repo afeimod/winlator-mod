@@ -25,11 +25,11 @@ import com.winlator.xserver.events.PresentIdleNotify;
 
 import java.io.IOException;
 
-public class PresentExtension implements Extension {
-    public static final byte MAJOR_OPCODE = -103;
+public class PresentExtension extends Extension {
     public static final byte MAJOR_VERSION = 1;
     public static final byte MINOR_VERSION = 0;
     private static final int FAKE_INTERVAL = 1000000 / 60;
+
     public enum Kind {PIXMAP, MSC_NOTIFY}
     public enum Mode {COPY, FLIP, SKIP}
     private final SparseArray<Event> events = new SparseArray<>();
@@ -48,24 +48,13 @@ public class PresentExtension implements Extension {
         private Bitmask mask;
     }
 
+    public PresentExtension(XServer xServer, byte majorOpcode) {
+        super(xServer, majorOpcode);
+    }
+
     @Override
     public String getName() {
         return "Present";
-    }
-
-    @Override
-    public byte getMajorOpcode() {
-        return MAJOR_OPCODE;
-    }
-
-    @Override
-    public byte getFirstErrorId() {
-        return 0;
-    }
-
-    @Override
-    public byte getFirstEventId() {
-        return 0;
     }
 
     private void sendIdleNotify(Window window, Pixmap pixmap, int serial, int idleFence) {
@@ -76,7 +65,7 @@ public class PresentExtension implements Extension {
             for (int i = 0; i < events.size(); i++) {
                 Event event = events.valueAt(i);
                 if (event.window == window && event.mask.isSet(PresentIdleNotify.getEventMask())) {
-                    event.client.sendEvent(new PresentIdleNotify(event.id, window, pixmap, serial, idleFence));
+                    event.client.sendEvent(new PresentIdleNotify(this, event.id, window, pixmap, serial, idleFence));
                 }
             }
         }
@@ -94,13 +83,13 @@ public class PresentExtension implements Extension {
             for (int i = 0; i < events.size(); i++) {
                 Event event = events.valueAt(i);
                 if (event.window == window && event.mask.isSet(PresentCompleteNotify.getEventMask())) {
-                    event.client.sendEvent(new PresentCompleteNotify(event.id, window, serial, kind, mode, ust, msc));
+                    event.client.sendEvent(new PresentCompleteNotify(this, event.id, window, serial, kind, mode, ust, msc));
                 }
             }
         }
     }
 
-    private static void queryVersion(XClient client, XInputStream inputStream, XOutputStream outputStream) throws IOException, XRequestError {
+    private void queryVersion(XClient client, XInputStream inputStream, XOutputStream outputStream) throws IOException, XRequestError {
         inputStream.skip(8);
 
         try (XStreamLock lock = outputStream.lock()) {
@@ -125,10 +114,10 @@ public class PresentExtension implements Extension {
         int idleFence = inputStream.readInt();
         inputStream.skip(client.getRemainingRequestLength());
 
-        Window window = client.xServer.windowManager.getWindow(windowId);
+        Window window = xServer.windowManager.getWindow(windowId);
         if (window == null) throw new BadWindow(windowId);
 
-        Pixmap pixmap = client.xServer.pixmapManager.getPixmap(pixmapId);
+        Pixmap pixmap = xServer.pixmapManager.getPixmap(pixmapId);
 
         Drawable content = window.getContent();
         if (pixmap != null && content.visual.depth != pixmap.drawable.visual.depth) throw new BadMatch();
@@ -148,14 +137,14 @@ public class PresentExtension implements Extension {
         int windowId = inputStream.readInt();
         Bitmask mask = new Bitmask(inputStream.readInt());
 
-        Window window = client.xServer.windowManager.getWindow(windowId);
+        Window window = xServer.windowManager.getWindow(windowId);
         if (window == null) throw new BadWindow(windowId);
 
         Drawable content = window.getContent();
         final Texture texture = content.getTexture();
 
         if (GPUImage.isSupported() && !(texture instanceof GPUImage)) {
-            client.xServer.getRenderer().xServerView.queueEvent(texture::destroy);
+            xServer.getRenderer().xServerView.queueEvent(texture::destroy);
             content.setTexture(new GPUImage(content.width, content.height));
         }
 
@@ -185,19 +174,19 @@ public class PresentExtension implements Extension {
     @Override
     public void handleRequest(XClient client, XInputStream inputStream, XOutputStream outputStream) throws IOException, XRequestError {
         int opcode = client.getRequestData();
-        if (syncExtension == null) syncExtension = client.xServer.getExtension(SyncExtension.MAJOR_OPCODE);
+        if (syncExtension == null) syncExtension = (SyncExtension)xServer.getExtensionByName("SYNC");
 
         switch (opcode) {
             case ClientOpcodes.QUERY_VERSION :
                 queryVersion(client, inputStream, outputStream);
                 break;
             case ClientOpcodes.PRESENT_PIXMAP:
-                try (XLock lock = client.xServer.lock(XServer.Lockable.WINDOW_MANAGER, XServer.Lockable.PIXMAP_MANAGER)) {
+                try (XLock lock = xServer.lock(XServer.Lockable.WINDOW_MANAGER, XServer.Lockable.PIXMAP_MANAGER)) {
                     presentPixmap(client, inputStream, outputStream);
                 }
                 break;
             case ClientOpcodes.SELECT_INPUT:
-                try (XLock lock = client.xServer.lock(XServer.Lockable.WINDOW_MANAGER)) {
+                try (XLock lock = xServer.lock(XServer.Lockable.WINDOW_MANAGER)) {
                     selectInput(client, inputStream, outputStream);
                 }
                 break;

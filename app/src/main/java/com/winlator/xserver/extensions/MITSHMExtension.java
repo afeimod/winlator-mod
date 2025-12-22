@@ -19,8 +19,7 @@ import com.winlator.xserver.errors.XRequestError;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public class MITSHMExtension implements Extension {
-    public static final byte MAJOR_OPCODE = -101;
+public class MITSHMExtension extends Extension {
     public static final byte MAJOR_VERSION = 1;
     public static final byte MINOR_VERSION = 1;
 
@@ -32,14 +31,13 @@ public class MITSHMExtension implements Extension {
         private static final byte CREATE_PIXMAP = 5;
     }
 
-    @Override
-    public String getName() {
-        return "MIT-SHM";
+    public MITSHMExtension(XServer xServer, byte majorOpcode) {
+        super(xServer, majorOpcode);
     }
 
     @Override
-    public byte getMajorOpcode() {
-        return MAJOR_OPCODE;
+    public String getName() {
+        return "MIT-SHM";
     }
 
     @Override
@@ -52,7 +50,7 @@ public class MITSHMExtension implements Extension {
         return 64;
     }
 
-    private static void queryVersion(XClient client, XInputStream inputStream, XOutputStream outputStream) throws IOException, XRequestError {
+    private void queryVersion(XClient client, XInputStream inputStream, XOutputStream outputStream) throws IOException, XRequestError {
         try (XStreamLock lock = outputStream.lock()) {
             outputStream.writeByte(RESPONSE_CODE_SUCCESS);
             outputStream.writeByte((byte)0);
@@ -66,18 +64,18 @@ public class MITSHMExtension implements Extension {
         }
     }
 
-    private static void attach(XClient client, XInputStream inputStream, XOutputStream outputStream) throws IOException, XRequestError {
+    private void attach(XClient client, XInputStream inputStream, XOutputStream outputStream) throws IOException, XRequestError {
         int xid = inputStream.readInt();
         int shmid = inputStream.readInt();
         inputStream.skip(4);
-        client.xServer.getSHMSegmentManager().attach(xid, shmid);
+        xServer.getSHMSegmentManager().attach(xid, shmid);
     }
 
-    private static void detach(XClient client, XInputStream inputStream, XOutputStream outputStream) throws IOException, XRequestError {
-        client.xServer.getSHMSegmentManager().detach(inputStream.readInt());
+    private void detach(XClient client, XInputStream inputStream, XOutputStream outputStream) throws IOException, XRequestError {
+        xServer.getSHMSegmentManager().detach(inputStream.readInt());
     }
 
-    private static void putImage(XClient client, XInputStream inputStream, XOutputStream outputStream) throws IOException, XRequestError {
+    private void putImage(XClient client, XInputStream inputStream, XOutputStream outputStream) throws IOException, XRequestError {
         int drawableId = inputStream.readInt();
         int gcId = inputStream.readInt();
         short totalWidth = inputStream.readShort();
@@ -93,13 +91,13 @@ public class MITSHMExtension implements Extension {
         int shmseg = inputStream.readInt();
         inputStream.skip(4);
 
-        Drawable drawable = client.xServer.drawableManager.getDrawable(drawableId);
+        Drawable drawable = xServer.drawableManager.getDrawable(drawableId);
         if (drawable == null) throw new BadDrawable(drawableId);
 
-        GraphicsContext graphicsContext = client.xServer.graphicsContextManager.getGraphicsContext(gcId);
+        GraphicsContext graphicsContext = xServer.graphicsContextManager.getGraphicsContext(gcId);
         if (graphicsContext == null) throw new BadGraphicsContext(gcId);
 
-        ByteBuffer data = client.xServer.getSHMSegmentManager().getData(shmseg);
+        ByteBuffer data = xServer.getSHMSegmentManager().getData(shmseg);
         if (data == null) throw new BadSHMSegment(shmseg);
 
         if (graphicsContext.getFunction() != GraphicsContext.Function.COPY) {
@@ -115,13 +113,13 @@ public class MITSHMExtension implements Extension {
         else drawable.drawImage(srcX, srcY, dstX, dstY, srcWidth, srcHeight, depth, data, totalWidth, totalHeight);
     }
 
-    private static void createPixmap(XClient client, XInputStream inputStream, XOutputStream outputStream) throws IOException, XRequestError {
+    private void createPixmap(XClient client, XInputStream inputStream, XOutputStream outputStream) throws IOException, XRequestError {
         inputStream.skip(4);
         int drawableId = inputStream.readInt();
         short width = inputStream.readShort();
         inputStream.skip(14);
 
-        Drawable drawable = client.xServer.drawableManager.getDrawable(drawableId);
+        Drawable drawable = xServer.drawableManager.getDrawable(drawableId);
         if (drawable == null) throw new BadDrawable(drawableId);
 
         drawable.setUseSharedData(width == drawable.width);
@@ -135,22 +133,22 @@ public class MITSHMExtension implements Extension {
                 queryVersion(client, inputStream, outputStream);
                 break;
             case ClientOpcodes.ATTACH :
-                try (XLock lock = client.xServer.lock(XServer.Lockable.SHMSEGMENT_MANAGER)) {
+                try (XLock lock = xServer.lock(XServer.Lockable.SHMSEGMENT_MANAGER)) {
                     attach(client, inputStream, outputStream);
                 }
                 break;
             case ClientOpcodes.DETACH :
-                try (XLock lock = client.xServer.lock(XServer.Lockable.SHMSEGMENT_MANAGER)) {
+                try (XLock lock = xServer.lock(XServer.Lockable.SHMSEGMENT_MANAGER)) {
                     detach(client, inputStream, outputStream);
                 }
                 break;
             case ClientOpcodes.PUT_IMAGE :
-                try (XLock lock = client.xServer.lock(XServer.Lockable.SHMSEGMENT_MANAGER, XServer.Lockable.DRAWABLE_MANAGER, XServer.Lockable.GRAPHIC_CONTEXT_MANAGER)) {
+                try (XLock lock = xServer.lock(XServer.Lockable.SHMSEGMENT_MANAGER, XServer.Lockable.DRAWABLE_MANAGER, XServer.Lockable.GRAPHIC_CONTEXT_MANAGER)) {
                     putImage(client, inputStream, outputStream);
                 }
                 break;
             case ClientOpcodes.CREATE_PIXMAP :
-                try (XLock lock = client.xServer.lock(XServer.Lockable.DRAWABLE_MANAGER)) {
+                try (XLock lock = xServer.lock(XServer.Lockable.DRAWABLE_MANAGER)) {
                     createPixmap(client, inputStream, outputStream);
                 }
                 break;

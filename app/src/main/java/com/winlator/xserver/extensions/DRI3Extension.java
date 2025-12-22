@@ -27,8 +27,7 @@ import com.winlator.xserver.errors.XRequestError;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public class DRI3Extension implements Extension {
-    public static final byte MAJOR_OPCODE = -102;
+public class DRI3Extension extends Extension {
     public static final byte MAJOR_VERSION = 1;
     public static final byte MINOR_VERSION = 0;
     private final Callback<Drawable> onDestroyDrawableListener = (drawable) -> {
@@ -44,24 +43,13 @@ public class DRI3Extension implements Extension {
         private static final byte PIXMAP_FROM_BUFFERS = 7;
     }
 
+    public DRI3Extension(XServer xServer, byte majorOpcode) {
+        super(xServer, majorOpcode);
+    }
+
     @Override
     public String getName() {
         return "DRI3";
-    }
-
-    @Override
-    public byte getMajorOpcode() {
-        return MAJOR_OPCODE;
-    }
-
-    @Override
-    public byte getFirstErrorId() {
-        return 0;
-    }
-
-    @Override
-    public byte getFirstEventId() {
-        return 0;
     }
 
     private void queryVersion(XClient client, XInputStream inputStream, XOutputStream outputStream) throws IOException, XRequestError {
@@ -82,7 +70,7 @@ public class DRI3Extension implements Extension {
         int drawableId = inputStream.readInt();
         inputStream.skip(4);
 
-        Drawable drawable = client.xServer.drawableManager.getDrawable(drawableId);
+        Drawable drawable = xServer.drawableManager.getDrawable(drawableId);
         if (drawable == null) throw new BadDrawable(drawableId);
 
         try (XStreamLock lock = outputStream.lock()) {
@@ -104,10 +92,10 @@ public class DRI3Extension implements Extension {
         byte depth = inputStream.readByte();
         inputStream.skip(1);
 
-        Window window = client.xServer.windowManager.getWindow(windowId);
+        Window window = xServer.windowManager.getWindow(windowId);
         if (window == null) throw new BadWindow(windowId);
 
-        Pixmap pixmap = client.xServer.pixmapManager.getPixmap(pixmapId);
+        Pixmap pixmap = xServer.pixmapManager.getPixmap(pixmapId);
         if (pixmap != null) throw new BadIdChoice(pixmapId);
 
         int fd = inputStream.getAncillaryFd();
@@ -117,14 +105,14 @@ public class DRI3Extension implements Extension {
     private void bufferFromPixmap(XClient client, XInputStream inputStream, XOutputStream outputStream) throws IOException, XRequestError {
         int windowId = inputStream.readInt();
 
-        Window window = client.xServer.windowManager.getWindow(windowId);
+        Window window = xServer.windowManager.getWindow(windowId);
         if (window == null || !GPUImage.isSupported()) throw new BadPixmap(windowId);
 
         Drawable content = window.getContent();
         final Texture texture = content.getTexture();
 
         if (!(texture instanceof GPUImage)) {
-            client.xServer.getRenderer().xServerView.queueEvent(texture::destroy);
+            xServer.getRenderer().xServerView.queueEvent(texture::destroy);
             content.setTexture(new GPUImage(content.width, content.height, false));
         }
 
@@ -132,7 +120,7 @@ public class DRI3Extension implements Extension {
         short stride = gpuImage.getStride();
         int nativeHandle = gpuImage.getNativeHandle();
 
-        client.xServer.debugPrint("bufferFromPixmap handle "+nativeHandle+", width "+content.width+", height "+content.height+", stride "+stride);
+        xServer.debugPrint("bufferFromPixmap handle "+nativeHandle+", width "+content.width+", height "+content.height+", stride "+stride);
 
         try (XStreamLock lock = outputStream.lock()) {
             outputStream.writeByte(RESPONSE_CODE_SUCCESS);
@@ -162,10 +150,10 @@ public class DRI3Extension implements Extension {
         byte depth = inputStream.readByte();
         inputStream.skip(11);
 
-        Window window = client.xServer.windowManager.getWindow(windowId);
+        Window window = xServer.windowManager.getWindow(windowId);
         if (window == null) throw new BadWindow(windowId);
 
-        Pixmap pixmap = client.xServer.pixmapManager.getPixmap(pixmapId);
+        Pixmap pixmap = xServer.pixmapManager.getPixmap(pixmapId);
         if (pixmap != null) throw new BadIdChoice(pixmapId);
 
         int fd = inputStream.getAncillaryFd();
@@ -179,11 +167,11 @@ public class DRI3Extension implements Extension {
             if (buffer == null) throw new BadAlloc();
 
             short totalWidth = (short)(stride / 4);
-            Drawable drawable = client.xServer.drawableManager.createDrawable(pixmapId, totalWidth, height, depth);
+            Drawable drawable = xServer.drawableManager.createDrawable(pixmapId, totalWidth, height, depth);
             drawable.setData(buffer);
             drawable.setTexture(null);
             drawable.setOnDestroyListener(onDestroyDrawableListener);
-            client.xServer.pixmapManager.createPixmap(drawable);
+            xServer.pixmapManager.createPixmap(drawable);
         }
         finally {
             XConnectorEpoll.closeFd(fd);
@@ -198,22 +186,22 @@ public class DRI3Extension implements Extension {
                 queryVersion(client, inputStream, outputStream);
                 break;
             case ClientOpcodes.OPEN :
-                try (XLock lock = client.xServer.lock(XServer.Lockable.DRAWABLE_MANAGER)) {
+                try (XLock lock = xServer.lock(XServer.Lockable.DRAWABLE_MANAGER)) {
                     open(client, inputStream, outputStream);
                 }
                 break;
             case ClientOpcodes.PIXMAP_FROM_BUFFER:
-                try (XLock lock = client.xServer.lock(XServer.Lockable.WINDOW_MANAGER, XServer.Lockable.PIXMAP_MANAGER, XServer.Lockable.DRAWABLE_MANAGER)) {
+                try (XLock lock = xServer.lock(XServer.Lockable.WINDOW_MANAGER, XServer.Lockable.PIXMAP_MANAGER, XServer.Lockable.DRAWABLE_MANAGER)) {
                     pixmapFromBuffer(client, inputStream, outputStream);
                 }
                 break;
             case ClientOpcodes.BUFFER_FROM_PIXMAP:
-                try (XLock lock = client.xServer.lock(XServer.Lockable.WINDOW_MANAGER, XServer.Lockable.DRAWABLE_MANAGER)) {
+                try (XLock lock = xServer.lock(XServer.Lockable.WINDOW_MANAGER, XServer.Lockable.DRAWABLE_MANAGER)) {
                     bufferFromPixmap(client, inputStream, outputStream);
                 }
                 break;
             case ClientOpcodes.PIXMAP_FROM_BUFFERS:
-                try (XLock lock = client.xServer.lock(XServer.Lockable.WINDOW_MANAGER, XServer.Lockable.PIXMAP_MANAGER, XServer.Lockable.DRAWABLE_MANAGER)) {
+                try (XLock lock = xServer.lock(XServer.Lockable.WINDOW_MANAGER, XServer.Lockable.PIXMAP_MANAGER, XServer.Lockable.DRAWABLE_MANAGER)) {
                     pixmapFromBuffers(client, inputStream, outputStream);
                 }
                 break;

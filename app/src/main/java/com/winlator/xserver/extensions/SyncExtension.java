@@ -5,6 +5,7 @@ import android.util.SparseBooleanArray;
 import com.winlator.xconnector.XInputStream;
 import com.winlator.xconnector.XOutputStream;
 import com.winlator.xserver.XClient;
+import com.winlator.xserver.XServer;
 import com.winlator.xserver.errors.BadFence;
 import com.winlator.xserver.errors.BadIdChoice;
 import com.winlator.xserver.errors.BadImplementation;
@@ -13,8 +14,7 @@ import com.winlator.xserver.errors.XRequestError;
 
 import java.io.IOException;
 
-public class SyncExtension implements Extension {
-    public static final byte MAJOR_OPCODE = -104;
+public class SyncExtension extends Extension {
     private final SparseBooleanArray fences = new SparseBooleanArray();
 
     private static abstract class ClientOpcodes {
@@ -25,24 +25,13 @@ public class SyncExtension implements Extension {
         private static final byte AWAIT_FENCE = 19;
     }
 
+    public SyncExtension(XServer xServer, byte majorOpcode) {
+        super(xServer, majorOpcode);
+    }
+
     @Override
     public String getName() {
         return "SYNC";
-    }
-
-    @Override
-    public byte getMajorOpcode() {
-        return MAJOR_OPCODE;
-    }
-
-    @Override
-    public byte getFirstErrorId() {
-        return Byte.MIN_VALUE;
-    }
-
-    @Override
-    public byte getFirstEventId() {
-        return 0;
     }
 
     public void setTriggered(int id) {
@@ -111,6 +100,8 @@ public class SyncExtension implements Extension {
                     anyTriggered = fences.get(id);
                     if (anyTriggered) break;
                 }
+
+                Thread.yield();
             }
             while (!anyTriggered);
         }

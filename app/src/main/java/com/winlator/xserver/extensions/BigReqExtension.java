@@ -6,31 +6,20 @@ import com.winlator.xconnector.XInputStream;
 import com.winlator.xconnector.XOutputStream;
 import com.winlator.xconnector.XStreamLock;
 import com.winlator.xserver.XClient;
+import com.winlator.xserver.XServer;
 
 import java.io.IOException;
 
-public class BigReqExtension implements Extension {
-    public static final byte MAJOR_OPCODE = -100;
+public class BigReqExtension extends Extension {
     private static final int MAX_REQUEST_LENGTH = 4194303;
+
+    public BigReqExtension(XServer xServer, byte majorOpcode) {
+        super(xServer, majorOpcode);
+    }
 
     @Override
     public String getName() {
         return "BIG-REQUESTS";
-    }
-
-    @Override
-    public byte getMajorOpcode() {
-        return MAJOR_OPCODE;
-    }
-
-    @Override
-    public byte getFirstErrorId() {
-        return 0;
-    }
-
-    @Override
-    public byte getFirstEventId() {
-        return 0;
     }
 
     @Override

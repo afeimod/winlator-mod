@@ -7,6 +7,7 @@ import com.winlator.xconnector.XOutputStream;
 import com.winlator.xconnector.XStreamLock;
 import com.winlator.xserver.Window;
 import com.winlator.xserver.XClient;
+import com.winlator.xserver.XServer;
 import com.winlator.xserver.errors.BadAccess;
 import com.winlator.xserver.errors.BadImplementation;
 import com.winlator.xserver.errors.BadMatch;
@@ -16,10 +17,10 @@ import com.winlator.xserver.errors.XRequestError;
 
 import java.io.IOException;
 
-public class XComposite implements Extension {
-    public static final byte MAJOR_OPCODE = -105;
+public class XComposite extends Extension {
     public static final byte MAJOR_VERSION = 0;
     public static final byte MINOR_VERSION = 1;
+
     public enum UpdateMode {REDIRECT_AUTOMATIC, REDIRECT_MANUAL}
 
     private static abstract class ClientOpcodes {
@@ -28,27 +29,16 @@ public class XComposite implements Extension {
         private static final byte UNREDIRECT_WINDOW = 3;
     }
 
+    public XComposite(XServer xServer, byte majorOpcode) {
+        super(xServer, majorOpcode);
+    }
+
     @Override
     public String getName() {
         return "Composite";
     }
 
-    @Override
-    public byte getMajorOpcode() {
-        return MAJOR_OPCODE;
-    }
-
-    @Override
-    public byte getFirstErrorId() {
-        return 0;
-    }
-
-    @Override
-    public byte getFirstEventId() {
-        return 0;
-    }
-
-    private static void setWindowsToOffscreenStorage(Window window, boolean offscreenStorage) {
+    private void setWindowsToOffscreenStorage(Window window, boolean offscreenStorage) {
         if (!window.attributes.isMapped()) return;
         window.getContent().setOffscreenStorage(offscreenStorage);
 
@@ -57,7 +47,7 @@ public class XComposite implements Extension {
         }
     }
 
-    private static void queryVersion(XClient client, XInputStream inputStream, XOutputStream outputStream) throws IOException, XRequestError {
+    private void queryVersion(XClient client, XInputStream inputStream, XOutputStream outputStream) throws IOException, XRequestError {
         inputStream.skip(8);
 
         try (XStreamLock lock = outputStream.lock()) {
@@ -71,15 +61,15 @@ public class XComposite implements Extension {
         }
     }
 
-    private static void redirectWindow(XClient client, XInputStream inputStream, XOutputStream outputStream) throws IOException, XRequestError {
+    private void redirectWindow(XClient client, XInputStream inputStream, XOutputStream outputStream) throws IOException, XRequestError {
         int windowId = inputStream.readInt();
         byte updateMode = inputStream.readByte();
         inputStream.skip(3);
 
-        Window window = client.xServer.windowManager.getWindow(windowId);
+        Window window = xServer.windowManager.getWindow(windowId);
         if (window == null) throw new BadWindow(windowId);
 
-        if (window == client.xServer.windowManager.rootWindow) throw new BadMatch();
+        if (window == xServer.windowManager.rootWindow) throw new BadMatch();
         if (updateMode != UpdateMode.REDIRECT_MANUAL.ordinal()) throw new BadImplementation();
         if (window.getTag("compositeRedirectParent") != null) throw new BadAccess();
 
@@ -87,18 +77,18 @@ public class XComposite implements Extension {
         window.setTag("compositeRedirectParent", parent);
         setWindowsToOffscreenStorage(window, true);
         parent.attributes.setRenderSubwindows(false);
-        client.xServer.windowManager.triggerOnChangeWindowZOrder(window);
+        xServer.windowManager.triggerOnChangeWindowZOrder(window);
     }
 
-    private static void unredirectWindow(XClient client, XInputStream inputStream, XOutputStream outputStream) throws IOException, XRequestError {
+    private void unredirectWindow(XClient client, XInputStream inputStream, XOutputStream outputStream) throws IOException, XRequestError {
         int windowId = inputStream.readInt();
         byte updateMode = inputStream.readByte();
         inputStream.skip(3);
 
-        Window window = client.xServer.windowManager.getWindow(windowId);
+        Window window = xServer.windowManager.getWindow(windowId);
         if (window == null) throw new BadWindow(windowId);
 
-        if (window == client.xServer.windowManager.rootWindow) throw new BadMatch();
+        if (window == xServer.windowManager.rootWindow) throw new BadMatch();
         if (updateMode != UpdateMode.REDIRECT_MANUAL.ordinal()) throw new BadImplementation();
 
         Window oldParent = (Window)window.getTag("compositeRedirectParent");
@@ -107,7 +97,7 @@ public class XComposite implements Extension {
         window.removeTag("compositeRedirectParent");
         setWindowsToOffscreenStorage(window, false);
         oldParent.attributes.setRenderSubwindows(true);
-        client.xServer.windowManager.triggerOnChangeWindowZOrder(window);
+        xServer.windowManager.triggerOnChangeWindowZOrder(window);
     }
 
     @Override

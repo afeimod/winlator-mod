@@ -1,7 +1,5 @@
 package com.winlator.xserver;
 
-import android.util.SparseArray;
-
 import com.winlator.XServerDisplayActivity;
 import com.winlator.contentdialog.DebugDialog;
 import com.winlator.core.CursorLocker;
@@ -10,6 +8,7 @@ import com.winlator.winhandler.WinHandler;
 import com.winlator.xserver.extensions.BigReqExtension;
 import com.winlator.xserver.extensions.DRI3Extension;
 import com.winlator.xserver.extensions.Extension;
+import com.winlator.xserver.extensions.GLXExtension;
 import com.winlator.xserver.extensions.MITSHMExtension;
 import com.winlator.xserver.extensions.PresentExtension;
 import com.winlator.xserver.extensions.SyncExtension;
@@ -25,7 +24,7 @@ public class XServer {
     public static final String VENDOR_NAME = "Elbrus Technologies, LLC";
     public static final Charset LATIN1_CHARSET = Charset.forName("latin1");
     public final XServerDisplayActivity activity;
-    public final SparseArray<Extension> extensions = new SparseArray<>();
+    private final Extension[] extensions;
     public final ScreenInfo screenInfo;
     public final PixmapManager pixmapManager;
     public final ResourceIDs resourceIDs = new ResourceIDs(128);
@@ -60,7 +59,7 @@ public class XServer {
         grabManager = new GrabManager(this);
 
         DesktopHelper.attachTo(this);
-        setupExtensions();
+        extensions = setupExtensions();
     }
 
     public boolean isRelativeMouseMovement() {
@@ -139,10 +138,7 @@ public class XServer {
     }
 
     public Extension getExtensionByName(String name) {
-        for (int i = 0; i < extensions.size(); i++) {
-            Extension extension = extensions.valueAt(i);
-            if (extension.getName().equals(name)) return extension;
-        }
+        for (Extension extension : extensions) if (extension.getName().equals(name)) return extension;
         return null;
     }
 
@@ -186,17 +182,22 @@ public class XServer {
         }
     }
 
-    private void setupExtensions() {
-        extensions.put(BigReqExtension.MAJOR_OPCODE, new BigReqExtension());
-        extensions.put(MITSHMExtension.MAJOR_OPCODE, new MITSHMExtension());
-        extensions.put(DRI3Extension.MAJOR_OPCODE, new DRI3Extension());
-        extensions.put(PresentExtension.MAJOR_OPCODE, new PresentExtension());
-        extensions.put(SyncExtension.MAJOR_OPCODE, new SyncExtension());
-        extensions.put(XComposite.MAJOR_OPCODE, new XComposite());
+    private Extension[] setupExtensions() {
+        byte opcode = Extension.START_MAJOR_OPCODE;
+        return new Extension[]{
+            new BigReqExtension(this, opcode--),
+            new MITSHMExtension(this, opcode--),
+            new DRI3Extension(this, opcode--),
+            new PresentExtension(this, opcode--),
+            new SyncExtension(this, opcode--),
+            new XComposite(this, opcode--),
+            new GLXExtension(this, opcode--)
+        };
     }
 
-    public <T extends Extension> T getExtension(int opcode) {
-        return (T)extensions.get(opcode);
+    public <T extends Extension> T getExtension(byte opcode) {
+        int index = Extension.START_MAJOR_OPCODE - opcode;
+        return (T)extensions[index];
     }
 
     public void debugPrint(String line) {
