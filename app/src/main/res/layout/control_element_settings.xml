@@ -49,7 +49,21 @@
             app:suffix="%"
             app:step="5"
             app:minValue="50"
-            app:maxValue="150" />
+            app:maxValue="300" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/opacity" />
+
+        <com.winlator.widget.SeekBar
+            android:id="@+id/SBOpacity"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:suffix="%"
+            app:step="5"
+            app:minValue="0"
+            app:maxValue="100" />
 
         <LinearLayout
             android:id="@+id/LLRangeOptions"
