@@ -233,7 +233,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         inputControlsManager = new InputControlsManager(this);
         xServer = new XServer(this, screenInfo);
         xServer.setWinHandler(winHandler);
-        boolean[] flags = {false, shortcut != null || getIntent().hasExtra("exec_path")};
+        final boolean[] flags = {false, shortcut != null || getIntent().hasExtra("exec_path")};
         xServer.windowManager.addOnWindowModificationListener(new WindowManager.OnWindowModificationListener() {
             @Override
             public void onUpdateWindowContent(Window window) {
@@ -248,7 +248,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
                     flags[0] = true;
                 }
 
-                if (flags[1] & window.attributes.isViewable() && window.isDesktopWindow()) {
+                if (flags[1] && window.attributes.isViewable() && window.isDesktopWindow()) {
                     window.attributes.setViewable(false);
                     if (window.attributes.isEnabled()) window.disableAllDescendants();
                 }
