@@ -31,6 +31,7 @@
     <string name="binding_down">Привязка Вниз</string>
     <string name="binding_left">Привязка Влево</string>
     <string name="overlay_opacity">Прозрачность оверлея</string>
+    <string name="opacity">Прозрачность</string>
     <string name="profile">Профиль</string>
     <string name="select_profile">Выбрать профиль</string>
     <string name="profile_name">Имя профиля</string>
