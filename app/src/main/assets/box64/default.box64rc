@@ -54,6 +54,9 @@ BOX64_ENV=WINEARGS=+r_renderAPI 1
 [ff7remake_.exe]
 BOX64_ENV=WINEARGS=-dx11
 
+[Discipl2.exe]
+BOX64_ENV=WINEDLLOVERRIDES=ddraw,d3d8=b
+
 #.NET Framework installers
 [*dotnetfx35*]
 BOX64_EXIT=1

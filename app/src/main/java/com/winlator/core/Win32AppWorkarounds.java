@@ -2,6 +2,7 @@ package com.winlator.core;
 
 import com.winlator.XServerDisplayActivity;
 import com.winlator.container.Container;
+import com.winlator.container.DXWrappers;
 import com.winlator.winhandler.WinHandler;
 import com.winlator.xserver.ScreenInfo;
 import com.winlator.xserver.Window;
@@ -154,6 +155,8 @@ public class Win32AppWorkarounds {
             case "dino.exe":
             case "dino2.exe":
                 return (WinComponentsWorkaround) (wincomponents) -> wincomponents.put("directshow", "1");
+            case "discipl2.exe":
+                return (DXWrapperWorkaround) () -> DXWrappers.WINED3D;
             default:
                 return null;
         }
