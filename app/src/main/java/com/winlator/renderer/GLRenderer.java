@@ -195,13 +195,13 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
             XForm.set(tmpXForm1, x, y, drawable.width * cursorScale, drawable.height * cursorScale);
             XForm.multiply(tmpXForm1, tmpXForm1, tmpXForm2);
 
-            cursorMaterial.setUniformColor("backColor", cursorBackColor);
-            cursorMaterial.setUniformColor("foreColor", cursorForeColor);
+            cursorMaterial.setUniformColor(cursorMaterial.uniforms.backColor, cursorBackColor);
+            cursorMaterial.setUniformColor(cursorMaterial.uniforms.foreColor, cursorForeColor);
 
             GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
             GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, texture.getTextureId());
-            cursorMaterial.setUniformInt("texture", 0);
-            cursorMaterial.setUniformFloatArray("xform", tmpXForm1);
+            cursorMaterial.setUniformInt(cursorMaterial.uniforms.texture, 0);
+            cursorMaterial.setUniformFloatArray(cursorMaterial.uniforms.xform, tmpXForm1);
             GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, quadVertices.count());
             GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, 0);
         }
@@ -218,12 +218,12 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
             else XForm.set(tmpXForm1, x, y, drawable.width, drawable.height);
 
             XForm.multiply(tmpXForm1, tmpXForm1, tmpXForm2);
-
             GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
             GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, texture.getTextureId());
-            windowMaterial.setUniformInt("texture", 0);
-            windowMaterial.setUniformFloat("noAlpha", !transparent ? 1.0f : 0.0f);
-            windowMaterial.setUniformFloatArray("xform", tmpXForm1);
+            windowMaterial.setUniformInt(windowMaterial.uniforms.texture, 0);
+            windowMaterial.setUniformFloat(windowMaterial.uniforms.noAlpha, !transparent ? 1.0f : 0.0f);
+            windowMaterial.setUniformFloatArray(windowMaterial.uniforms.xform, tmpXForm1);
+            windowMaterial.setUniformBool(windowMaterial.uniforms.flipY, texture.isFlipY());
 
             GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, quadVertices.count());
             GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, 0);
@@ -232,7 +232,7 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
 
     private void renderWindows() {
         windowMaterial.use();
-        windowMaterial.setUniformVec2("viewSize", xServer.screenInfo.width, xServer.screenInfo.height);
+        windowMaterial.setUniformVec2(windowMaterial.uniforms.viewSize, xServer.screenInfo.width, xServer.screenInfo.height);
         quadVertices.bind(windowMaterial.programId);
 
         try (XLock lock = xServer.lock(XServer.Lockable.DRAWABLE_MANAGER)) {
@@ -248,7 +248,7 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
 
     private void renderCursor() {
         cursorMaterial.use();
-        cursorMaterial.setUniformVec2("viewSize", xServer.screenInfo.width, xServer.screenInfo.height);
+        cursorMaterial.setUniformVec2(cursorMaterial.uniforms.viewSize, xServer.screenInfo.width, xServer.screenInfo.height);
         quadVertices.bind(cursorMaterial.programId);
 
         try (XLock lock = xServer.lock(XServer.Lockable.DRAWABLE_MANAGER)) {
@@ -443,7 +443,7 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
 
                 GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
                 GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, texture.getTextureId());
-                material.setUniformInt("screenTexture", 0);
+                material.setUniformInt(material.uniforms.screenTexture, 0);
                 GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, quadVertices.count());
                 GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, 0);
                 quadVertices.disable();
