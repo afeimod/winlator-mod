@@ -2,6 +2,7 @@ package com.winlator.inputcontrols;
 
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.PointF;
@@ -79,6 +80,7 @@ public class ControlElement {
     private Shape shape = Shape.CIRCLE;
     private Binding[] bindings = {Binding.NONE, Binding.NONE, Binding.NONE, Binding.NONE};
     private float scale = 1.0f;
+    private float opacity = 1.0f;
     private short x;
     private short y;
     private int currentPointerId = -1;
@@ -229,6 +231,14 @@ public class ControlElement {
     public void setScale(float scale) {
         this.scale = scale;
         propertyFlags.set(FLAG_BOUNDING_BOX_NEEDS_UPDATE);
+    }
+
+    public float getOpacity() {
+        return opacity;
+    }
+
+    public void setOpacity(float opacity) {
+        this.opacity = opacity;
     }
 
     public short getX() {
@@ -410,9 +420,9 @@ public class ControlElement {
     public void draw(Canvas canvas) {
         int snappingSize = inputControlsView.getSnappingSize();
         Paint paint = inputControlsView.getPaint();
-        int lightColor = inputControlsView.getLightColor();
+        int lightColor = getLightColor();
 
-        paint.setColor(propertyFlags.isSet(FLAG_SELECTED) ? inputControlsView.getHighlightColor() : lightColor);
+        paint.setColor(propertyFlags.isSet(FLAG_SELECTED) ? getHighlightColor() : lightColor);
         paint.setStyle(Paint.Style.STROKE);
         float strokeWidth = snappingSize * 0.25f;
         paint.setStrokeWidth(strokeWidth);
@@ -453,7 +463,7 @@ public class ControlElement {
                     paint.setTextSize(Math.min(getTextSizeForWidth(paint, text, boundingBox.width() - strokeWidth * 2), snappingSize * 2 * scale));
                     paint.setTextAlign(Paint.Align.CENTER);
                     paint.setStyle(Paint.Style.FILL);
-                    paint.setColor(propertyFlags.isSet(FLAG_PRESSED) ? inputControlsView.getDarkColor() : lightColor);
+                    paint.setColor(propertyFlags.isSet(FLAG_PRESSED) ? getDarkColor() : lightColor);
                     canvas.drawText(text, x, (y - ((paint.descent() + paint.ascent()) * 0.5f)), paint);
                 }
                 break;
@@ -503,7 +513,7 @@ public class ControlElement {
             case RANGE_BUTTON: {
                 Range range = getRange();
                 int oldColor = paint.getColor();
-                int darkColor = inputControlsView.getDarkColor();
+                int darkColor = getDarkColor();
 
                 float radius = snappingSize * 0.75f * scale;
                 float elementSize = scroller.getElementSize();
@@ -651,7 +661,6 @@ public class ControlElement {
                 float innerRadius = boundingBox.width() * 0.5f + snappingSize * 0.5f;
                 float outerRadius = boundingBox.width() + snappingSize * scale;
                 float radius = boundingBox.width() * 0.5f;
-                float halfStrokeWidth = strokeWidth * 0.5f;
                 int oldColor = paint.getColor();
 
                 if (paths == null) {
@@ -689,7 +698,7 @@ public class ControlElement {
 
                 if (propertyFlags.isSet(FLAG_VISIBLE)) {
                     float minTextSize = snappingSize * 2 * scale;
-                    int darkColor = inputControlsView.getDarkColor();
+                    int darkColor = getDarkColor();
                     paint.setStrokeCap(Paint.Cap.SQUARE);
                     canvas.drawPath(paths[0], paint);
                     paint.setStrokeCap(Paint.Cap.BUTT);
@@ -764,6 +773,7 @@ public class ControlElement {
 
             elementJSONObject.put("bindings", bindingsJSONArray);
             elementJSONObject.put("scale", Float.valueOf(scale));
+            if (opacity < 1.0f) elementJSONObject.put("opacity", Float.valueOf(opacity));
             elementJSONObject.put("x", (float)x / inputControlsView.getMaxWidth());
             elementJSONObject.put("y", (float)y / inputControlsView.getMaxHeight());
             elementJSONObject.put("toggleSwitch", propertyFlags.isSet(FLAG_TOGGLE_SWITCH));
@@ -1059,5 +1069,19 @@ public class ControlElement {
             inputControlsView.handleInputEvent(finalBinding, true);
             inputControlsView.postDelayed(() -> inputControlsView.handleInputEvent(finalBinding, false), 30);
         }
+    }
+
+    public int getLightColor() {
+        float opacity = inputControlsView.isEditMode() ? Math.max(0.15f, this.opacity) : this.opacity;
+        return Color.argb((int)(opacity * inputControlsView.getOverlayOpacity() * 255), 255, 255, 255);
+    }
+
+    public int getDarkColor() {
+        float opacity = inputControlsView.isEditMode() ? Math.max(0.15f, this.opacity) : this.opacity;
+        return Color.argb((int)(opacity * inputControlsView.getOverlayOpacity() * 255), 0, 0, 0);
+    }
+
+    public int getHighlightColor() {
+        return Color.argb((int)(inputControlsView.getOverlayOpacity() * 255), 2, 119, 189);
     }
 }

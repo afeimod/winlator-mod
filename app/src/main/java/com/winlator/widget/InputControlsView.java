@@ -72,8 +72,16 @@ public class InputControlsView extends View {
         this.editMode = editMode;
     }
 
+    public boolean isEditMode() {
+        return editMode;
+    }
+
     public void setOverlayOpacity(float overlayOpacity) {
         this.overlayOpacity = overlayOpacity;
+    }
+
+    public float getOverlayOpacity() {
+        return overlayOpacity;
     }
 
     public int getSnappingSize() {
@@ -211,18 +219,6 @@ public class InputControlsView extends View {
 
     public void setShowTouchscreenControls(boolean showTouchscreenControls) {
         this.showTouchscreenControls = showTouchscreenControls;
-    }
-
-    public int getLightColor() {
-        return Color.argb((int)(overlayOpacity * 255), 255, 255, 255);
-    }
-
-    public int getDarkColor() {
-        return Color.argb((int)(overlayOpacity * 255), 0, 0, 0);
-    }
-
-    public int getHighlightColor() {
-        return Color.argb((int)(overlayOpacity * 255), 2, 119, 189);
     }
 
     private synchronized ControlElement intersectElement(float x, float y) {

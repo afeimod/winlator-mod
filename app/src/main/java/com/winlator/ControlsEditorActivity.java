@@ -209,6 +209,14 @@ public class ControlsEditorActivity extends AppCompatActivity implements View.On
         });
         sbScale.setValue(element.getScale() * 100);
 
+        SeekBar sbOpacity = view.findViewById(R.id.SBOpacity);
+        sbOpacity.setOnValueChangeListener((seekBar, value) -> {
+            element.setOpacity(value / 100.0f);
+            profile.save();
+            inputControlsView.invalidate();
+        });
+        sbOpacity.setValue(element.getOpacity() * 100);
+
         CheckBox cbToggleSwitch = view.findViewById(R.id.CBToggleSwitch);
         cbToggleSwitch.setChecked(element.isToggleSwitch());
         cbToggleSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
