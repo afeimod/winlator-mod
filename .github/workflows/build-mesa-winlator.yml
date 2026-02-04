@@ -184,7 +184,7 @@ jobs:
           fi
         else
           echo "使用 lfdevs 的 Mesa for Android Container 仓库"
-          git clone https://github.com/lfdevs/mesa-for-android-container.git mesa
+          git clone https://github.com/afeimod/mesa-for-android-container.git mesa
           cd mesa
           
           # 检出指定分支
