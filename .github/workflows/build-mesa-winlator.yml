@@ -134,6 +134,8 @@ jobs:
             -Dprefix=$INSTALL_PREFIX \
             -Dbuildtype=release \
             -Doptimization=3 \
+            -Dplatforms=x11 \
+            -Degl-native-platform=x11 \
             -Dglx=dri \
             -Dopengl=true \
             -Dgles1=enabled \
