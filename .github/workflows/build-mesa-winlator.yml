@@ -5,9 +5,9 @@ on:
   workflow_dispatch:
     inputs:
       mesa_branch:
-        description: 'Mesa 分支/标签/提交 (例如: main, 24.3, 24.4.0, adreno-main)'
+        description: 'Mesa 分支/标签/提交 (例如: main, 24.3, 24.4.0, gen8)'
         required: false
-        default: 'adreno-main'
+        default: 'gen8'
         type: string
       use_upstream:
         description: '是否使用上游官方 Mesa (而不是 lfdevs 的分支)'
@@ -40,11 +40,11 @@ jobs:
       run: |
         # 设置默认参数
         if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-          echo "MESA_BRANCH=${{ github.event.inputs.mesa_branch || 'adreno-main' }}" >> $GITHUB_ENV
+          echo "MESA_BRANCH=${{ github.event.inputs.mesa_branch || 'gen8' }}" >> $GITHUB_ENV
           echo "USE_UPSTREAM=${{ github.event.inputs.use_upstream || 'false' }}" >> $GITHUB_ENV
           echo "TARGET_ARCH=${{ github.event.inputs.target_arch || 'both' }}" >> $GITHUB_ENV
         else
-          echo "MESA_BRANCH=adreno-main" >> $GITHUB_ENV
+          echo "MESA_BRANCH=gen8" >> $GITHUB_ENV
           echo "USE_UPSTREAM=false" >> $GITHUB_ENV
           echo "TARGET_ARCH=both" >> $GITHUB_ENV
         fi
@@ -161,7 +161,7 @@ jobs:
           cd mesa
           
           # 检出指定分支/标签/提交
-          if [ -n "$MESA_BRANCH" ] && [ "$MESA_BRANCH" != "adreno-main" ]; then
+          if [ -n "$MESA_BRANCH" ] && [ "$MESA_BRANCH" != "gen8" ]; then
             echo "检出上游分支/标签/提交: $MESA_BRANCH"
             # 首先尝试获取分支或标签
             if git fetch origin "$MESA_BRANCH" 2>/dev/null; then
@@ -184,7 +184,7 @@ jobs:
           fi
         else
           echo "使用 lfdevs 的 Mesa for Android Container 仓库"
-          git clone https://github.com/afeimod/mesa-for-android-container.git mesa
+          git clone https://github.com/whitebelyash/mesa-tu8.git mesa
           cd mesa
           
           # 检出指定分支
