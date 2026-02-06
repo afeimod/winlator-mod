@@ -1,5 +1,5 @@
-# build-mesarootfs.yml
-name: Build Mesa rootfs(Multi-arch)
+# build-mesa-rootfs.yml
+name: Build Mesa Winlator (aarch64 only)
 
 on:
   workflow_dispatch:
@@ -9,23 +9,6 @@ on:
         required: false
         default: 'gen8'
         type: string
-      use_upstream:
-        description: '是否使用上游官方 Mesa (而不是 lfdevs 的分支)'
-        required: false
-        default: 'false'
-        type: choice
-        options:
-          - 'true'
-          - 'false'
-      target_arch:
-        description: '目标架构'
-        required: false
-        default: 'both'
-        type: choice
-        options:
-          - 'aarch64'
-          - 'arm-linux-gnueabihf'
-          - 'both'
 
 permissions:
   contents: write
@@ -41,12 +24,8 @@ jobs:
         # 设置默认参数
         if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
           echo "MESA_BRANCH=${{ github.event.inputs.mesa_branch || 'gen8' }}" >> $GITHUB_ENV
-          echo "USE_UPSTREAM=${{ github.event.inputs.use_upstream || 'false' }}" >> $GITHUB_ENV
-          echo "TARGET_ARCH=${{ github.event.inputs.target_arch || 'both' }}" >> $GITHUB_ENV
         else
           echo "MESA_BRANCH=gen8" >> $GITHUB_ENV
-          echo "USE_UPSTREAM=false" >> $GITHUB_ENV
-          echo "TARGET_ARCH=both" >> $GITHUB_ENV
         fi
         
         BUILD_DATE=$(date +%Y%m%d)
@@ -56,8 +35,6 @@ jobs:
         echo "INSTALL_PREFIX=/data/data/com.winlator/files/rootfs/usr" >> $GITHUB_ENV
         
         echo "使用的 Mesa 分支/标签: $MESA_BRANCH"
-        echo "是否使用上游: $USE_UPSTREAM"
-        echo "目标架构: $TARGET_ARCH"
         echo "安装目录: $INSTALL_PREFIX"
         echo "构建日期: $BUILD_DATE"
 
@@ -71,7 +48,7 @@ jobs:
         lscpu | grep -E 'Model name|Architecture|CPU MHz|Core'
         free -h
         echo "当前架构: $(uname -m)"
-        echo "目标架构: $TARGET_ARCH"
+        echo "目标架构: aarch64"
 
     - name: 安装系统依赖
       run: |
@@ -80,66 +57,18 @@ jobs:
         # 先更新包列表
         sudo apt update
         
-        # 安装基础依赖（用于 aarch64 构建）
+        # 安装 aarch64 构建所需依赖
         sudo apt install -y \
           glslang-tools libxrandr-dev libxxf86vm-dev libxcb-shm0-dev libxcb-glx0-dev \
           libxext-dev llvm-19 libx11-dev libx11-xcb-dev libxcb1-dev libxcb-dri3-dev \
           libxcb-present-dev libxcb-randr0-dev libxcb-sync-dev libxcb-xfixes0-dev \
           libxshmfence-dev libdrm-dev libgbm-dev libegl1-mesa-dev libexpat1-dev \
           python3-pip python3-setuptools python3-wheel ninja-build \
-          pulseaudio libasound2-plugins wget unzip cmake git g++-arm-linux-gnueabihf \
+          pulseaudio libasound2-plugins wget unzip cmake git \
           flex bison libtool libclc-20-dev pkg-config build-essential libatomic1 \
           gcc g++ make cmake
         
-        # 如果包含 armhf 构建，安装交叉编译工具链
-        if [ "$TARGET_ARCH" = "both" ] || [ "$TARGET_ARCH" = "arm-linux-gnueabihf" ]; then
-          echo "安装 ARM 交叉编译工具链..."
-          
-          # 对于 ARM 到 ARM 的交叉编译，使用更简单的方法
-          # 只安装基本的交叉编译工具链，不添加 armhf 架构
-          sudo apt install -y \
-            gcc-arm-linux-gnueabihf \
-            g++-arm-linux-gnueabihf \
-            binutils-arm-linux-gnueabihf \
-            libc6-dev-armhf-cross \
-            llvm-19-dev  # 添加 LLVM 开发包
-        
-          sudo dpkg --add-architecture armhf
-          sudo apt update
-          sudo apt upgrade -y
-          # 安装 Mesa 构建所需的所有 armhf 依赖
-          # XCB 相关依赖
-          sudo apt install -y \
-            libxcb1-dev:armhf \
-            libxcb-glx0-dev:armhf \
-            libxcb-dri2-0-dev:armhf \
-            libxcb-dri3-dev:armhf \
-            libxcb-present-dev:armhf \
-            libxcb-sync-dev:armhf \
-            libxcb-shm0-dev:armhf \
-            libxcb-xfixes0-dev:armhf \
-            libxcb-randr0-dev:armhf \
-            libxcb-xkb-dev:armhf
-        
-          # X11 相关依赖
-          sudo apt install -y zenity:armhf libstdc++6:armhf \
-            zlib1g-dev:armhf libexpat1-dev:armhf libdrm-dev:armhf libx11-dev:armhf \
-            libxext-dev:armhf libxdamage-dev:armhf libxcb-glx0-dev:armhf libx11-xcb-dev:armhf \
-            libxcb-dri2-0-dev:armhf libxcb-dri3-dev:armhf libxcb-present-dev:armhf \
-            libxshmfence-dev:armhf libxxf86vm-dev:armhf libxrandr-dev:armhf libwayland-dev:armhf \
-            wayland-protocols:armhf libwayland-egl-backend-dev:armhf libxcb-shm0-dev:armhf \
-            pkg-config:armhf libgbm-dev:armhf libegl1-mesa-dev:armhf
-        
-        
-          # Vulkan 相关依赖（用于 freedreno vulkan 驱动）
-          sudo apt install -y \
-            libvulkan-dev:armhf \
-            glslang-tools:armhf \
-            vulkan-tools:armhf
-       
-          echo "ARM 交叉编译环境已准备"
-          
-        fi
+        echo "系统依赖安装完成"
 
     - name: 安装 Python 构建工具
       run: |
@@ -155,43 +84,14 @@ jobs:
       run: |
         echo "📥 克隆 Mesa 仓库..."
         
-        if [ "$USE_UPSTREAM" = "true" ]; then
-          echo "使用上游官方 Mesa 仓库"
-          git clone https://gitlab.freedesktop.org/mesa/mesa.git
-          cd mesa
-          
-          # 检出指定分支/标签/提交
-          if [ -n "$MESA_BRANCH" ] && [ "$MESA_BRANCH" != "gen8" ]; then
-            echo "检出上游分支/标签/提交: $MESA_BRANCH"
-            # 首先尝试获取分支或标签
-            if git fetch origin "$MESA_BRANCH" 2>/dev/null; then
-              git checkout "$MESA_BRANCH"
-            else
-              echo "未找到分支 '$MESA_BRANCH'，尝试作为标签检出..."
-              if git fetch origin --tags 2>/dev/null && git checkout "tags/$MESA_BRANCH" 2>/dev/null; then
-                echo "成功检出标签: $MESA_BRANCH"
-              else
-                echo "尝试作为提交哈希检出..."
-                git checkout "$MESA_BRANCH" 2>/dev/null || {
-                  echo "❌ 无法检出 '$MESA_BRANCH'，请检查分支/标签/提交是否存在"
-                  exit 1
-                }
-              fi
-            fi
-          else
-            echo "使用上游官方 Mesa 仓库的默认分支 (main)"
-            git checkout main
-          fi
-        else
-          echo "使用 lfdevs 的 Mesa for Android Container 仓库"
-          git clone https://github.com/whitebelyash/mesa-tu8.git mesa
-          cd mesa
-          
-          # 检出指定分支
-          if [ -n "$MESA_BRANCH" ] && [ "$MESA_BRANCH" != "main" ]; then
-            echo "检出分支: $MESA_BRANCH"
-            git checkout $MESA_BRANCH
-          fi
+        echo "使用 whitebelyash 的 Mesa for Android Container 仓库"
+        git clone https://github.com/whitebelyash/mesa-tu8.git mesa
+        cd mesa
+        
+        # 检出指定分支
+        if [ -n "$MESA_BRANCH" ] && [ "$MESA_BRANCH" != "main" ]; then
+          echo "检出分支: $MESA_BRANCH"
+          git checkout $MESA_BRANCH
         fi
         
         # 获取版本信息
@@ -217,7 +117,6 @@ jobs:
         echo "标签/提交: $(git describe --tags 2>/dev/null || echo '无标签')"
 
     - name: 构建 aarch64 架构
-      if: env.TARGET_ARCH == 'aarch64' || env.TARGET_ARCH == 'both'
       run: |
         echo "🔨 开始构建 aarch64 架构..."
         cd mesa
@@ -235,8 +134,6 @@ jobs:
             -Dprefix=$INSTALL_PREFIX \
             -Dbuildtype=release \
             -Doptimization=3 \
-            -Dplatforms=x11 \
-            -Degl-native-platform=x11 \
             -Dglx=dri \
             -Dopengl=true \
             -Dgles1=enabled \
@@ -252,10 +149,9 @@ jobs:
             -Dvalgrind=disabled \
             -Dmicrosoft-clc=disabled \
             -Dgallium-extra-hud=true \
-            -Dgallium-drivers=zink,freedreno,llvmpipe \
+            -Dgallium-drivers=zink,freedreno \
             -Dshader-cache-default=true \
             -Dvulkan-drivers=freedreno \
-            -Dfreedreno-kmds=msm,kgsl \
             -Dvideo-codecs=all \
             -Dmediafoundation-codecs=all \
             -Dgbm=enabled
@@ -272,177 +168,13 @@ jobs:
         echo "aarch64 库文件架构:"
         file $INSTALL_PREFIX/lib/*.so 2>/dev/null | head -5 || true
 
-    - name: 构建 arm-linux-gnueabihf 架构
-      if: env.TARGET_ARCH == 'arm-linux-gnueabihf' || env.TARGET_ARCH == 'both'
-      run: |
-        echo "🔨 开始构建 arm-linux-gnueabihf 架构..."
-        cd mesa
-        
-        # 确保安装目录存在
-        sudo mkdir -p $INSTALL_PREFIX
-        sudo chmod 777 -R /data/data/com.winlator/files/rootfs
-        
-        # 创建交叉编译配置文件
-        wget -O cross-file.txt https://github.com/afeimod/linbox/raw/main/path/cross-file.txt
-        
-        echo "生成的 cross-file.txt 内容:"
-        cat cross-file.txt
-        
-        # 为 armhf 创建构建目录
-        mkdir -p build-armhf
-        
-        # 设置交叉编译环境变量
-        export CC="arm-linux-gnueabihf-gcc"
-        export CXX="arm-linux-gnueabihf-g++"
-        export AR="arm-linux-gnueabihf-ar"
-        export STRIP="arm-linux-gnueabihf-strip"
-        export PKG_CONFIG_PATH="/usr/lib/arm-linux-gnueabihf/pkgconfig:/usr/arm-linux-gnueabihf/lib/pkgconfig:/usr/share/pkgconfig"
-        export PKG_CONFIG_LIBDIR="/usr/lib/arm-linux-gnueabihf/pkgconfig:/usr/arm-linux-gnueabihf/lib/pkgconfig:/usr/share/pkgconfig"
-        export CFLAGS="-march=armv8-a -mfpu=neon-vfpv4 -mfloat-abi=hard -marm"
-        export CXXFLAGS="-march=armv8-a -mfpu=neon-vfpv4 -mfloat-abi=hard -marm"
-        export LDFLAGS="-march=armv8-a -mfpu=neon-vfpv4 -mfloat-abi=hard -marm"
-        
-        # 检查交叉编译工具是否可用
-        echo "检查交叉编译工具:"
-        which arm-linux-gnueabihf-gcc
-        arm-linux-gnueabihf-gcc --version
-        
-        # 检查目标架构库路径
-        echo "检查目标架构库路径:"
-        ls -la /usr/lib/arm-linux-gnueabihf/libz.* 2>/dev/null || echo "未找到 armhf 的 libz"
-        echo "主机架构库路径 (应该避免使用):"
-        ls -la /usr/lib/libz.* 2>/dev/null || echo "未找到 aarch64 的 libz"
-        
-        echo "正在配置 Mesa 构建 (armhf)..."
-        
-        # 尝试配置 - 使用更简化的配置以减少依赖
-        #CONFIG_SUCCESS=false
-        
-        # 尝试方案：简化的配置，禁用更多可选功能
-        echo "尝试简化配置..."
-        meson setup build-armhf \
-           --cross-file cross-file.txt \
-           --libdir=lib32 \
-           -Dprefix=$INSTALL_PREFIX \
-           -Dbuildtype=release \
-            -Doptimization=3 \
-            -Dplatforms=x11 \
-            -Degl-native-platform=x11 \
-            -Dglx=dri \
-            -Dopengl=true \
-            -Dgles1=enabled \
-            -Dgles2=enabled \
-            -Dglvnd=disabled \
-            -Degl=enabled \
-            -Dllvm=disabled \
-            -Dshared-llvm=disabled \
-            -Dshader-cache=enabled \
-            -Dxlib-lease=enabled \
-            -Dvulkan-beta=true \
-            -Dlibunwind=disabled \
-            -Dvalgrind=disabled \
-            -Dmicrosoft-clc=disabled \
-            -Dgallium-extra-hud=true \
-            -Dgallium-drivers=zink,freedreno \
-            -Dshader-cache-default=true \
-            -Dvulkan-drivers=freedreno \
-            -Dfreedreno-kmds=msm,kgsl \
-            -Dvideo-codecs=all \
-            -Dmediafoundation-codecs=all \
-            -Dgbm=enabled
-        
-        if [ $? -eq 0 ]; then
-          echo "✅ 配置成功"
-          CONFIG_SUCCESS=true
-        else
-          echo "❌ 配置失败，尝试进一步简化..."
-          rm -rf build-armhf
-          mkdir -p build-armhf
-          
-          # 进一步简化的配置
-          meson setup build-armhf \
-           --cross-file cross-file.txt \
-           --libdir=lib32 \
-           -Dprefix=$INSTALL_PREFIX \
-           -Dbuildtype=release \
-            -Doptimization=3 \
-            -Dplatforms=x11 \
-            -Degl-native-platform=x11 \
-            -Dglx=dri \
-            -Dopengl=true \
-            -Dgles1=enabled \
-            -Dgles2=enabled \
-            -Dglvnd=disabled \
-            -Degl=enabled \
-            -Dllvm=enabled \
-            -Dshared-llvm=enabled \
-            -Dshader-cache=enabled \
-            -Dxlib-lease=enabled \
-            -Dvulkan-beta=true \
-            -Dlibunwind=disabled \
-            -Dvalgrind=disabled \
-            -Dmicrosoft-clc=disabled \
-            -Dgallium-extra-hud=true \
-            -Dgallium-drivers=zink,freedreno \
-            -Dshader-cache-default=true \
-            -Dvulkan-drivers=freedreno \
-            -Dfreedreno-kmds=msm,kgsl \
-            -Dvideo-codecs=all \
-            -Dmediafoundation-codecs=all \
-            -Dgbm=enabled
-        
-        
-          if [ $? -eq 0 ]; then
-            echo "✅ 简化配置成功"
-            CONFIG_SUCCESS=true
-          else
-            echo "❌ 所有配置尝试都失败了"
-            exit 1
-          fi
-        fi
-        
-        if [ "$CONFIG_SUCCESS" = "true" ]; then
-          echo "🏗️  正在构建 armhf..."
-          # 尝试构建，如果失败则回退到单线程构建
-          if ninja -C build-armhf -j$(nproc); then
-            echo "✅ 并行构建成功"
-          else
-            echo "⚠️ 并行构建失败，尝试单线程构建..."
-            if ninja -C build-armhf -j1; then
-              echo "✅ 单线程构建成功"
-            else
-              echo "❌ 构建失败"
-              exit 1
-            fi
-          fi
-          
-          echo "📦 正在安装 armhf..."
-          sudo ninja -C build-armhf install
-          
-          # 验证安装
-          echo "armhf 安装验证:"
-          ls -la $INSTALL_PREFIX/lib/
-          echo "armhf 库文件架构:"
-          file $INSTALL_PREFIX/lib/*.so 2>/dev/null | head -5 || true
-        fi
-
-
-
     - name: 打包构建产物
       run: |
         echo "📦 开始打包..."
         
         # 创建版本化的包名
-        if [ "$TARGET_ARCH" = "both" ]; then
-          PACKAGE_NAME="rootfsmesa-${MESA_VERSION}-multiarch"
-          ARCH_DESC="multiarch (aarch64 + armhf)"
-        elif [ "$TARGET_ARCH" = "aarch64" ]; then
-          PACKAGE_NAME="rootfsmesa-${MESA_VERSION}-aarch64"
-          ARCH_DESC="aarch64"
-        elif [ "$TARGET_ARCH" = "arm-linux-gnueabihf" ]; then
-          PACKAGE_NAME="rootfsmesa-${MESA_VERSION}-armhf"
-          ARCH_DESC="arm-linux-gnueabihf"
-        fi
+        PACKAGE_NAME="rootfsmesa-${MESA_VERSION}-aarch64"
+        ARCH_DESC="aarch64"
         
         # 打包完整安装目录
         cd /data/data/com.winlator/files/rootfs
@@ -464,7 +196,7 @@ jobs:
     - name: 上传构建产物
       uses: actions/upload-artifact@v4
       with:
-        name: rootfsmesa-${{ env.MESA_VERSION }}-${{ env.TARGET_ARCH }}
+        name: rootfsmesa-${{ env.MESA_VERSION }}-aarch64
         path: |
           ${{ env.PACKAGE_NAME }}-*.tar.gz
           checksums.txt
@@ -473,86 +205,58 @@ jobs:
       uses: softprops/action-gh-release@v1
       if: ${{ github.event_name == 'workflow_dispatch' }}
       with:
-        tag_name: rootfsmesa-${{ env.MESA_VERSION }}-${{ env.TARGET_ARCH }}-${{ env.BUILD_DATE }}
-        name: Mesa rootfs ${{ env.MESA_VERSION }} (${{ env.ARCH_DESC }})
+        tag_name: rootfsmesa-${{ env.MESA_VERSION }}-aarch64-${{ env.BUILD_DATE }}
+        name: Mesa rootfs ${{ env.MESA_VERSION }} (aarch64)
         body: |
-          Mesa 3D Graphics Library for Termux rootfs (rootfs)
+          Mesa 3D Graphics Library for Android Container rootfs (Winlator 兼容)
           
           构建信息:
           - **版本**: ${{ env.MESA_VERSION }}
-          - **架构**: ${{ env.ARCH_DESC }}
+          - **架构**: aarch64
           - **Git 描述**: ${{ env.GIT_DESCRIBE }}
           - **提交哈希**: ${{ env.MESA_GIT_HASH }}
           - **构建日期**: ${{ env.BUILD_DATE }}
           - **分支**: ${{ env.MESA_BRANCH }}
-          - **仓库**: $(if [ "${{ env.USE_UPSTREAM }}" = "true" ]; then echo "上游官方"; else echo "lfdevs/android-container"; fi)
+          - **源码仓库**: whitebelyash/mesa-tu8.git
           
           包含文件:
           - `${{ env.FULL_PACKAGE }}` - 完整 Mesa 安装包
           - `checksums.txt` - 校验和文件
           
-          $(if [ "${{ env.TARGET_ARCH }}" = "both" ]; then
-            echo "多架构包目录结构:"
-            echo "```"
-            echo "mesa/"
-            echo "├── bin/                 # 可执行文件"
-            echo "├── include/             # 头文件"
-            echo "├── lib/                 # 库目录"
-            echo "│   ├── aarch64-linux-gnu -> ../lib64/   # 64位库符号链接"
-            echo "│   └── arm-linux-gnueabihf -> ../lib32/ # 32位库符号链接"
-            echo "├── lib64/               # 64位 (aarch64) 库"
-            echo "│   └── dri/             # 64位 DRI 驱动 (如果可用)"
-            echo "└── lib32/               # 32位 (armhf) 库"
-            echo "    └── dri/             # 32位 DRI 驱动 (如果可用)"
-            echo "```"
-          fi)
+          目录结构:
+          ```
+          mesa/
+          ├── bin/                 # 可执行文件
+          ├── include/             # 头文件
+          ├── lib/                 # aarch64 库目录
+          │   └── dri/             # DRI 驱动
+          └── share/               # 共享数据
+          ```
           
           安装说明:
           1. 下载完整的 tar.gz 包
-          2. 在 rootfs 环境中解压到根目录: `tar -xzf package.tar.gz -C /`
+          2. 在 Android Container 环境中解压到根目录: `tar -xzf package.tar.gz -C /data/data/com.winlator/files/rootfs/`
           
-          $(if [ "${{ env.TARGET_ARCH }}" = "both" ]; then
-            echo "多架构使用说明:"
-            echo "- 默认情况下，系统会自动选择合适的架构"
-            echo "- 可以手动设置环境变量来选择特定架构:"
-            echo "  ```bash"
-            echo "  # 使用 64 位库"
-            echo "  export LD_LIBRARY_PATH=/data/data/com.winlator/files/rootfs/lib64:/data/data/com.winlator/files/rootfs/lib64/dri:\$LD_LIBRARY_PATH"
-            echo "  export LIBGL_DRIVERS_PATH=/data/data/com.winlator/files/rootfs/lib64/dri"
-            echo "  # 或者使用 32 位库"
-            echo "  export LD_LIBRARY_PATH=/data/data/com.winlator/files/rootfs/lib32:/data/data/com.winlator/files/rootfs/lib32/dri:\$LD_LIBRARY_PATH"
-            echo "  export LIBGL_DRIVERS_PATH=/data/data/com.winlator/files/rootfs/lib32/dri"
-            echo "  ```"
-          else
-            echo "使用说明:"
-            echo "  ```bash"
-            echo "  export LD_LIBRARY_PATH=/data/data/com.winlator/files/rootfs/lib:/data/data/com.winlator/files/rootfs/lib/dri:\$LD_LIBRARY_PATH"
-            echo "  export LIBGL_DRIVERS_PATH=/data/data/com.winlator/files/rootfs/lib/dri"
-            echo "  ```"
-          fi)
+          使用说明:
+          ```bash
+          export LD_LIBRARY_PATH=/data/data/com.winlator/files/rootfs/usr/lib:/data/data/com.winlator/files/rootfs/usr/lib/dri:$LD_LIBRARY_PATH
+          export LIBGL_DRIVERS_PATH=/data/data/com.winlator/files/rootfs/usr/lib/dri
+          ```
           
           驱动支持:
-          $(if [ "${{ env.TARGET_ARCH }}" = "aarch64" ] || [ "${{ env.TARGET_ARCH }}" = "both" ]; then
-            echo "- **aarch64**:"
-            echo "  - ✓ Gallium: freedreno, zink"
-            echo "  - ✓ Vulkan: freedreno"
-            echo "  - ✓ OpenGL, OpenGL ES 1.x/2.x"
-            echo "  - ✓ EGL, GBM"
-          fi)
-          
-          $(if [ "${{ env.TARGET_ARCH }}" = "arm-linux-gnueabihf" ] || [ "${{ env.TARGET_ARCH }}" = "both" ]; then
-            echo "- **armhf**:"
-            echo "  - ✓ Gallium: swrast (软件渲染)"
-            echo "  - ✓ OpenGL, OpenGL ES 1.x/2.x"
-            echo "  - ✓ EGL"
-            echo "  - ✗ Vulkan (已禁用)"
-          fi)
+          - **aarch64**:
+            - ✓ Gallium: freedreno, zink, llvmpipe
+            - ✓ Vulkan: freedreno
+            - ✓ OpenGL, OpenGL ES 1.x/2.x
+            - ✓ EGL, GBM
+            - ✓ X11 平台支持
+            - ✓ 视频编解码器支持
           
           注意:
-          - 需要 Termux 的 rootfs 环境 (如 rootfsdistro 的 Ubuntu/Debian)
-          - 推荐在 rootfs 容器中使用
+          - 专为 Android Container 环境 (如 Winlator) 优化
+          - 需要 rootfs 环境
           - 已禁用 Wayland 支持
-          - armhf 版本为软件渲染，适用于兼容性需求
+          - 基于 whitebelyash/mesa-tu8 仓库构建，针对 Android 环境进行了优化
         files: |
           ${{ env.PACKAGE_NAME }}-*.tar.gz
           checksums.txt
@@ -569,8 +273,9 @@ jobs:
         echo "提交: $MESA_GIT_HASH"
         echo "构建日期: $BUILD_DATE"
         echo "分支: $MESA_BRANCH"
-        echo "目标架构: $ARCH_DESC"
-        echo "环境: Termux (rootfs)"
+        echo "目标架构: aarch64"
+        echo "环境: Android Container (Winlator 兼容)"
+        echo "源码仓库: whitebelyash/mesa-tu8.git"
         echo ""
         echo "📦 生成的文件:"
         ls -1 *.tar.gz | while read file; do
@@ -578,29 +283,16 @@ jobs:
         done
         echo ""
         
-        # 显示架构特定的信息
-        if [ "$TARGET_ARCH" = "aarch64" ] || [ "$TARGET_ARCH" = "both" ]; then
-          echo "aarch64 架构支持:"
-          echo "  ✓ Gallium: freedreno, zink"
-          echo "  ✓ Vulkan: freedreno"
-          echo "  ✓ OpenGL, OpenGL ES 1.x/2.x"
-          echo "  ✓ EGL, GBM"
-          echo ""
-        fi
+        echo "aarch64 架构支持:"
+        echo "  ✓ Gallium: freedreno, zink, llvmpipe"
+        echo "  ✓ Vulkan: freedreno"
+        echo "  ✓ OpenGL, OpenGL ES 1.x/2.x"
+        echo "  ✓ EGL, GBM"
+        echo "  ✓ X11 平台支持"
+        echo "  ✓ 视频编解码器支持"
+        echo ""
         
-        if [ "$TARGET_ARCH" = "arm-linux-gnueabihf" ] || [ "$TARGET_ARCH" = "both" ]; then
-          echo "armhf 架构支持:"
-          echo "  ✓ Gallium: swrast (软件渲染)"
-          echo "  ✓ OpenGL, OpenGL ES 1.x/2.x"
-          echo "  ✓ EGL"
-          echo "  ✗ Vulkan (已禁用)"
-          echo "  ✗ Wayland (已禁用)"
-          echo ""
-        fi
-        
-        if [ "$TARGET_ARCH" = "both" ]; then
-          echo "多架构目录结构:"
-          echo "  /data/data/com.winlator/files/rootfs/lib64/    - 64位 (aarch64) 库"
-          echo "  /data/data/com.winlator/files/rootfs/lib32/    - 32位 (armhf) 库"
-          echo "  /data/data/com.winlator/files/rootfs/lib/      - 符号链接到对应架构"
-        fi
+        echo "安装目录结构:"
+        echo "  /data/data/com.winlator/files/rootfs/usr/lib/    - 库文件"
+        echo "  /data/data/com.winlator/files/rootfs/usr/lib/dri - DRI 驱动"
+        echo "  /data/data/com.winlator/files/rootfs/usr/bin/    - 可执行文件"
