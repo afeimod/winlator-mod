@@ -85,7 +85,7 @@ jobs:
         echo "📥 克隆 Mesa 仓库..."
         
         echo "使用 whitebelyash 的 Mesa for Android Container 仓库"
-        git clone https://github.com/whitebelyash/mesa-tu8.git mesa
+        git clone https://github.com/afeimod/mesa-for-android-container.git mesa
         cd mesa
         
         # 检出指定分支
@@ -134,8 +134,6 @@ jobs:
             -Dprefix=$INSTALL_PREFIX \
             -Dbuildtype=release \
             -Doptimization=3 \
-            -Dplatforms=x11 \
-            -Degl-native-platform=x11 \
             -Dglx=dri \
             -Dopengl=true \
             -Dgles1=enabled \
