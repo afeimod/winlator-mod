@@ -142,6 +142,8 @@ jobs:
             --libdir=lib \
             -Dprefix=$INSTALL_PREFIX \
             -Dbuildtype=release \
+            -Dplatforms=x11 \
+            -Degl-native-platform=x11 \
             -Doptimization=3 \
             -Dglx=dri \
             -Dopengl=true \
