@@ -5,9 +5,9 @@ on:
   workflow_dispatch:
     inputs:
       mesa_branch:
-        description: 'Mesa 分支/标签/提交 (例如: main, 24.3, 24.4.0, gen8)'
+        description: 'Mesa 分支/标签/提交 (例如: main, 24.3, 24.4.0, adreno-main)'
         required: false
-        default: 'gen8'
+        default: 'adreno-main'
         type: string
 
 permissions:
@@ -85,7 +85,7 @@ jobs:
         echo "📥 克隆 Mesa 仓库..."
         
         echo "使用 whitebelyash 的 Mesa for Android Container 仓库"
-        git clone https://github.com/afeimod/mesa-for-android-container.git mesa
+        git clone https://github.com/lfdevs/mesa-for-android-container.git mesa
         cd mesa
         
         # 检出指定分支
@@ -119,6 +119,9 @@ jobs:
     - name: 构建 aarch64 架构
       run: |
         echo "🔨 开始构建 aarch64 架构..."
+        echo "应用补丁..."
+        wget https://github.com/afeimod/linbox/raw/main/path/wsi_common_x11.patch
+        patch -p1 < wsi_common_x11.patch
         cd mesa
         
         # 创建安装目录
