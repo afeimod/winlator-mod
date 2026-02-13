@@ -115,13 +115,18 @@ jobs:
         echo "描述: $GIT_DESCRIBE"
         echo "分支: $(git branch --show-current)"
         echo "标签/提交: $(git describe --tags 2>/dev/null || echo '无标签')"
+        
+    - name: 应用winlator x11补丁
+      run: |
+        echo "应用补丁..."
+        cd mesa/src/vulkan/wsi
+        wget https://github.com/afeimod/linbox/raw/main/path/wsi_common_x11.patch
+        patch -p1 < wsi_common_x11.patch
 
     - name: 构建 aarch64 架构
       run: |
         echo "🔨 开始构建 aarch64 架构..."
-        echo "应用补丁..."
-        wget https://github.com/afeimod/linbox/raw/main/path/wsi_common_x11.patch
-        patch -p1 < wsi_common_x11.patch
+        
         cd mesa
         
         # 创建安装目录
