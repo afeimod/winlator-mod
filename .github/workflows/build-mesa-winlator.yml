@@ -173,7 +173,7 @@ jobs:
         mkdir -p build-aarch64
 
         # 配置 aarch64 构建
-        meson setup build \
+        meson setup build-aarch64 \
            --prefix=/data/data/com.winlator/files/imagefs/usr \
            -Dplatforms=x11 \
            -Dbuildtype=release \
