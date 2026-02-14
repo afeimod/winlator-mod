@@ -32,7 +32,7 @@ jobs:
         echo "BUILD_DATE=$BUILD_DATE" >> $GITHUB_ENV
         
         # 设置安装目录
-        echo "INSTALL_PREFIX=/data/data/com.winlator/files/imagefs" >> $GITHUB_ENV
+        echo "INSTALL_PREFIX=/data/data/com.winlator/files/imagefs/usr" >> $GITHUB_ENV
         
         echo "使用的 Mesa 分支/标签: $MESA_BRANCH"
         echo "安装目录: $INSTALL_PREFIX"
@@ -188,8 +188,8 @@ jobs:
         ARCH_DESC="aarch64"
         
         # 打包完整安装目录
-        cd /data/data/com.winlator/files
-        tar -czvf "${HOME}/${PACKAGE_NAME}-full.tar.gz" imagefs/
+        cd /data/data/com.winlator/files/imagefs
+        tar -czvf "${HOME}/${PACKAGE_NAME}-full.tar.gz" usr/
         
         # 生成校验和
         cd $GITHUB_WORKSPACE
