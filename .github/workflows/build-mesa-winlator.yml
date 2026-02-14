@@ -1,4 +1,4 @@
-# build-mesa-rootfs.yml
+# build-mesa-winlator.yml
 name: Build Mesa Winlator (aarch64 only)
 
 on:
@@ -21,7 +21,6 @@ jobs:
     - name: 设置构建参数
       id: setup
       run: |
-        # 设置默认参数
         if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
           echo "MESA_BRANCH=${{ github.event.inputs.mesa_branch || 'gen8' }}" >> $GITHUB_ENV
         else
@@ -30,8 +29,6 @@ jobs:
         
         BUILD_DATE=$(date +%Y%m%d)
         echo "BUILD_DATE=$BUILD_DATE" >> $GITHUB_ENV
-        
-        # 设置安装目录
         echo "INSTALL_PREFIX=/data/data/com.winlator/files/imagefs/usr" >> $GITHUB_ENV
         
         echo "使用的 Mesa 分支/标签: $MESA_BRANCH"
@@ -53,11 +50,7 @@ jobs:
     - name: 安装系统依赖
       run: |
         sudo sed -i "s/^Types: deb$/Types: deb deb-src/" /etc/apt/sources.list.d/ubuntu.sources
-        
-        # 先更新包列表
         sudo apt update
-        
-        # 安装 aarch64 构建所需依赖
         sudo apt install -y \
           glslang-tools libxrandr-dev libxxf86vm-dev libxcb-shm0-dev libxcb-glx0-dev \
           libxext-dev llvm-19 libx11-dev libx11-xcb-dev libxcb1-dev libxcb-dri3-dev \
@@ -73,28 +66,22 @@ jobs:
     - name: 安装 Python 构建工具
       run: |
         sudo pip3 install meson mako
-        
         echo "检查安装的 meson 版本:"
         meson --version
         python3 -c "import mesonbuild; print('mesonbuild 模块路径:', mesonbuild.__file__)"
-        
         echo "$HOME/.local/bin" >> $GITHUB_PATH
 
     - name: 克隆 Mesa 源码
       run: |
         echo "📥 克隆 Mesa 仓库..."
-        
-        echo "使用 whitebelyash 的 Mesa for Android Container 仓库"
         git clone https://github.com/lfdevs/mesa-for-android-container.git mesa
         cd mesa
         
-        # 检出指定分支
         if [ -n "$MESA_BRANCH" ] && [ "$MESA_BRANCH" != "main" ]; then
           echo "检出分支: $MESA_BRANCH"
           git checkout $MESA_BRANCH
         fi
         
-        # 获取版本信息
         GIT_HASH=$(git rev-parse --short HEAD)
         if [ -f "VERSION" ]; then
           OFFICIAL_VERSION=$(cat VERSION)
@@ -113,65 +100,78 @@ jobs:
         echo "版本: $OFFICIAL_VERSION"
         echo "提交: $GIT_HASH"
         echo "描述: $GIT_DESCRIBE"
-        echo "分支: $(git branch --show-current)"
-        echo "标签/提交: $(git describe --tags 2>/dev/null || echo '无标签')"
 
-    - name: 应用winlator x11补丁
+    # ==================== 关键修复部分 ====================
+    - name: 应用 winlator x11 补丁（带保护和验证）
       run: |
         echo "=== 开始应用补丁 ==="
+        cd mesa
 
-        echo "1. 切换到 mesa 目录..."
-        cd mesa || { echo "错误：无法进入 mesa 目录"; exit 1; }
-
-        echo "2. 删除原有文件 src/vulkan/wsi/wsi_common_x11.c ..."
-        rm -rf ./src/vulkan/wsi/wsi_common_x11.c
-        echo "   删除完成（如不存在则忽略）。"
-
-        echo "3. 下载补丁文件 wsi_common_x11.c ..."
-        wget https://github.com/afeimod/linbox/raw/main/path/wsi_common_x11.c || {
-            echo "错误：wget 下载失败"
-            exit 1
-        }
-        # 检查文件是否真实存在
-        if [ ! -f wsi_common_x11.c ]; then
-            echo "错误：下载后文件未找到"
-            exit 1
+        # 备份原始文件（如果存在）
+        if [ -f src/vulkan/wsi/wsi_common_x11.c ]; then
+          cp src/vulkan/wsi/wsi_common_x11.c src/vulkan/wsi/wsi_common_x11.c.bak
         fi
-        echo "   下载成功。"
 
-        echo "4. 移动文件到 src/vulkan/wsi/ ..."
-        mv ./wsi_common_x11.c ./src/vulkan/wsi/ || {
-            echo "错误：移动文件失败"
-            exit 1
-        }
-        if [ ! -f ./src/vulkan/wsi/wsi_common_x11.c ]; then
-            echo "错误：移动后目标文件不存在"
-            exit 1
+        # 下载补丁文件
+        echo "下载补丁文件..."
+        wget -O wsi_common_x11.c.new https://github.com/afeimod/linbox/raw/main/path/wsi_common_x11.c
+        if [ ! -f wsi_common_x11.c.new ]; then
+          echo "错误：补丁下载失败"
+          exit 1
         fi
-        echo "   移动成功。"
 
-        echo "5. 设置文件权限为 777 ..."
-        chmod 777 ./src/vulkan/wsi/wsi_common_x11.c || {
-            echo "错误：设置权限失败"
-            exit 1
-        }
-        echo "   权限设置完成。"
+        # 替换原文件
+        echo "替换文件..."
+        mv wsi_common_x11.c.new src/vulkan/wsi/wsi_common_x11.c
+        if [ ! -f src/vulkan/wsi/wsi_common_x11.c ]; then
+          echo "错误：移动文件失败"
+          exit 1
+        fi
+
+        # 设置只读权限，防止意外修改
+        echo "设置文件权限为只读 (444)..."
+        chmod 444 src/vulkan/wsi/wsi_common_x11.c
+
+        # 计算并保存文件哈希，用于后续验证
+        sha256sum src/vulkan/wsi/wsi_common_x11.c > /tmp/wsi_common.hash
+        echo "补丁文件哈希已保存"
 
         echo "=== 补丁应用完成 ==="
 
-    - name: 构建 aarch64 架构
+    - name: 构建 aarch64 架构（带补丁验证）
       run: |
         echo "🔨 开始构建 aarch64 架构..."
-        
         cd mesa
-        
+
+        # 验证补丁文件是否仍为预期内容（未被恢复）
+        echo "验证补丁文件完整性..."
+        if ! sha256sum -c /tmp/wsi_common.hash; then
+          echo "⚠️ 警告：补丁文件已被修改或恢复，重新应用补丁..."
+          
+          # 重新下载补丁
+          wget -O src/vulkan/wsi/wsi_common_x11.c https://github.com/afeimod/linbox/raw/main/path/wsi_common_x11.c
+          if [ $? -ne 0 ]; then
+            echo "错误：重新下载补丁失败"
+            exit 1
+          fi
+          
+          # 重新设置只读权限
+          chmod 444 src/vulkan/wsi/wsi_common_x11.c
+          
+          # 更新哈希记录
+          sha256sum src/vulkan/wsi/wsi_common_x11.c > /tmp/wsi_common.hash
+          echo "补丁已重新应用"
+        else
+          echo "✅ 补丁文件完好，继续构建"
+        fi
+
         # 创建安装目录
         sudo mkdir -p $INSTALL_PREFIX
         sudo chmod 777 -R /data/data/com.winlator/files/imagefs
-        
-        # 为 aarch64 创建构建目录
+
+        # 创建构建目录
         mkdir -p build-aarch64
-        
+
         # 配置 aarch64 构建
         meson setup build-aarch64 \
             --libdir=lib \
@@ -201,37 +201,31 @@ jobs:
             -Dvideo-codecs=all \
             -Dmediafoundation-codecs=all \
             -Dgbm=enabled
-        
+
         echo "🏗️  正在构建 aarch64..."
         ninja -C build-aarch64 -j$(nproc)
-        
+
         echo "📦 正在安装 aarch64..."
         sudo ninja -C build-aarch64 install
-        
+
         # 验证安装
         echo "aarch64 安装验证:"
         ls -la $INSTALL_PREFIX/lib/
-        echo "aarch64 库文件架构:"
         file $INSTALL_PREFIX/lib/*.so 2>/dev/null | head -5 || true
 
     - name: 打包构建产物
       run: |
         echo "📦 开始打包..."
-        
-        # 创建版本化的包名
         PACKAGE_NAME="rootfsmesa-${MESA_VERSION}-aarch64"
         ARCH_DESC="aarch64"
         
-        # 打包完整安装目录
         cd /data/data/com.winlator/files/imagefs
         tar -czvf "${HOME}/${PACKAGE_NAME}-full.tar.gz" usr/
         
-        # 生成校验和
         cd $GITHUB_WORKSPACE
         mv "${HOME}/${PACKAGE_NAME}-full.tar.gz" .
         sha256sum ${PACKAGE_NAME}-*.tar.gz > checksums.txt
         
-        # 设置输出变量
         echo "PACKAGE_NAME=${PACKAGE_NAME}" >> $GITHUB_ENV
         echo "FULL_PACKAGE=${PACKAGE_NAME}-full.tar.gz" >> $GITHUB_ENV
         echo "ARCH_DESC=${ARCH_DESC}" >> $GITHUB_ENV
@@ -263,7 +257,7 @@ jobs:
           - **提交哈希**: ${{ env.MESA_GIT_HASH }}
           - **构建日期**: ${{ env.BUILD_DATE }}
           - **分支**: ${{ env.MESA_BRANCH }}
-          - **源码仓库**: whitebelyash/mesa-tu8.git
+          - **源码仓库**: lfdevs/mesa-for-android-container.git
           
           包含文件:
           - `${{ env.FULL_PACKAGE }}` - 完整 Mesa 安装包
@@ -271,7 +265,7 @@ jobs:
           
           目录结构:
           ```
-          mesa/
+          usr/
           ├── bin/                 # 可执行文件
           ├── include/             # 头文件
           ├── lib/                 # aarch64 库目录
@@ -281,12 +275,12 @@ jobs:
           
           安装说明:
           1. 下载完整的 tar.gz 包
-          2. 在 Android Container 环境中解压到根目录: `tar -xzf package.tar.gz -C /data/data/com.winlator/files/imagefs/`
+          2. 在 Android Container 环境中解压到根目录: `tar -xzf package.tar.gz -C /`
           
           使用说明:
           ```bash
-          export LD_LIBRARY_PATH=/data/data/com.winlator/files/imagefs/lib:/data/data/com.winlator/files/imagefs/lib/dri:$LD_LIBRARY_PATH
-          export LIBGL_DRIVERS_PATH=/data/data/com.winlator/files/imagefs/lib/dri
+          export LD_LIBRARY_PATH=/data/data/com.winlator/files/imagefs/usr/lib:/data/data/com.winlator/files/imagefs/usr/lib/dri:$LD_LIBRARY_PATH
+          export LIBGL_DRIVERS_PATH=/data/data/com.winlator/files/imagefs/usr/lib/dri
           ```
           
           驱动支持:
@@ -302,7 +296,7 @@ jobs:
           - 专为 Android Container 环境 (如 Winlator) 优化
           - 需要 rootfs 环境
           - 已禁用 Wayland 支持
-          - 基于 whitebelyash/mesa-tu8 仓库构建，针对 Android 环境进行了优化
+          - 基于 lfdevs/mesa-for-android-container 仓库构建，针对 Android 环境进行了优化
         files: |
           ${{ env.PACKAGE_NAME }}-*.tar.gz
           checksums.txt
@@ -321,7 +315,6 @@ jobs:
         echo "分支: $MESA_BRANCH"
         echo "目标架构: aarch64"
         echo "环境: Android Container (Winlator 兼容)"
-        echo "源码仓库: whitebelyash/mesa-tu8.git"
         echo ""
         echo "📦 生成的文件:"
         ls -1 *.tar.gz | while read file; do
@@ -339,6 +332,6 @@ jobs:
         echo ""
         
         echo "安装目录结构:"
-        echo "  /data/data/com.winlator/files/imagefs/lib/    - 库文件"
-        echo "  /data/data/com.winlator/files/imagefs/lib/dri - DRI 驱动"
-        echo "  /data/data/com.winlator/files/imagefs/bin/    - 可执行文件"
+        echo "  /data/data/com.winlator/files/imagefs/usr/lib/    - 库文件"
+        echo "  /data/data/com.winlator/files/imagefs/usr/lib/dri - DRI 驱动"
+        echo "  /data/data/com.winlator/files/imagefs/usr/bin/    - 可执行文件"
