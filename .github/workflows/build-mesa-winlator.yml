@@ -74,7 +74,7 @@ jobs:
     - name: 克隆 Mesa 源码
       run: |
         echo "📥 克隆 Mesa 仓库..."
-        git clone https://github.com/afeimod/mesa-for-android-container.git mesa
+        git clone https://github.com/lfdevs/mesa-for-android-container.git mesa
         cd mesa
         
         if [ -n "$MESA_BRANCH" ] && [ "$MESA_BRANCH" != "main" ]; then
