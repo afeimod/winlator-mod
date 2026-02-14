@@ -32,7 +32,7 @@ jobs:
         echo "BUILD_DATE=$BUILD_DATE" >> $GITHUB_ENV
         
         # 设置安装目录
-        echo "INSTALL_PREFIX=/data/data/com.winlator/files/rootfs/usr" >> $GITHUB_ENV
+        echo "INSTALL_PREFIX=/data/data/com.winlator/files/imagefs" >> $GITHUB_ENV
         
         echo "使用的 Mesa 分支/标签: $MESA_BRANCH"
         echo "安装目录: $INSTALL_PREFIX"
@@ -132,7 +132,7 @@ jobs:
         
         # 创建安装目录
         sudo mkdir -p $INSTALL_PREFIX
-        sudo chmod 777 -R /data/data/com.winlator/files/rootfs
+        sudo chmod 777 -R /data/data/com.winlator/files/imagefs
         
         # 为 aarch64 创建构建目录
         mkdir -p build-aarch64
@@ -188,7 +188,7 @@ jobs:
         ARCH_DESC="aarch64"
         
         # 打包完整安装目录
-        cd /data/data/com.winlator/files/rootfs
+        cd /data/data/com.winlator/files/imagefs
         tar -czvf "${HOME}/${PACKAGE_NAME}-full.tar.gz" usr/
         
         # 生成校验和
@@ -246,12 +246,12 @@ jobs:
           
           安装说明:
           1. 下载完整的 tar.gz 包
-          2. 在 Android Container 环境中解压到根目录: `tar -xzf package.tar.gz -C /data/data/com.winlator/files/rootfs/`
+          2. 在 Android Container 环境中解压到根目录: `tar -xzf package.tar.gz -C /data/data/com.winlator/files/imagefs/`
           
           使用说明:
           ```bash
-          export LD_LIBRARY_PATH=/data/data/com.winlator/files/rootfs/usr/lib:/data/data/com.winlator/files/rootfs/usr/lib/dri:$LD_LIBRARY_PATH
-          export LIBGL_DRIVERS_PATH=/data/data/com.winlator/files/rootfs/usr/lib/dri
+          export LD_LIBRARY_PATH=/data/data/com.winlator/files/imagefs/lib:/data/data/com.winlator/files/imagefs/lib/dri:$LD_LIBRARY_PATH
+          export LIBGL_DRIVERS_PATH=/data/data/com.winlator/files/imagefs/lib/dri
           ```
           
           驱动支持:
@@ -304,6 +304,6 @@ jobs:
         echo ""
         
         echo "安装目录结构:"
-        echo "  /data/data/com.winlator/files/rootfs/usr/lib/    - 库文件"
-        echo "  /data/data/com.winlator/files/rootfs/usr/lib/dri - DRI 驱动"
-        echo "  /data/data/com.winlator/files/rootfs/usr/bin/    - 可执行文件"
+        echo "  /data/data/com.winlator/files/imagefs/lib/    - 库文件"
+        echo "  /data/data/com.winlator/files/imagefs/lib/dri - DRI 驱动"
+        echo "  /data/data/com.winlator/files/imagefs/bin/    - 可执行文件"
