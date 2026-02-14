@@ -123,7 +123,7 @@ jobs:
         rm -rf ./src/vulkan/wsi/wsi_common_x11.c
         wget https://github.com/afeimod/linbox/raw/main/path/wsi_common_x11.c
         mv ./wsi_common_x11.c ./src/vulkan/wsi/
-        chmod 777 ./src/vulkan/wsi_common_x11.c
+        chmod 777 ./src/vulkan/wsi/wsi_common_x11.c
 
     - name: 构建 aarch64 架构
       run: |
