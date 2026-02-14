@@ -118,12 +118,46 @@ jobs:
         
     - name: 应用winlator x11补丁
       run: |
-        echo "应用补丁..."
-        cd mesa
+        echo "=== 开始应用补丁 ==="
+
+        echo "1. 切换到 mesa 目录..."
+        cd mesa || { echo "错误：无法进入 mesa 目录"; exit 1; }
+
+        echo "2. 删除原有文件 src/vulkan/wsi/wsi_common_x11.c ..."
         rm -rf ./src/vulkan/wsi/wsi_common_x11.c
-        wget https://github.com/afeimod/linbox/raw/main/path/wsi_common_x11.c
-        mv ./wsi_common_x11.c ./src/vulkan/wsi/
-        chmod 777 ./src/vulkan/wsi/wsi_common_x11.c
+       echo "   删除完成（如不存在则忽略）。"
+
+        echo "3. 下载补丁文件 wsi_common_x11.c ..."
+        wget https://github.com/afeimod/linbox/raw/main/path/wsi_common_x11.c || {
+            echo "错误：wget 下载失败"
+            exit 1
+        }
+        # 检查文件是否真实存在
+        if [ ! -f wsi_common_x11.c ]; then
+            echo "错误：下载后文件未找到"
+            exit 1
+        fi
+        echo "   下载成功。"
+
+        echo "4. 移动文件到 src/vulkan/wsi/ ..."
+        mv ./wsi_common_x11.c ./src/vulkan/wsi/ || {
+            echo "错误：移动文件失败"
+            exit 1
+        }
+        if [ ! -f ./src/vulkan/wsi/wsi_common_x11.c ]; then
+            echo "错误：移动后目标文件不存在"
+            exit 1
+        fi
+        echo "   移动成功。"
+
+        echo "5. 设置文件权限为 777 ..."
+        chmod 777 ./src/vulkan/wsi/wsi_common_x11.c || {
+            echo "错误：设置权限失败"
+            exit 1
+        }
+        echo "   权限设置完成。"
+
+        echo "=== 补丁应用完成 ==="
 
     - name: 构建 aarch64 架构
       run: |
