@@ -188,8 +188,8 @@ jobs:
         ARCH_DESC="aarch64"
         
         # 打包完整安装目录
-        cd /data/data/com.winlator/files/imagefs
-        tar -czvf "${HOME}/${PACKAGE_NAME}-full.tar.gz" usr/
+        cd /data/data/com.winlator/files
+        tar -czvf "${HOME}/${PACKAGE_NAME}-full.tar.gz" imagefs/
         
         # 生成校验和
         cd $GITHUB_WORKSPACE
