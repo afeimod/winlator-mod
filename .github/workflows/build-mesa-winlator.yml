@@ -173,34 +173,27 @@ jobs:
         mkdir -p build-aarch64
 
         # 配置 aarch64 构建
-        meson setup build-aarch64 \
-            --libdir=lib \
-            -Dprefix=$INSTALL_PREFIX \
-            -Dbuildtype=release \
-            -Dplatforms=x11 \
-            -Degl-native-platform=x11 \
-            -Doptimization=3 \
-            -Dglx=dri \
-            -Dopengl=true \
-            -Dgles1=enabled \
-            -Dgles2=enabled \
-            -Dglvnd=disabled \
-            -Degl=enabled \
-            -Dllvm=enabled \
-            -Dshared-llvm=enabled \
-            -Dshader-cache=enabled \
-            -Dxlib-lease=enabled \
-            -Dvulkan-beta=true \
-            -Dlibunwind=disabled \
-            -Dvalgrind=disabled \
-            -Dmicrosoft-clc=disabled \
-            -Dgallium-extra-hud=true \
-            -Dgallium-drivers=zink,freedreno \
-            -Dshader-cache-default=true \
-            -Dvulkan-drivers=freedreno \
-            -Dvideo-codecs=all \
-            -Dmediafoundation-codecs=all \
-            -Dgbm=enabled
+        meson setup build \
+           --prefix=/data/data/com.winlator/files/imagefs/usr \
+           -Dplatforms=x11 \
+           -Dbuildtype=release \
+           -Degl-native-platform=x11 \
+           -Dgallium-drivers=freedreno,zink \
+           -Dvulkan-drivers=freedreno \
+           -Dfreedreno-kmds=kgsl \
+           -Dshader-cache=enabled \
+           -Dgles1=enabled \
+           -Dgles2=enabled \
+           -Dopengl=true \
+           -Dgbm=enabled \
+           -Dglx=dri \
+           -Degl=enabled \
+           -Dglvnd=disabled \
+           -Dmicrosoft-clc=disabled \
+           -Dllvm=enabled \
+           -Dshared-llvm=enabled \
+           -Dvulkan-beta=true \
+           -Dvideo-codecs=all
 
         echo "🏗️  正在构建 aarch64..."
         ninja -C build-aarch64 -j$(nproc)
