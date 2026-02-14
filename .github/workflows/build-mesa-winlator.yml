@@ -115,7 +115,6 @@ jobs:
         echo "描述: $GIT_DESCRIBE"
         echo "分支: $(git branch --show-current)"
         echo "标签/提交: $(git describe --tags 2>/dev/null || echo '无标签')"
-        
     - name: 应用winlator x11补丁
       run: |
         echo "=== 开始应用补丁 ==="
