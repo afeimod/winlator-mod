@@ -86,6 +86,15 @@ void ArrayBuffer_putBytes(ArrayBuffer* arrayBuffer, const void* bytes, int size)
     arrayBuffer->size += size;
 }
 
+void ArrayBuffer_putString(ArrayBuffer* arrayBuffer, const char* string, ...) {
+    char buffer[strlen(string) + 128];
+    va_list valist;
+    va_start(valist, string);
+    vsprintf(buffer, string, valist);
+    va_end(valist);
+    ArrayBuffer_putBytes(arrayBuffer, buffer, strlen(buffer));
+}
+
 char ArrayBuffer_get(ArrayBuffer* arrayBuffer) {
     return arrayBuffer->buffer[arrayBuffer->position++];
 }
@@ -140,6 +149,12 @@ void ArrayBuffer_free(ArrayBuffer* arrayBuffer) {
     arrayBuffer->size = 0;
 }
 
+void ArrayBuffer_copy(ArrayBuffer* src, ArrayBuffer* dst) {
+    ArrayBuffer_free(dst);
+    dst->buffer = memdup(src->buffer, src->size);
+    dst->capacity = dst->size = src->size;
+}
+
 static int intCompare(const void * a, const void * b) {
     return (*(int*)a - *(int*)b);
 }
@@ -151,7 +166,7 @@ static int hashCode(const char* key) {
 }
 
 void IntArray_add(IntArray* intArray, int value) {
-    ENSURE_ARRAY_CAPACITY(intArray->size + 1, intArray->capacity, intArray->values, sizeof(int));
+    ENSURE_ARRAY_CAPACITY((intArray->size + 1) * sizeof(int), intArray->capacity, intArray->values, 1);
     intArray->values[intArray->size++] = value;
 }
 
@@ -161,7 +176,7 @@ void IntArray_addAt(IntArray* intArray, int index, int value) {
         return;
     }
 
-    ENSURE_ARRAY_CAPACITY(intArray->size + 1, intArray->capacity, intArray->values, sizeof(int));
+    ENSURE_ARRAY_CAPACITY((intArray->size + 1) * sizeof(int), intArray->capacity, intArray->values, 1);
     memmove(intArray->values + index + 1, intArray->values + index, (intArray->size - index) * sizeof(int));
     intArray->values[index] = value;
     intArray->size++;
@@ -171,7 +186,7 @@ void IntArray_addAll(IntArray* intArray, int valueCount, ...) {
     va_list valist;
     va_start(valist, valueCount);
 
-    ENSURE_ARRAY_CAPACITY(intArray->size + valueCount, intArray->capacity, intArray->values, sizeof(int));
+    ENSURE_ARRAY_CAPACITY((intArray->size + valueCount) * sizeof(int), intArray->capacity, intArray->values, 1);
     for (int i = 0; i < valueCount; i++) intArray->values[intArray->size++] = va_arg(valist, int);
 
     va_end(valist);
@@ -272,6 +287,9 @@ void ArrayList_free(ArrayList* arrayList) {
         free(arrayList->elements);
         arrayList->elements = NULL;
     }
+
+    arrayList->size = 0;
+    arrayList->capacity = 0;
 }
 
 ArrayList* ArrayList_fromStrings(const char** strings, int size) {
@@ -364,12 +382,11 @@ void* ArrayMap_remove(ArrayMap* arrayMap, const char* key) {
     return index >= 0 ? ArrayMap_removeAt(arrayMap, index) : NULL;
 }
 
-void ArrayMap_free(ArrayMap* arrayMap, bool freeKeys) {
+void ArrayMap_free(ArrayMap* arrayMap, bool freeKeys, bool freeValues) {
     if (arrayMap->entries) {
-        if (freeKeys) {
-            for (int i = 0; i < arrayMap->capacity; i++) {
-                if (arrayMap->entries[i].key) free(arrayMap->entries[i].key);
-            }
+        for (int i = 0; i < arrayMap->capacity; i++) {
+            if (freeKeys && arrayMap->entries[i].key) free(arrayMap->entries[i].key);
+            if (freeValues && arrayMap->entries[i].value) free(arrayMap->entries[i].value);
         }
         free(arrayMap->entries);
         arrayMap->entries = NULL;
@@ -449,6 +466,21 @@ void* SparseArray_remove(SparseArray* sparseArray, int key) {
     return index >= 0 ? SparseArray_removeAt(sparseArray, index) : NULL;
 }
 
+void SparseArray_free(SparseArray* sparseArray, bool freeValues) {
+    if (sparseArray->entries) {
+        if (freeValues) {
+            for (int i = 0; i < sparseArray->capacity; i++) {
+                if (sparseArray->entries[i].value) free(sparseArray->entries[i].value);
+            }
+        }
+        free(sparseArray->entries);
+        sparseArray->entries = NULL;
+    }
+
+    sparseArray->size = 0;
+    sparseArray->capacity = 0;
+}
+
 static void ArrayDeque_doubleCapacity(ArrayDeque* arrayDeque) {
     int head = arrayDeque->head;
     int size = arrayDeque->size;
@@ -456,7 +488,7 @@ static void ArrayDeque_doubleCapacity(ArrayDeque* arrayDeque) {
     int newCapacity = size << 1;
     if (newCapacity < 0) return;
 
-    void** newElements = malloc(newCapacity * sizeof(void*));
+    void** newElements = calloc(newCapacity, sizeof(void*));
     memcpy(newElements, arrayDeque->elements + head, diff * sizeof(void*));
     memcpy(newElements + diff, arrayDeque->elements, head * sizeof(void*));
     free(arrayDeque->elements);
@@ -467,22 +499,13 @@ static void ArrayDeque_doubleCapacity(ArrayDeque* arrayDeque) {
     arrayDeque->tail = size;
 }
 
-void ArrayDeque_init(ArrayDeque* arrayDeque, int initialCapacity) {
-    if (initialCapacity < 8) initialCapacity = 8;
-
-    initialCapacity |= (initialCapacity >>  1);
-    initialCapacity |= (initialCapacity >>  2);
-    initialCapacity |= (initialCapacity >>  4);
-    initialCapacity |= (initialCapacity >>  8);
-    initialCapacity |= (initialCapacity >> 16);
-    initialCapacity++;
-
-    if (initialCapacity < 0) initialCapacity >>= 1;
-
-    arrayDeque->head = 0;
-    arrayDeque->tail = 0;
-    arrayDeque->size = initialCapacity;
-    arrayDeque->elements = malloc(initialCapacity * sizeof(void*));
+static void ArrayDeque_ensureCapacity(ArrayDeque* arrayDeque) {
+    if (!arrayDeque->elements) {
+        arrayDeque->head = 0;
+        arrayDeque->tail = 0;
+        arrayDeque->size = 8;
+        arrayDeque->elements = calloc(8, sizeof(void*));
+    }
 }
 
 bool ArrayDeque_isEmpty(ArrayDeque* arrayDeque) {
@@ -490,18 +513,21 @@ bool ArrayDeque_isEmpty(ArrayDeque* arrayDeque) {
 }
 
 void ArrayDeque_addFirst(ArrayDeque* arrayDeque, void* element) {
+    ArrayDeque_ensureCapacity(arrayDeque);
     arrayDeque->head = (arrayDeque->head - 1) & (arrayDeque->size - 1);
     arrayDeque->elements[arrayDeque->head] = element;
     if (arrayDeque->head == arrayDeque->tail) ArrayDeque_doubleCapacity(arrayDeque);
 }
 
 void ArrayDeque_addLast(ArrayDeque* arrayDeque, void* element) {
+    ArrayDeque_ensureCapacity(arrayDeque);
     arrayDeque->elements[arrayDeque->tail] = element;
     arrayDeque->tail = (arrayDeque->tail + 1) & (arrayDeque->size - 1);
     if (arrayDeque->tail == arrayDeque->head) ArrayDeque_doubleCapacity(arrayDeque);
 }
 
 void* ArrayDeque_removeFirst(ArrayDeque* arrayDeque) {
+    ArrayDeque_ensureCapacity(arrayDeque);
     int head = arrayDeque->head;
     void* result = arrayDeque->elements[head];
     if (result) {
@@ -512,6 +538,7 @@ void* ArrayDeque_removeFirst(ArrayDeque* arrayDeque) {
 }
 
 void* ArrayDeque_removeLast(ArrayDeque* arrayDeque) {
+    ArrayDeque_ensureCapacity(arrayDeque);
     int tail = (arrayDeque->tail - 1) & (arrayDeque->size - 1);
     void* result = arrayDeque->elements[tail];
     if (result) {
@@ -521,13 +548,32 @@ void* ArrayDeque_removeLast(ArrayDeque* arrayDeque) {
     return result;
 }
 
-void ArrayDeque_free(ArrayDeque* arrayDeque) {
-    if (!arrayDeque) return;
-    for (int i = 0; i < arrayDeque->size; i++) {
-        if (arrayDeque->elements[i]) {
-            free(arrayDeque->elements[i]);
-            arrayDeque->elements[i] = NULL;
+void* ArrayDeque_getFirst(ArrayDeque* arrayDeque) {
+    ArrayDeque_ensureCapacity(arrayDeque);
+    return arrayDeque->elements[arrayDeque->head];
+}
+
+void* ArrayDeque_getLast(ArrayDeque* arrayDeque) {
+    ArrayDeque_ensureCapacity(arrayDeque);
+    int tail = (arrayDeque->tail - 1) & (arrayDeque->size - 1);
+    return arrayDeque->elements[tail];
+}
+
+void ArrayDeque_free(ArrayDeque* arrayDeque, bool freeValues) {
+    if (arrayDeque->elements) {
+        if (freeValues) {
+            for (int i = 0; i < arrayDeque->size; i++) {
+                if (arrayDeque->elements[i]) {
+                    free(arrayDeque->elements[i]);
+                    arrayDeque->elements[i] = NULL;
+                }
+            }
         }
+        free(arrayDeque->elements);
+        arrayDeque->elements = NULL;
     }
-    free(arrayDeque);
+
+    arrayDeque->head = 0;
+    arrayDeque->tail = 0;
+    arrayDeque->size = 0;
 }

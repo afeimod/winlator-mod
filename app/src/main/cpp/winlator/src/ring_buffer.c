@@ -27,28 +27,19 @@
 #define debug_printf(...) fprintf(stderr, __VA_ARGS__)
 #endif
 
-#define COND_WAIT(cond) \
-    uint32_t busyWaitIter = 0; \
-    do { \
-        if (cond) break; \
-        busyWait(&busyWaitIter); \
-        if (RingBuffer_hasStatus(ring, RING_STATUS_EXIT)) return false; \
-    } \
-    while (1)
-
-static void RingBuffer_setHead(RingBuffer* ring, uint32_t head) {
+void RingBuffer_setHead(RingBuffer* ring, uint32_t head) {
     atomic_store_explicit(ring->head, head, memory_order_release);
 }
 
-static uint32_t RingBuffer_getHead(RingBuffer* ring) {
+uint32_t RingBuffer_getHead(RingBuffer* ring) {
     return atomic_load_explicit(ring->head, memory_order_acquire);
 }
 
-static void RingBuffer_setTail(RingBuffer* ring, uint32_t tail) {
+void RingBuffer_setTail(RingBuffer* ring, uint32_t tail) {
     return atomic_store_explicit(ring->tail, tail, memory_order_release);
 }
 
-static uint32_t RingBuffer_getTail(RingBuffer* ring) {
+uint32_t RingBuffer_getTail(RingBuffer* ring) {
     return atomic_load_explicit(ring->tail, memory_order_acquire);
 }
 
@@ -98,7 +89,7 @@ bool RingBuffer_read(RingBuffer* ring, void* data, uint32_t size) {
         return false;
     }
 
-    COND_WAIT(RingBuffer_size(ring) >= size);
+    if (!RingBuffer_waitForRead(ring, size)) return false;
     uint32_t head = RingBuffer_getHead(ring);
     uint32_t offset = head & (ring->bufferSize - 1);
 
@@ -121,7 +112,7 @@ bool RingBuffer_write(RingBuffer* ring, const void* data, uint32_t size) {
         return false;
     }
 
-    COND_WAIT(RingBuffer_freeSpace(ring) >= size);
+    if (!RingBuffer_waitForWrite(ring, size)) return false;
     uint32_t tail = RingBuffer_getTail(ring);
     uint32_t offset = tail & (ring->bufferSize - 1);
 
@@ -154,4 +145,26 @@ void RingBuffer_free(RingBuffer* ring) {
     }
 
     free(ring);
+}
+
+bool RingBuffer_waitForRead(RingBuffer* ring, uint32_t size) {
+    uint32_t busyWaitIter = 0;
+    do {
+        if (RingBuffer_size(ring) >= size) break;
+        busyWait(&busyWaitIter);
+        if (RingBuffer_hasStatus(ring, RING_STATUS_EXIT)) return false;
+    }
+    while (1);
+    return true;
+}
+
+bool RingBuffer_waitForWrite(RingBuffer* ring, uint32_t size) {
+    uint32_t busyWaitIter = 0;
+    do {
+        if (RingBuffer_freeSpace(ring) >= size) break;
+        busyWait(&busyWaitIter);
+        if (RingBuffer_hasStatus(ring, RING_STATUS_EXIT)) return false;
+    }
+    while (1);
+    return true;
 }

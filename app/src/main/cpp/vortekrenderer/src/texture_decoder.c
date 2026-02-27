@@ -144,7 +144,6 @@ TextureDecoder* TextureDecoder_create(VkContext* context, VkPhysicalDeviceFeatur
     TextureDecoder* textureDecoder = calloc(1, sizeof(TextureDecoder));
     textureDecoder->imageCacheSize = context->imageCacheSize;
     textureDecoder->threadPool = context->threadPool;
-    ArrayDeque_init(&textureDecoder->bufferImageCopies, 8);
     return textureDecoder;
 }
 

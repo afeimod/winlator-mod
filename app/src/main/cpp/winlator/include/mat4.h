@@ -5,7 +5,7 @@
 #include <math.h>
 
 #define MAT4_SIZE 16 * sizeof(float)
-#define IDENTITY_MATRIX {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1}
+#define IDENTITY_MATRIX {1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f}
 
 #define TO_RADIANS(x) (x * (M_PI / 180.0f))
 #define TO_DEGREES(x) (x * (180.0f / M_PI))

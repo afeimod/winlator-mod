@@ -5,6 +5,7 @@
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <linux/dma-heap.h>
+#include <errno.h>
 
 #include "ion/ion.h"
 #include "ion/ion_4.19.h"

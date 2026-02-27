@@ -10,8 +10,8 @@ typedef struct ThreadPool_Task {
 } ThreadPool_Task;
 
 typedef struct ThreadPool {
-    int numThreads;
-    int numThreadsWorking;
+    uint8_t numThreads;
+    uint8_t numThreadsWorking;
     bool running;
     pthread_mutex_t taskMutex;
     pthread_cond_t taskCond;
@@ -45,12 +45,12 @@ static inline void* threadPoolWorker(void* param) {
             pthread_cond_wait(&threadPool->taskCond, &threadPool->taskMutex);
         }
 
-        task = ThreadPool_getTask(threadPool);
-        pthread_mutex_unlock(&threadPool->taskMutex);
-
         pthread_mutex_lock(&threadPool->threadCountMutex);
         threadPool->numThreadsWorking++;
+        task = ThreadPool_getTask(threadPool);
         pthread_mutex_unlock(&threadPool->threadCountMutex);
+
+        pthread_mutex_unlock(&threadPool->taskMutex);
 
         if (task) {
             task->func(task->param);

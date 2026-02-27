@@ -7,6 +7,7 @@
 #include "arrays.h"
 
 #define INT2CHR(x) ('0' + x)
+#define CHR2INT(x) (x - '0')
 #define FOREACH_LINE(input, inputSize, content) \
     do { \
         int pos = 0; \
@@ -116,7 +117,7 @@ static inline void* memdup(const void* src, size_t size) {
 }
 
 static inline char* ltrim(char* s) {
-    while(isspace(*s)) s++;
+    while (isspace(*s)) s++;
     return s;
 }
 
@@ -131,7 +132,7 @@ static inline char* trim(char* s) {
     return ltrim(rtrim(s));
 }
 
-static inline void strsplit(char* input, char delimiter, ArrayList* outStrings) { // TODO improve
+static inline void strsplit(char* input, char delimiter, ArrayList* outStrings) {
     char* index;
     while ((index = strchr(input, delimiter)) != NULL) {
         int len = index - input;
@@ -177,6 +178,36 @@ static inline char* strjoin(char delimiter, int count, ...) {
     return result;
 }
 
+static inline char* strwrd(char* haystack, char* needle, char** endPtr) {
+    char* chr = haystack;
+    int start = -1;
+    char* result = NULL;
+    if (endPtr) *endPtr = NULL;
+
+    while (*chr && !result) {
+        if (isalnum(*chr) || *chr == '_') {
+            if (start == -1) start = chr - haystack;
+        }
+        else if (start != -1) {
+            char* word = haystack + start;
+
+            char old = *chr;
+            *chr = '\0';
+            bool found = !needle || strcmp(word, needle) == 0;
+            *chr = old;
+
+            if (found) {
+                if (endPtr) *endPtr = chr;
+                result = word;
+            }
+            start = -1;
+        }
+        chr++;
+    }
+
+    return result;
+}
+
 static inline char* str_replace(char* search, char* replace, char* subject) {
     int strSize = strlen(subject) + 1;
     char* result = malloc(strSize);
@@ -211,20 +242,33 @@ static inline char* substr(char* string, int offset, int length) {
     return result;
 }
 
-static inline void substrv(char* string, char delimStart, char delimEnd, char* outString) { // FIXME should stay here?
-    char* start = strchr(string, delimStart) + 1;
-    char* end = strchr(start, delimEnd);
-
-    if (start && end) {
-        int len = end - start;
-        strncpy(outString, start, len);
-        outString[len] = '\0';
+static inline bool substrv(char* string, char delimiterStart, char delimiterEnd, char* result) {
+    if (*string != delimiterStart) {
+        string = strchr(string, delimiterStart);
+        if (!string) {
+            result[0] = '\0';
+            return false;
+        }
     }
-    else outString[0] = '\0';
+    string++;
+    int i = 0;
+    while (*string && *string != delimiterEnd) result[i++] = *string++;
+    result[i] = '\0';
+    return true;
+}
+
+static inline int strnums(char* string, char* result) {
+    result[0] = '\0';
+    if (!string) return 0;
+    int i = 0;
+    while (*string++) if (isdigit(*string)) result[i++] = *string;
+    result[i] = '\0';
+    return i;
 }
 
 static inline bool is_int(char* string) {
-    if (string[0] == '-') string++;
+    if (!string) return false;
+    if (string[0] == '-' || string[0] == '+') string++;
     bool hasDigit = false;
     while (*string) {
         if (!isdigit(*string)) return false;
@@ -234,16 +278,13 @@ static inline bool is_int(char* string) {
     return hasDigit;
 }
 
-static inline bool is_numeric(char* string) {
-    if (string[0] == '-') string++;
-    bool hasDigit = false;
-    while (*string) {
-        if (*string == '.') continue;
-        if (!isdigit(*string)) return false;
-        hasDigit = true;
-        string++;
-    }
-    return hasDigit;
+static inline bool is_float(char* string) {
+    if (!string) return false;
+    char* endPtr;
+    strtod(string, &endPtr);
+    if (string == endPtr) return false;
+    while (isspace((uint8_t)*endPtr)) endPtr++;
+    return *endPtr == '\0';
 }
 
 static inline uint32_t fnv1aHash32(const void* data, int len) {

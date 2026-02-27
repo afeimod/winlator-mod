@@ -20,6 +20,7 @@ extern float* ArrayBuffer_putFloat2(ArrayBuffer* arrayBuffer, float x, float y);
 extern float* ArrayBuffer_putFloat3(ArrayBuffer* arrayBuffer, float x, float y, float z);
 extern float* ArrayBuffer_putFloat4(ArrayBuffer* arrayBuffer, float x, float y, float z, float w);
 extern void ArrayBuffer_putDouble(ArrayBuffer* arrayBuffer, double value);
+extern void ArrayBuffer_putString(ArrayBuffer* arrayBuffer, const char* string, ...);
 extern void ArrayBuffer_putBytes(ArrayBuffer* arrayBuffer, const void* bytes, int size);
 extern char ArrayBuffer_get(ArrayBuffer* arrayBuffer);
 extern short ArrayBuffer_getShort(ArrayBuffer* arrayBuffer);
@@ -32,6 +33,7 @@ extern void ArrayBuffer_skip(ArrayBuffer* arrayBuffer, int length);
 extern int ArrayBuffer_available(ArrayBuffer* arrayBuffer);
 extern void ArrayBuffer_rewind(ArrayBuffer* arrayBuffer);
 extern void ArrayBuffer_free(ArrayBuffer* arrayBuffer);
+extern void ArrayBuffer_copy(ArrayBuffer* src, ArrayBuffer* dst);
 
 typedef struct IntArray {
     int size;
@@ -80,7 +82,7 @@ extern void ArrayMap_put(ArrayMap* arrayMap, const char* key, void* value);
 extern void* ArrayMap_get(ArrayMap* arrayMap, const char* key);
 extern void* ArrayMap_removeAt(ArrayMap* arrayMap, int index);
 extern void* ArrayMap_remove(ArrayMap* arrayMap, const char* key);
-extern void ArrayMap_free(ArrayMap* arrayMap, bool freeKeys);
+extern void ArrayMap_free(ArrayMap* arrayMap, bool freeKeys, bool freeValues);
 
 typedef struct SparseArray_Entry {
     int key;
@@ -99,6 +101,7 @@ extern void SparseArray_put(SparseArray* sparseArray, int key, void* value);
 extern void* SparseArray_get(SparseArray* sparseArray, int key);
 extern void* SparseArray_removeAt(SparseArray* sparseArray, int index);
 extern void* SparseArray_remove(SparseArray* sparseArray, int key);
+extern void SparseArray_free(SparseArray* sparseArray, bool freeValues);
 
 typedef struct ArrayDeque {
     int head;
@@ -107,13 +110,14 @@ typedef struct ArrayDeque {
     void** elements;
 } ArrayDeque;
 
-extern void ArrayDeque_init(ArrayDeque* arrayDeque, int initialCapacity);
 extern bool ArrayDeque_isEmpty(ArrayDeque* arrayDeque);
 extern void ArrayDeque_addFirst(ArrayDeque* arrayDeque, void* element);
 extern void ArrayDeque_addLast(ArrayDeque* arrayDeque, void* element);
 extern void* ArrayDeque_removeFirst(ArrayDeque* arrayDeque);
 extern void* ArrayDeque_removeLast(ArrayDeque* arrayDeque);
-extern void ArrayDeque_free(ArrayDeque* arrayDeque);
+extern void* ArrayDeque_getFirst(ArrayDeque* arrayDeque);
+extern void* ArrayDeque_getLast(ArrayDeque* arrayDeque);
+extern void ArrayDeque_free(ArrayDeque* arrayDeque, bool freeValues);
 
 #define DEFAULT_ARRAY_CAPACITY 4
 #define ENSURE_ARRAY_CAPACITY(targetSize, capacity, elements, elementSize) \
@@ -122,9 +126,12 @@ extern void ArrayDeque_free(ArrayDeque* arrayDeque);
             int newCapacity = elementSize > 1 ? (capacity < DEFAULT_ARRAY_CAPACITY ? DEFAULT_ARRAY_CAPACITY : capacity + (capacity >> 1)) : 0; \
             if (newCapacity < targetSize) newCapacity = targetSize; \
             elements = realloc(elements, newCapacity * elementSize); \
+            memset((char*)elements + capacity * elementSize, 0, (newCapacity - capacity) * elementSize); \
             capacity = newCapacity; \
         } \
     } \
     while (0)
+
+#define ARRAYS_FILL(array, length, value) for (int x = 0; x < length; x++) array[x] = value
 
 #endif
