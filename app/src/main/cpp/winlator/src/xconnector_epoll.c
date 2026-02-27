@@ -174,7 +174,11 @@ static void XConnectorEpoll_killConnection(XConnectorEpoll* connector, Connected
     else removeFdFromEpoll(connector->epollFd, client->fd);
 
     CLOSEFD(client->fd);
-    (*jmethods->env)->CallVoidMethod(jmethods->env, jmethods->obj, jmethods->handleConnectionShutdown, client->tag);
+
+    if (client->tag) {
+        (*jmethods->env)->CallVoidMethod(jmethods->env, jmethods->obj, jmethods->handleConnectionShutdown, client->tag);
+        client->tag = NULL;
+    }
 }
 
 static void* pollThread(void* param) {
@@ -190,6 +194,10 @@ static void* pollThread(void* param) {
     }
     while (client->running && res >= 0);
 
+    if (client->tag) {
+        (*jmethods->env)->CallVoidMethod(jmethods->env, jmethods->obj, jmethods->handleConnectionShutdown, client->tag);
+        client->tag = NULL;
+    }
     (*jmethods->jvm)->DetachCurrentThread(jmethods->jvm);
     return NULL;
 }
