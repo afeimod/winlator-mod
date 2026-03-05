@@ -45,7 +45,7 @@ public abstract class DesktopHelper {
             boolean parentIsRoot = window.getParent() == xServer.windowManager.rootWindow;
             xServer.windowManager.setFocus(window, parentIsRoot ? WindowManager.FocusRevertTo.POINTER_ROOT : WindowManager.FocusRevertTo.PARENT);
 
-            if (window.hasNoDecorations() || !(window.hasDecoration(Decoration.MINIMIZE) && window.hasDecoration(Decoration.MAXIMIZE))) {
+            if (window.isSurface()) {
                 ArrayList<Window> dialogWindows = xServer.windowManager.findDialogWindows(window.id);
                 if (!dialogWindows.isEmpty()) {
                     for (Window dialogWindow : dialogWindows) winHandler.bringToFront(dialogWindow.getClassName(), dialogWindow.getHandle());
