@@ -3,6 +3,7 @@ package com.winlator.xserver;
 import androidx.collection.ArrayMap;
 
 import com.winlator.core.Bitmask;
+import com.winlator.core.Callback;
 import com.winlator.xconnector.ConnectedClient;
 import com.winlator.xconnector.XInputStream;
 import com.winlator.xconnector.XOutputStream;
@@ -21,6 +22,7 @@ public class XClient extends ConnectedClient implements XResourceManager.OnResou
     private int initialLength;
     private final ArrayMap<Window, EventListener> eventListeners = new ArrayMap<>();
     private final ArrayList<XResource> resources = new ArrayList<>();
+    private final ArrayList<Callback<XClient>> onDestroyListeners = new ArrayList<>();
 
     public XClient(long nativePtr, int fd, XServer xServer) {
         super(nativePtr, fd);
@@ -156,5 +158,20 @@ public class XClient extends ConnectedClient implements XResourceManager.OnResou
 
     public boolean isValidResourceId(int id) {
         return xServer.resourceIDs.isInInterval(id, resourceIDBase);
+    }
+
+    public void addOnDestroyListener(Callback<XClient> onDestroyListener) {
+        if (!onDestroyListeners.contains(onDestroyListener)) onDestroyListeners.add(onDestroyListener);
+    }
+
+    public void removeOnWindowModificationListener(Callback<XClient> onDestroyListener) {
+        onDestroyListeners.remove(onDestroyListener);
+    }
+
+    @Override
+    public void destroy() {
+        super.destroy();
+
+        for (Callback<XClient> onDestroyListener : onDestroyListeners) onDestroyListener.call(this);
     }
 }
