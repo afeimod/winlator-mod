@@ -6,6 +6,7 @@ public class ScreenMaterial extends ShaderMaterial {
     public static class Uniforms {
         public final Uniform resolution = new Uniform("resolution");
         public final Uniform screenTexture = new Uniform("screenTexture");
+        public final Uniform flipY = new Uniform("flipY");
     }
 
     @Override
@@ -13,9 +14,10 @@ public class ScreenMaterial extends ShaderMaterial {
         return String.join("\n",
             "attribute vec2 position;",
             "varying vec2 vUV;",
+            "uniform bool flipY;",
 
             "void main() {",
-                "vUV = position;",
+                "vUV = vec2(position.x, flipY ? (1.0 - position.y) : position.y);",
                 "gl_Position = vec4(2.0 * position.x - 1.0, 2.0 * position.y - 1.0, 0.0, 1.0);",
             "}"
         );

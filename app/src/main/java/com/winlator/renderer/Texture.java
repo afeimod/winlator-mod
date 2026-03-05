@@ -14,8 +14,8 @@ public class Texture {
     protected int magFilter = GLES20.GL_LINEAR;
     protected int minFilter = GLES20.GL_LINEAR;
     protected int format = GLES11Ext.GL_BGRA;
-    protected byte unpackAlignment = 4;
     protected boolean needsUpdate = true;
+    private boolean flipY = false;
 
     protected void generateTextureId() {
         int[] textureIds = new int[1];
@@ -34,7 +34,7 @@ public class Texture {
         generateTextureId();
 
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
-        GLES20.glPixelStorei(GLES20.GL_UNPACK_ALIGNMENT, unpackAlignment);
+        GLES20.glPixelStorei(GLES20.GL_UNPACK_ALIGNMENT, 1);
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureId);
 
         if (data != null) {
@@ -43,6 +43,14 @@ public class Texture {
 
         setTextureParameters();
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, 0);
+    }
+
+    public boolean isFlipY() {
+        return flipY;
+    }
+
+    public void setFlipY(boolean flipY) {
+        this.flipY = flipY;
     }
 
     public int getWrapS() {
@@ -85,14 +93,6 @@ public class Texture {
         this.format = format;
     }
 
-    public byte getUnpackAlignment() {
-        return unpackAlignment;
-    }
-
-    public void setUnpackAlignment(byte unpackAlignment) {
-        this.unpackAlignment = unpackAlignment;
-    }
-
     public boolean isNeedsUpdate() {
         return needsUpdate;
     }
@@ -124,14 +124,12 @@ public class Texture {
         return textureId;
     }
 
-    public void copyFromFramebuffer(int framebuffer, short width, short height) {
+    public void copyFromReadBuffer(short width, short height) {
         if (!isAllocated()) allocateTexture(width, height, null);
-        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, framebuffer);
-        GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureId);
         GLES20.glCopyTexImage2D(GLES20.GL_TEXTURE_2D, 0, GLES20.GL_RGBA, 0, 0, width, height, 0);
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, 0);
-        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0);
+        GLES20.glFlush();
     }
 
     public void destroy() {

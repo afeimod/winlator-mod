@@ -441,6 +441,7 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
 
                 ScreenMaterial material = new ScreenMaterial();
                 material.use();
+                material.setUniformBool(material.uniforms.flipY, texture.isFlipY());
                 quadVertices.bind(material.programId);
 
                 GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
