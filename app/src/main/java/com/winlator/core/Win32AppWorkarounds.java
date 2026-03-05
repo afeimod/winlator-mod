@@ -154,6 +154,7 @@ public class Win32AppWorkarounds {
                 return (WindowWorkaround) (window) -> window.attributes.setTransparent(true);
             case "dino.exe":
             case "dino2.exe":
+            case "bof4.exe":
                 return (WinComponentsWorkaround) (wincomponents) -> wincomponents.put("directshow", "1");
             case "discipl2.exe":
                 return (DXWrapperWorkaround) () -> DXWrappers.WINED3D;
