@@ -137,14 +137,14 @@ static inline void mat4_rotate(float result[16], float matrix[16], float angle, 
     }
 }
 
-static inline void mat4_frustum(float matrix[16], float left, float right, float bottom, float top, float near, float far) {
-    float x = 2.0f * near / (right - left);
-    float y = 2.0f * near / (top - bottom);
+static inline void mat4_frustum(float matrix[16], float left, float right, float bottom, float top, float vnear, float vfar) {
+    float x = 2.0f * vnear / (right - left);
+    float y = 2.0f * vnear / (top - bottom);
 
     float a = (right + left) / (right - left);
     float b = (top + bottom) / (top - bottom);
-    float c = - (far + near) / (far - near);
-    float d = - 2.0f * far * near / (far - near);
+    float c = - (vfar + vnear) / (vfar - vnear);
+    float d = - 2.0f * vfar * vnear / (vfar - vnear);
 
     matrix[0] = x;
     matrix[4] = 0;
@@ -164,14 +164,14 @@ static inline void mat4_frustum(float matrix[16], float left, float right, float
     matrix[15] = 0;
 }
 
-static inline void mat4_ortho(float matrix[16], float left, float right, float top, float bottom, float near, float far) {
+static inline void mat4_ortho(float matrix[16], float left, float right, float top, float bottom, float vnear, float vfar) {
     float w = 1.0f / (right - left);
     float h = 1.0f / (top - bottom);
-    float p = 1.0f / (far - near);
+    float p = 1.0f / (vfar - vnear);
 
     float x = (right + left) * w;
     float y = (top + bottom) * h;
-    float z = (far + near) * p;
+    float z = (vfar + vnear) * p;
 
     matrix[0] = 2 * w;
     matrix[4] = 0;

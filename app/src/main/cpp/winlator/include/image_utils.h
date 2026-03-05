@@ -1,6 +1,8 @@
 #ifndef WINLATOR_IMAGE_UTILS_H
 #define WINLATOR_IMAGE_UTILS_H
 
+#include <math.h>
+
 #include "arrays.h"
 #include "file_utils.h"
 
@@ -71,6 +73,28 @@ static inline void swapPixelsRedBlue(char* pixelData, int bytesPerPixel, int siz
         pixelData[i+0] = pixelData[i+2];
         pixelData[i+2] = tmp;
     }
+}
+
+static inline void* drawSmoothCircle(int width, int height, const uint8_t* color) {
+    uint8_t* pixels = malloc(width * height * 4);
+    float radius = MIN(width, height) * 0.5f;
+    float dx, dy, distance, value;
+
+    for (int x, y = 0, i; y < height; y++) {
+        for (x = 0; x < width; x++) {
+            dx = radius - x;
+            dy = radius - y;
+            distance = sqrt(dx * dx + dy * dy);
+            value = CLAMP(radius - distance, 0.0f, 1.0f);
+            i = (y + x * width) * 4;
+            pixels[i+0] = value * color[0];
+            pixels[i+1] = value * color[1];
+            pixels[i+2] = value * color[2];
+            pixels[i+3] = value * color[3];
+        }
+    }
+
+    return pixels;
 }
 
 #endif
