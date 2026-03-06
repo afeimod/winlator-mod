@@ -87,12 +87,17 @@ jobs:
         cd box64
         mkdir build && cd build
 
-        cmake  -DWINLATOR_GLIBC=ON .. \
-                -DARM_DYNAREC=ON \
-                -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-                -DBAD_SIGNAL=ON \
-                -DSD845=ON \
-                -DSD8G2=ON
+        cmake .. \
+            -DARM_DYNAREC=ON \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DWINLATOR_GLIBC=ON \
+            -DARM64=ON \
+            -DBAD_SIGN=ON \
+            -DSD845=ON \
+            -DSD865=ON \
+            -DSD888=ON \
+            -DANDROID=1 DARM_DYNAREC=1 DBAD_SIGNAL=1 \
+            -DSD8G2=ON
 
         make -j4
         patchelf --set-interpreter /data/data/com.winlator/files/rootfs/usr/lib/ld-linux-aarch64.so.1 box64
