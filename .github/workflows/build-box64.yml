@@ -42,7 +42,7 @@ jobs:
 
     - name: 克隆指定版本的 Box64
       run: |
-        git clone https://github.com/FrontMage/box64
+        git clone https://github.com/ptitSeb/box64
         cd box64
         
         # 检出指定版本
