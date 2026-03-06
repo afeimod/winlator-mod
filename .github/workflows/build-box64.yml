@@ -96,7 +96,7 @@ jobs:
             -DSD845=ON \
             -DSD865=ON \
             -DSD888=ON \
-            -DANDROID=1 DARM_DYNAREC=1 DBAD_SIGNAL=1 \
+            -DANDROID=1 \
             -DSD8G2=ON
 
         make -j4
