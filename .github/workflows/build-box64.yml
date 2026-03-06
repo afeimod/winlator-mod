@@ -92,7 +92,7 @@ jobs:
                 -DCMAKE_BUILD_TYPE=RelWithDebInfo \
                 -DBAD_SIGNAL=ON \
                 -DSD845=ON \
-                -DANDROID=1 \
+                -DBOX32=ON \
                 -DSD8G2=ON
 
         make -j4
