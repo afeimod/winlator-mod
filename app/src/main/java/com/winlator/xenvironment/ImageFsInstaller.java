@@ -53,7 +53,7 @@ public abstract class ImageFsInstaller {
         dialog.show(R.string.installing_system_files);
         Executors.newSingleThreadExecutor().execute(() -> {
             clearRootDir(rootDir);
-            final byte compressionRatio = 22;
+            final byte compressionRatio = 18;
             final long contentLength = (long)(FileUtils.getSize(activity, "imagefs.tzst") * (100.0f / compressionRatio));
             AtomicLong totalSizeRef = new AtomicLong();
 
