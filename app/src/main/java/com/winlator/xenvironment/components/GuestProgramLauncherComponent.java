@@ -29,6 +29,7 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
     private Callback<Integer> terminationCallback;
     private static final Object lock = new Object();
     private boolean wow64Mode = true;
+    private String logFilePath;
 
     @Override
     public void start() {
@@ -105,6 +106,10 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
         this.box64Preset = box64Preset;
     }
 
+    public void setLogFilePath(String logFilePath) {
+        this.logFilePath = logFilePath;
+    }
+
     private int execGuestProgram() {
         Context context = environment.getContext();
         ImageFs imageFs = environment.getImageFs();
@@ -164,7 +169,7 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
                 pid = -1;
             }
             if (terminationCallback != null) terminationCallback.call(status);
-        });
+        }, logFilePath);
     }
 
     private void extractBox86_64Files() {

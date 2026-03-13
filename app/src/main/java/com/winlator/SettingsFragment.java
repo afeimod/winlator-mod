@@ -192,6 +192,9 @@ public class SettingsFragment extends Fragment {
         final CheckBox cbEnableBox86_64Logs = view.findViewById(R.id.CBEnableBox86_64Logs);
         cbEnableBox86_64Logs.setChecked(preferences.getBoolean("enable_box86_64_logs", false));
 
+        final CheckBox cbEnableStartupDesktopLogs = view.findViewById(R.id.CBEnableStartupDesktopLogs);
+        cbEnableStartupDesktopLogs.setChecked(preferences.getBoolean("enable_startup_desktop_logs", false));
+
         final TextView tvCursorSpeed = view.findViewById(R.id.TVCursorSpeed);
         final SeekBar sbCursorSpeed = view.findViewById(R.id.SBCursorSpeed);
         sbCursorSpeed.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
@@ -251,6 +254,7 @@ public class SettingsFragment extends Fragment {
             editor.putFloat("cursor_speed", sbCursorSpeed.getProgress() / 100.0f);
             editor.putBoolean("enable_wine_debug", cbEnableWineDebug.isChecked());
             editor.putBoolean("enable_box86_64_logs", cbEnableBox86_64Logs.isChecked());
+            editor.putBoolean("enable_startup_desktop_logs", cbEnableStartupDesktopLogs.isChecked());
             editor.putInt("trigger_type", triggerRbIds.indexOf(rgTriggerType.getCheckedRadioButtonId()));
             editor.putBoolean("use_glibc", cbUseGlibc.isChecked());
             editor.putBoolean("enable_file_provider", cbEnableFileProvider.isChecked());

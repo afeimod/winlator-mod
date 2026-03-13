@@ -289,6 +289,13 @@
                         android:layout_height="wrap_content"
                         android:text="@string/enable_box86_64_logs"
                         android:layout_marginTop="8dp" />
+
+                    <CheckBox
+                        android:id="@+id/CBEnableStartupDesktopLogs"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/enable_startup_desktop_logs"
+                        android:layout_marginTop="8dp" />
                 </LinearLayout>
 
                 <TextView

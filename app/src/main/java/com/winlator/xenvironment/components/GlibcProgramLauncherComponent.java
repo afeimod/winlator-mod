@@ -32,6 +32,7 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
     private boolean wow64Mode = true;
     private final ContentsManager contentsManager;
     private final ContentProfile wineProfile;
+    private String logFilePath;
 
     public GlibcProgramLauncherComponent(ContentsManager contentsManager, ContentProfile wineProfile) {
         this.contentsManager = contentsManager;
@@ -113,6 +114,10 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
         this.box64Preset = box64Preset;
     }
 
+    public void setLogFilePath(String logFilePath) {
+        this.logFilePath = logFilePath;
+    }
+
     private int execGuestProgram() {
         Context context = environment.getContext();
         ImageFs imageFs = environment.getImageFs();
@@ -154,7 +159,7 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
                 pid = -1;
             }
             if (terminationCallback != null) terminationCallback.call(status);
-        });
+        }, logFilePath);
     }
 
     private void extractBox86_64Files() {

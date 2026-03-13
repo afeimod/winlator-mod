@@ -568,6 +568,15 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
         guestProgramLauncherComponent.setEnvVars(envVars);
         guestProgramLauncherComponent.setTerminationCallback((status) -> finish());
+
+        boolean enableStartupDesktopLogs = preferences.getBoolean("enable_startup_desktop_logs", false);
+        if (enableStartupDesktopLogs) {
+            java.io.File logDir = new java.io.File(android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS), "Winlator");
+            logDir.mkdirs();
+            java.io.File logFile = new java.io.File(logDir, "startup_desktop_logs.txt");
+            guestProgramLauncherComponent.setLogFilePath(logFile.getAbsolutePath());
+        }
+
         environment.addComponent(guestProgramLauncherComponent);
 
         if (isGenerateWineprefix()) generateWineprefix();

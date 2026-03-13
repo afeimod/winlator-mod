@@ -341,6 +341,7 @@
     <string name="reconfigure">Reconfigure</string>
     <string name="do_you_want_to_reconfigure_wine">Do you want to reconfigure this container on the next startup? This will remove the timestamp to trigger Wine Configuration.</string>
     <string name="virtual_buttons_haptics">Virtual buttons haptics</string>
+    <string name="enable_startup_desktop_logs">Enable startup desktop logs</string>
 
     <!-- OpenXR specific text -->
     <string name="use_xr">Use OpenXR integration</string>

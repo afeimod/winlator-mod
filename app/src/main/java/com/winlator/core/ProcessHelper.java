@@ -40,6 +40,10 @@ public abstract class ProcessHelper {
     }
 
     public static int exec(String command, String[] envp, File workingDir, Callback<Integer> terminationCallback) {
+        return exec(command, envp, workingDir, terminationCallback, null);
+    }
+
+    public static int exec(String command, String[] envp, File workingDir, Callback<Integer> terminationCallback, String logFilePath) {
         Log.d("ProcessHelper", "env: " + Arrays.toString(envp) + "\ncmd: " + command);
 
         int pid = -1;
@@ -49,6 +53,11 @@ public abstract class ProcessHelper {
             pidField.setAccessible(true);
             pid = pidField.getInt(process);
             pidField.setAccessible(false);
+
+            if (logFilePath != null) {
+                createLogFileThread(process.getInputStream(), logFilePath);
+                createLogFileThread(process.getErrorStream(), logFilePath);
+            }
 
             if (!debugCallbacks.isEmpty()) {
                 createDebugThread(process.getInputStream());
@@ -72,6 +81,19 @@ public abstract class ProcessHelper {
                             for (Callback<String> callback : debugCallbacks) callback.call(line);
                         }
                     }
+                }
+            }
+            catch (IOException e) {}
+        });
+    }
+
+    private static void createLogFileThread(final InputStream inputStream, String logFilePath) {
+        Executors.newSingleThreadExecutor().execute(() -> {
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
+                 java.io.FileWriter writer = new java.io.FileWriter(logFilePath, false)) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    writer.write(line + "\n");
                 }
             }
             catch (IOException e) {}
