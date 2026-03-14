@@ -501,6 +501,9 @@ public class InputControlsView extends View {
             else if (binding == Binding.MOUSE_LEFT_RIGHT) {
                 if (isActionDown) touchpadView.setSwapMouseButtons();
             }
+            else if (binding == Binding.MOUSE_TOUCHMODE_SWITCH) {
+                if (isActionDown) touchpadView.setSimTouchScreen();
+            }
             else {
                 Pointer.Button pointerButton = binding.getPointerButton();
                 if (isActionDown) {
