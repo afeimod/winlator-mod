@@ -397,7 +397,7 @@ public class InputControlsView extends View {
                             handled = true;
                         }
                         if (element.getBindingAt(0) == Binding.MOUSE_LEFT_BUTTON) {
-                            touchpadView.setPointerButtonLeftEnabled(false);
+                            touchpadView.setPointerButtonLeftEnabled(true);//原逻辑有鼠标右虚拟键禁用手势右键，影响鼠标左右键切换
                         }
                     }
                     if (!handled) touchpadView.onTouchEvent(event);

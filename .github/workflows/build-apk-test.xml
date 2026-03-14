@@ -39,9 +39,10 @@ jobs:
     # 先删除旧文件。然后下载完整文件
     - name: 6 下载数据包
       run: |
-        rm -rf app/src/main/assets/imagefs.txz 
-        wget -P app/src/main/assets \
-        https://github.com/afeimod/winlator-glibc7.1-moze30/releases/download/rootfs/imagefs.txz
+        rm -rf app/src/main/assets/
+        #rm -rf app/src/main/assets/imagefs.txz 
+        #wget -P app/src/main/assets \
+        #https://github.com/afeimod/winlator-glibc7.1-moze30/releases/download/rootfs/imagefs.txz
 
     - name: 7. 构建
       run: chmod +x ./gradlew && ./gradlew assembleDebug

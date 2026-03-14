@@ -729,7 +729,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         inputControlsView.setProfile(profile);
 
         touchpadView.setSensitivity(profile.getCursorSpeed() * globalCursorSpeed);
-        touchpadView.setPointerButtonRightEnabled(false);
+        touchpadView.setPointerButtonRightEnabled(true);//默认是禁用，双指右键误触吗，影响鼠标左右切换
 
         inputControlsView.invalidate();
     }
