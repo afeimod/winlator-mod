@@ -4,7 +4,7 @@ import android.view.KeyEvent;
 
 import androidx.collection.ArraySet;
 
-import com.ewt45.winlator.ExtraFeatures;
+import com.ewt45.winlator.E02_KeyInput;
 
 import com.winlator.inputcontrols.ExternalController;
 

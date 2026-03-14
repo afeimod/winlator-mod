@@ -97,10 +97,6 @@ public enum Binding {
                 return Pointer.Button.BUTTON_SCROLL_UP;
             case MOUSE_SCROLL_DOWN:
                 return Pointer.Button.BUTTON_SCROLL_DOWN;
-            case MOUSE_LEFT_RIGHT:
-                return Pointer.Button.MOUSE_LEFT_RIGHT;
-            case MOUSE_TOUCHMODE_SWITCH:
-                return Pointer.Button.MOUSE_TOUCHMODE_SWITCH;
             default:
                 return null;
         }
