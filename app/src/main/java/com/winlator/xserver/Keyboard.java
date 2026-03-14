@@ -4,6 +4,8 @@ import android.view.KeyEvent;
 
 import androidx.collection.ArraySet;
 
+import com.ewt45.winlator.ExtraFeatures;
+
 import com.winlator.inputcontrols.ExternalController;
 
 import java.util.ArrayList;
@@ -97,8 +99,21 @@ public class Keyboard {
         if (ExternalController.isGameController(event.getDevice())) return false;
 
         int action = event.getAction();
-        if (action == KeyEvent.ACTION_DOWN || action == KeyEvent.ACTION_UP) {
-            int keyCode = event.getKeyCode();
+        int keyCode = event.getKeyCode();
+        
+        if (action == KeyEvent.ACTION_MULTIPLE) {
+            return E02_KeyInput.handleAndroidKeyEvent(this.xServer, event);
+        }
+                
+        if (keyCode == KeyEvent.KEYCODE_TAB || keyCode == KeyEvent.KEYCODE_ESCAPE) {
+            if (action == KeyEvent.ACTION_DOWN) {
+                xServer.injectKeyPress(keycodeMap[keyCode]);
+                return true; // Consume the event to prevent default focus change
+            } else if (action == KeyEvent.ACTION_UP) {
+                xServer.injectKeyRelease(keycodeMap[keyCode]);
+                return true; // Consume the event to prevent default focus change
+            }
+        } else if (action == KeyEvent.ACTION_DOWN || action == KeyEvent.ACTION_UP) {
             XKeycode xKeycode = keycodeMap[keyCode];
             if (xKeycode == null) return false;
 
@@ -117,6 +132,7 @@ public class Keyboard {
 
     private static XKeycode[] createKeycodeMap() {
         XKeycode[] keycodeMap = new XKeycode[(KeyEvent.getMaxKeyCode() + 1)];
+        keycodeMap[KeyEvent.KEYCODE_ESCAPE] = XKeycode.KEY_ESC;
         keycodeMap[KeyEvent.KEYCODE_ENTER] = XKeycode.KEY_ENTER;
         keycodeMap[KeyEvent.KEYCODE_DPAD_LEFT] = XKeycode.KEY_LEFT;
         keycodeMap[KeyEvent.KEYCODE_DPAD_RIGHT] = XKeycode.KEY_RIGHT;
