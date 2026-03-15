@@ -135,9 +135,11 @@
     <string name="estimated_used_space">Estimated Used Space</string>
     <string name="advanced">Advanced</string>
     <string name="box86_box64" translatable="false">Box86/Box64</string>
+    <string name="fex" translatable="false">FEX</string>
     <string name="system">System</string>
     <string name="box86_preset">Box86 Preset</string>
     <string name="box64_preset">Box64 Preset</string>
+    <string name="fex_preset">FEX Preset</string>
     <string name="box86_version">Box86 Version</string>
     <string name="box64_version">Box64 Version</string>
     <string name="letter">Letter</string>

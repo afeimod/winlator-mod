@@ -3,6 +3,7 @@ package com.winlator.xenvironment.components;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Process;
+import android.util.Log;
 
 import androidx.preference.PreferenceManager;
 
@@ -15,6 +16,7 @@ import com.winlator.core.DefaultVersion;
 import com.winlator.core.EnvVars;
 import com.winlator.core.ProcessHelper;
 import com.winlator.core.TarCompressorUtils;
+import com.winlator.core.WineInfo;
 import com.winlator.xconnector.UnixSocketConfig;
 import com.winlator.xenvironment.ImageFs;
 
@@ -27,16 +29,19 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
     private EnvVars envVars;
     private String box86Preset = Box86_64Preset.COMPATIBILITY;
     private String box64Preset = Box86_64Preset.COMPATIBILITY;
+    private int fexPreset = 0;
     private Callback<Integer> terminationCallback;
     private static final Object lock = new Object();
     private boolean wow64Mode = true;
     private final ContentsManager contentsManager;
+    private final String wineVersion;
     private final ContentProfile wineProfile;
     private String logFilePath;
 
-    public GlibcProgramLauncherComponent(ContentsManager contentsManager, ContentProfile wineProfile) {
+    public GlibcProgramLauncherComponent(ContentsManager contentsManager, String wineVersion) {
         this.contentsManager = contentsManager;
-        this.wineProfile = wineProfile;
+        this.wineVersion = wineVersion;
+        this.wineProfile = contentsManager.getProfileByEntryName(wineVersion);
     }
 
     @Override
@@ -114,6 +119,10 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
         this.box64Preset = box64Preset;
     }
 
+    public void setFexPreset(int fexPreset) {
+        this.fexPreset = fexPreset;
+    }
+
     public void setLogFilePath(String logFilePath) {
         this.logFilePath = logFilePath;
     }
@@ -127,32 +136,64 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
         boolean enableBox86_64Logs = preferences.getBoolean("enable_box86_64_logs", false);
 
         EnvVars envVars = new EnvVars();
-        if (!wow64Mode) addBox86EnvVars(envVars, enableBox86_64Logs);
-        addBox64EnvVars(envVars, enableBox86_64Logs);
+        
+        WineInfo wineInfo = WineInfo.fromIdentifier(context, wineVersion);
+        boolean isArm64EC = wineInfo.getArch().equals("arm64ec");
+
+        if (!isArm64EC) {
+            if (!wow64Mode) addBox86EnvVars(envVars, enableBox86_64Logs);
+            addBox64EnvVars(envVars, enableBox86_64Logs);
+        } else {
+            addFEXEnvVars(envVars);
+        }
+
         envVars.put("HOME", imageFs.home_path);
         envVars.put("USER", ImageFs.USER);
         envVars.put("TMPDIR", imageFs.getRootDir().getPath() + "/tmp");
         envVars.put("DISPLAY", ":0");
 
-        String winePath = wineProfile == null ? imageFs.getWinePath() + "/bin"
-                : ContentsManager.getSourceFile(context, wineProfile, wineProfile.wineBinPath).getAbsolutePath();
-        envVars.put("PATH", winePath + ":" +
-                imageFs.getRootDir().getPath() + "/usr/bin:" +
-                imageFs.getRootDir().getPath() + "/usr/local/bin");
+        String winePathStr = wineInfo.path;
+        if (winePathStr.startsWith("/")) winePathStr = winePathStr.substring(1);
+        File wineDirAbs = new File(rootDir, winePathStr);
+        File wineBinDirAbs = new File(wineDirAbs, "bin");
+        
+        envVars.put("PATH", wineBinDirAbs.getPath() + ":" +
+                new File(rootDir, "/usr/bin").getPath() + ":" +
+                new File(rootDir, "/usr/local/bin").getPath());
 
-        envVars.put("LD_LIBRARY_PATH", imageFs.getRootDir().getPath() + "/usr/lib");
-        envVars.put("BOX64_LD_LIBRARY_PATH", imageFs.getRootDir().getPath() + "/usr/lib/x86_64-linux-gnu");
-        envVars.put("ANDROID_SYSVSHM_SERVER", imageFs.getRootDir().getPath() + UnixSocketConfig.SYSVSHM_SERVER_PATH);
-        envVars.put("FONTCONFIG_PATH", imageFs.getRootDir().getPath() + "/usr/etc/fonts");
+        String ldLibraryPath = new File(rootDir, "/usr/lib").getPath();
+        if (isArm64EC) {
+            File wineUnixLibDir = new File(wineDirAbs, "lib/wine/aarch64-unix");
+            ldLibraryPath = wineUnixLibDir.getPath() + ":" + ldLibraryPath;
+            envVars.put("WINEDLLPATH", new File(wineDirAbs, "lib/wine").getPath());
+        }
+        
+        envVars.put("LD_LIBRARY_PATH", ldLibraryPath);
+        envVars.put("BOX64_LD_LIBRARY_PATH", new File(rootDir, "/usr/lib/x86_64-linux-gnu").getPath());
+        envVars.put("ANDROID_SYSVSHM_SERVER", new File(rootDir, UnixSocketConfig.SYSVSHM_SERVER_PATH).getPath());
+        envVars.put("FONTCONFIG_PATH", new File(rootDir, "/usr/etc/fonts").getPath());
 
         if ((new File(imageFs.getGlibc64Dir(), "libandroid-sysvshm.so")).exists() ||
                 (new File(imageFs.getGlibc32Dir(), "libandroid-sysvshm.so")).exists())
             envVars.put("LD_PRELOAD", "libandroid-sysvshm.so");
         if (this.envVars != null) envVars.putAll(this.envVars);
 
-        String command = rootDir.getPath() + "/usr/local/bin/box64 ";
+        String finalArgs = guestExecutable;
+        if (finalArgs.startsWith("wine ")) finalArgs = finalArgs.substring(5);
 
-        command += guestExecutable;
+        String command = "";
+        if (!isArm64EC) {
+            String wineExecutableName = wineInfo.getExecutable(context, wow64Mode);
+            File wineAbsPath = new File(wineBinDirAbs, wineExecutableName);
+            command = new File(rootDir, "/usr/local/bin/box64").getPath() + " " + wineAbsPath.getPath() + " " + finalArgs;
+        } else {
+            // 核心修复：显式使用 ld-linux 加载器启动 wine，绕过 ELF 内部硬编码路径导致的闪退
+            File ldLoader = new File(rootDir, "usr/lib/ld-linux-aarch64.so.1");
+            File wineAbsPath = new File(wineBinDirAbs, "wine");
+            command = ldLoader.getPath() + " " + wineAbsPath.getPath() + " " + finalArgs;
+        }
+
+        Log.d("Winlator", "Executing command: " + command);
 
         return ProcessHelper.exec(command, envVars.toStringArray(), rootDir, (status) -> {
             synchronized (lock) {
@@ -160,6 +201,14 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
             }
             if (terminationCallback != null) terminationCallback.call(status);
         }, logFilePath);
+    }
+
+    private void addFEXEnvVars(EnvVars envVars) {
+        if (fexPreset == 1) {
+            envVars.put("HODLL", "libwow64fex.dll");
+        } else {
+            envVars.remove("HODLL");
+        }
     }
 
     private void extractBox86_64Files() {

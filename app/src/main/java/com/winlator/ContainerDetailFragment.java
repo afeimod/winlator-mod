@@ -140,7 +140,23 @@ public class ContainerDetailFragment extends Fragment {
 
         final ArrayList<WineInfo> wineInfos = WineUtils.getInstalledWineInfos(context);
         final Spinner sWineVersion = view.findViewById(R.id.SWineVersion);
-        //if (wineInfos.size() > 1) loadWineVersionSpinner(view, sWineVersion, wineInfos);
+        final View flBox86Box64 = view.findViewById(R.id.FLBox86Box64);
+        final View flFEX = view.findViewById(R.id.FLFEX);
+
+        sWineVersion.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View v, int position, long id) {
+                String wineVersionIdentifier = sWineVersion.getSelectedItem().toString();
+                WineInfo wineInfo = WineInfo.fromIdentifier(context, wineVersionIdentifier);
+                boolean isArm64EC = wineInfo.getArch().equals("arm64ec");
+                flBox86Box64.setVisibility(isArm64EC ? View.GONE : View.VISIBLE);
+                flFEX.setVisibility(isArm64EC ? View.VISIBLE : View.GONE);
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {}
+        });
+
         loadWineVersionSpinner(view, sWineVersion, wineInfos);
 
         loadScreenSizeSpinner(view, isEditMode() ? container.getScreenSize() : Container.DEFAULT_SCREEN_SIZE);
@@ -222,6 +238,9 @@ public class ContainerDetailFragment extends Fragment {
         final Spinner sBox64Preset = view.findViewById(R.id.SBox64Preset);
         Box86_64PresetManager.loadSpinner("box64", sBox64Preset, isEditMode() ? container.getBox64Preset() : preferences.getString("box64_preset", Box86_64Preset.COMPATIBILITY));
 
+        final Spinner sFEXPreset = view.findViewById(R.id.SFEXPreset);
+        if (isEditMode()) sFEXPreset.setSelection(container.getFexPreset());
+
         final Spinner sRCFile = view.findViewById(R.id.SRCFile);
         final int[] rcfileIds = {0};
         RCManager rcManager = new RCManager(context);
@@ -273,6 +292,7 @@ public class ContainerDetailFragment extends Fragment {
                 byte startupSelection = (byte)sStartupSelection.getSelectedItemPosition();
                 String box86Preset = Box86_64PresetManager.getSpinnerSelectedId(sBox86Preset);
                 String box64Preset = Box86_64PresetManager.getSpinnerSelectedId(sBox64Preset);
+                int fexPreset = sFEXPreset.getSelectedItemPosition();
                 String desktopTheme = getDesktopTheme(view);
                 int rcfileId = rcfileIds[0];
                 int primaryController = sPrimaryController.getSelectedItemPosition();
@@ -301,6 +321,7 @@ public class ContainerDetailFragment extends Fragment {
                     container.setStartupSelection(startupSelection);
                     container.setBox86Preset(box86Preset);
                     container.setBox64Preset(box64Preset);
+                    container.setFexPreset(fexPreset);
                     container.setDesktopTheme(desktopTheme);
                     container.setRcfileId(rcfileId);
                     container.setMidiSoundFont(midiSoundFont);
@@ -330,6 +351,7 @@ public class ContainerDetailFragment extends Fragment {
                     data.put("startupSelection", startupSelection);
                     data.put("box86Preset", box86Preset);
                     data.put("box64Preset", box64Preset);
+                    data.put("fexPreset", fexPreset);
                     data.put("desktopTheme", desktopTheme);
                     data.put("rcfileId", rcfileId);
                     data.put("midiSoundFont", midiSoundFont);
@@ -673,25 +695,9 @@ public class ContainerDetailFragment extends Fragment {
     private void loadWineVersionSpinner(final View view, Spinner sWineVersion, final ArrayList<WineInfo> wineInfos) {
         final Context context = getContext();
         sWineVersion.setEnabled(!isEditMode());
-//        sWineVersion.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-//            @Override
-//            public void onItemSelected(AdapterView<?> parent, View v, int position, long id) {
-//                WineInfo wineInfo = wineInfos.get(position);
-//                boolean isMainWineVersion = WineInfo.isMainWineVersion(wineInfo.identifier());
-//                CheckBox cbWoW64Mode = view.findViewById(R.id.CBWoW64Mode);
-//                cbWoW64Mode.setEnabled(isMainWineVersion);
-//                if (!isMainWineVersion) cbWoW64Mode.setChecked(false);
-//            }
-//
-//            @Override
-//            public void onNothingSelected(AdapterView<?> parent) {}
-//        });
-//        view.findViewById(R.id.LLWineVersion).setVisibility(View.VISIBLE);
-//        sWineVersion.setAdapter(new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, wineInfos));
-//        if (isEditMode()) AppUtils.setSpinnerSelectionFromValue(sWineVersion, WineInfo.fromIdentifier(context, container.getWineVersion()).toString());
         view.findViewById(R.id.LLWineVersion).setVisibility(View.VISIBLE);
         ArrayList<String> wineVersions = new ArrayList<>();
-        wineVersions.add(WineInfo.MAIN_WINE_VERSION.identifier());
+        for (WineInfo wineInfo : wineInfos) wineVersions.add(wineInfo.identifier());
         for (ContentProfile profile : contentsManager.getProfiles(ContentProfile.ContentType.CONTENT_TYPE_WINE))
             wineVersions.add(ContentsManager.getEntryName(profile));
         sWineVersion.setAdapter(new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, wineVersions));

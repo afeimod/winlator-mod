@@ -13,8 +13,10 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class WineInfo implements Parcelable {
-    public static final WineInfo MAIN_WINE_VERSION = new WineInfo("9.16", "x86_64");
-    private static final Pattern pattern = Pattern.compile("^wine\\-([0-9\\.]+)\\-?([0-9\\.]+)?\\-(x86|x86_64)$");
+    public static final WineInfo WINE_X86_64 = new WineInfo("9.16", null, "x86_64", "/opt/x86_64-wine");
+    public static final WineInfo WINE_ARM64EC = new WineInfo("9.16", null, "arm64ec", "/opt/arm64ec-wine");
+    public static final WineInfo MAIN_WINE_VERSION = WINE_X86_64;
+    private static final Pattern pattern = Pattern.compile("^wine\\-([0-9\\.]+)\\-?([0-9\\.]+)?\\-(x86|x86_64|arm64ec)$");
     public final String version;
     public final String subversion;
     public final String path;
@@ -50,12 +52,12 @@ public class WineInfo implements Parcelable {
     }
 
     public boolean isWin64() {
-        return arch.equals("x86_64");
+        return arch.equals("x86_64") || arch.equals("arm64ec");
     }
 
     public String getExecutable(Context context, boolean wow64Mode) {
-        if (this == MAIN_WINE_VERSION) {
-            File wineBinDir = new File(ImageFs.find(context).getRootDir(), "/opt/wine/bin");
+        if (isDefaultWine()) {
+            File wineBinDir = new File(ImageFs.find(context).getRootDir(), path + "/bin");
             File wineBinFile = new File(wineBinDir, "wine");
             File winePreloaderBinFile = new File(wineBinDir, "wine-preloader");
             FileUtils.copy(new File(wineBinDir, wow64Mode ? "wine-wow64" : "wine32"), wineBinFile);
@@ -67,8 +69,14 @@ public class WineInfo implements Parcelable {
         else return (new File(path, "/bin/wine64")).isFile() ? "wine64" : "wine";
     }
 
+    public boolean isDefaultWine() {
+        return this == WINE_X86_64 || this == WINE_ARM64EC || (path != null && (path.equals("/opt/x86_64-wine") || path.equals("/opt/arm64ec-wine")));
+    }
+
     public String identifier() {
-        return "wine-"+fullVersion()+"-"+(this == MAIN_WINE_VERSION ? "custom" : arch);
+        if (this == WINE_X86_64) return "wine-"+fullVersion()+"-x86_64-default";
+        if (this == WINE_ARM64EC) return "wine-"+fullVersion()+"-arm64ec-default";
+        return "wine-"+fullVersion()+"-"+arch;
     }
 
     public String fullVersion() {
@@ -78,7 +86,9 @@ public class WineInfo implements Parcelable {
     @NonNull
     @Override
     public String toString() {
-        return "Wine "+fullVersion()+(this == MAIN_WINE_VERSION ? " (Custom)" : "");
+        if (this == WINE_X86_64) return "Wine " + fullVersion() + " (x86_64)";
+        if (this == WINE_ARM64EC) return "Wine " + fullVersion() + " (ARM64EC)";
+        return "Wine "+fullVersion();
     }
 
     @Override
@@ -106,7 +116,8 @@ public class WineInfo implements Parcelable {
 
     @NonNull
     public static WineInfo fromIdentifier(Context context, String identifier) {
-        if (identifier.equals(MAIN_WINE_VERSION.identifier())) return MAIN_WINE_VERSION;
+        if (identifier.equals(WINE_X86_64.identifier()) || identifier.equals("wine-9.16-custom")) return WINE_X86_64;
+        if (identifier.equals(WINE_ARM64EC.identifier())) return WINE_ARM64EC;
         Matcher matcher = pattern.matcher(identifier);
         if (matcher.find()) {
             File installedWineDir = ImageFs.find(context).getInstalledWineDir();
@@ -117,6 +128,6 @@ public class WineInfo implements Parcelable {
     }
 
     public static boolean isMainWineVersion(String wineVersion) {
-        return wineVersion == null ||wineVersion.equals(MAIN_WINE_VERSION.identifier());
+        return wineVersion == null || wineVersion.equals(WINE_X86_64.identifier()) || wineVersion.equals(WINE_ARM64EC.identifier()) || wineVersion.equals("wine-9.16-custom");
     }
 }

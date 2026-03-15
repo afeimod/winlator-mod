@@ -516,6 +516,7 @@
                 android:visibility="gone">
 
                 <FrameLayout
+                    android:id="@+id/FLBox86Box64"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp">
@@ -557,6 +558,31 @@
                     <TextView
                         style="@style/FieldSetLabel"
                         android:text="@string/box86_box64" />
+                </FrameLayout>
+
+                <FrameLayout
+                    android:id="@+id/FLFEX"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:visibility="gone">
+
+                    <LinearLayout style="@style/FieldSet">
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/fex_preset" />
+
+                        <Spinner
+                            style="@style/ComboBox"
+                            android:id="@+id/SFEXPreset"
+                            android:layout_width="match_parent"
+                            android:entries="@array/fex_preset_entries" />
+                    </LinearLayout>
+
+                    <TextView
+                        style="@style/FieldSetLabel"
+                        android:text="@string/fex" />
                 </FrameLayout>
 
                 <FrameLayout

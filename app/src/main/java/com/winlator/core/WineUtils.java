@@ -135,7 +135,8 @@ public abstract class WineUtils {
 
     public static ArrayList<WineInfo> getInstalledWineInfos(Context context) {
         ArrayList<WineInfo> wineInfos = new ArrayList<>();
-        wineInfos.add(WineInfo.MAIN_WINE_VERSION);
+        wineInfos.add(WineInfo.WINE_X86_64);
+        wineInfos.add(WineInfo.WINE_ARM64EC);
         File installedWineDir = ImageFs.find(context).getInstalledWineDir();
 
         File[] files = installedWineDir.listFiles();
@@ -191,8 +192,9 @@ public abstract class WineUtils {
             setWindowMetrics(registryEditor);
         }
 
-        File wineSystem32Dir = new File(rootDir, "/opt/wine/lib/wine/x86_64-windows");
-        File wineSysWoW64Dir = new File(rootDir, "/opt/wine/lib/wine/i386-windows");
+        String nativeWindowsDir = wineInfo.getArch().equals("arm64ec") ? "/aarch64-windows" : "/x86_64-windows";
+        File wineSystem32Dir = new File(rootDir, wineInfo.path + "/lib/wine" + nativeWindowsDir);
+        File wineSysWoW64Dir = new File(rootDir, wineInfo.path + "/lib/wine/i386-windows");
         File containerSystem32Dir = new File(rootDir, ImageFs.WINEPREFIX+"/drive_c/windows/system32");
         File containerSysWoW64Dir = new File(rootDir, ImageFs.WINEPREFIX+"/drive_c/windows/syswow64");
 

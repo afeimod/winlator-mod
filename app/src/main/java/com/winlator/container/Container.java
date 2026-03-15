@@ -55,6 +55,7 @@ public class Container {
     private String desktopTheme = WineThemeManager.DEFAULT_DESKTOP_THEME;
     private String box86Preset = Box86_64Preset.COMPATIBILITY;
     private String box64Preset = Box86_64Preset.COMPATIBILITY;
+    private int fexPreset = 0;
     private File rootDir;
     private JSONObject extraData;
     private int rcfileId = 0;
@@ -229,6 +230,14 @@ public class Container {
         this.box64Preset = box64Preset;
     }
 
+    public int getFexPreset() {
+        return fexPreset;
+    }
+
+    public void setFexPreset(int fexPreset) {
+        this.fexPreset = fexPreset;
+    }
+
     public File getRootDir() {
         return rootDir;
     }
@@ -366,6 +375,7 @@ public class Container {
             data.put("startupSelection", startupSelection);
             data.put("box86Preset", box86Preset);
             data.put("box64Preset", box64Preset);
+            data.put("fexPreset", fexPreset);
             data.put("desktopTheme", desktopTheme);
             data.put("extraData", extraData);
             data.put("rcfileId", rcfileId);
@@ -373,8 +383,8 @@ public class Container {
             data.put("lc_all", lc_all);
             data.put("primaryController", primaryController);
             data.put("controllerMapping", controllerMapping);
+            data.put("wineVersion", wineVersion);
 
-            if (!WineInfo.isMainWineVersion(wineVersion)) data.put("wineVersion", wineVersion);
             FileUtils.writeString(getConfigFile(), data.toString());
         }
         catch (JSONException e) {}
@@ -444,6 +454,9 @@ public class Container {
                     break;
                 case "box64Preset" :
                     setBox64Preset(data.getString(key));
+                    break;
+                case "fexPreset" :
+                    setFexPreset(data.getInt(key));
                     break;
                 case "audioDriver" :
                     setAudioDriver(data.getString(key));

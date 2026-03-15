@@ -513,9 +513,13 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         FileUtils.clear(imageFs.getTmpDir());
 
         boolean usrGlibc = preferences.getBoolean("use_glibc", true);
-        GuestProgramLauncherComponent guestProgramLauncherComponent = usrGlibc
-                ? new GlibcProgramLauncherComponent(contentsManager, contentsManager.getProfileByEntryName(container.getWineVersion()))
-                : new GuestProgramLauncherComponent();
+        GlibcProgramLauncherComponent launcherComponent = null;
+        if (usrGlibc) {
+            launcherComponent = new GlibcProgramLauncherComponent(contentsManager, container.getWineVersion());
+            launcherComponent.setFexPreset(container.getFexPreset());
+        }
+        
+        GuestProgramLauncherComponent guestProgramLauncherComponent = usrGlibc ? launcherComponent : new GuestProgramLauncherComponent();
 
         if (container != null) {
             if (container.getStartupSelection() == Container.STARTUP_SELECTION_AGGRESSIVE) winHandler.killProcess("services.exe");
