@@ -48,7 +48,7 @@ public class ContentsManager {
     }
 
     public enum ContentDirName {
-        CONTENT_MAIN_DIR_NAME("contents"),
+        CONTENT_MAIN_DIR_NAME("imagefs/opt/contents"),
         CONTENT_WINE_DIR_NAME("wine"),
         CONTENT_TURNIP_DIR_NAME("turnip"),
         CONTENT_VIRGL_DIR_NAME("virgl"),
