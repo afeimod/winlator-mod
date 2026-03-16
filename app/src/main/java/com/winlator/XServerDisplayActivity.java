@@ -470,6 +470,13 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             containerDataChanged = true;
         }
 
+        String fexVersion = container.getFexVersion();
+        if (!fexVersion.equals(container.getExtra("fexVersion"))) {
+            extractFEXFiles(fexVersion);
+            container.putExtra("fexVersion", fexVersion);
+            containerDataChanged = true;
+        }
+
         if (dxwrapper.equals("cnc-ddraw")) envVars.put("CNC_DDRAW_CONFIG_FILE", "C:\\ProgramData\\cnc-ddraw\\ddraw.ini");
 
         String wincomponents = shortcut != null ? shortcut.getExtra("wincomponents", container.getWinComponents()) : container.getWinComponents();
@@ -931,6 +938,17 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
                         TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "dxwrapper/" + dxwrapper + ".tzst", windowsDir, onExtractFileListener);
                 }
                 break;
+        }
+    }
+
+    private void extractFEXFiles(String fexVersion) {
+        File rootDir = imageFs.getRootDir();
+        File windowsDir = new File(rootDir, ImageFs.WINEPREFIX + "/drive_c/windows");
+        ContentProfile profile = contentsManager.getProfileByEntryName(fexVersion);
+        if (profile != null) {
+            contentsManager.applyContent(profile);
+        } else {
+            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "FEXCore/" + fexVersion + ".tzst", windowsDir, onExtractFileListener);
         }
     }
 

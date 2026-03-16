@@ -29,6 +29,7 @@ public class Container {
     public static final String DEFAULT_GRAPHICS_DRIVER = XrActivity.isSupported() ? "virgl-23.1.9" : "turnip";
     public static final String DEFAULT_AUDIO_DRIVER = "alsa";
     public static final String DEFAULT_DXWRAPPER = XrActivity.isSupported() ? "wined3d" : "dxvk";
+    public static final String DEFAULT_FEX_VERSION = "FEX-2603";
     public static final String DEFAULT_WINCOMPONENTS = "direct3d=1,directsound=1,directmusic=0,directshow=0,directplay=0,vcrun2010=1,wmdecoder=1";
     public static final String FALLBACK_WINCOMPONENTS = "direct3d=0,directsound=0,directmusic=0,directshow=0,directplay=0,vcrun2010=0,wmdecoder=0";
     public static final String DEFAULT_DRIVES = "D:"+Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)+"E:/data/data/com.winlator/storage";
@@ -56,6 +57,7 @@ public class Container {
     private String box86Preset = Box86_64Preset.COMPATIBILITY;
     private String box64Preset = Box86_64Preset.COMPATIBILITY;
     private int fexPreset = 0;
+    private String fexVersion = DEFAULT_FEX_VERSION;
     private File rootDir;
     private JSONObject extraData;
     private int rcfileId = 0;
@@ -238,6 +240,14 @@ public class Container {
         this.fexPreset = fexPreset;
     }
 
+    public String getFexVersion() {
+        return fexVersion;
+    }
+
+    public void setFexVersion(String fexVersion) {
+        this.fexVersion = fexVersion;
+    }
+
     public File getRootDir() {
         return rootDir;
     }
@@ -376,6 +386,7 @@ public class Container {
             data.put("box86Preset", box86Preset);
             data.put("box64Preset", box64Preset);
             data.put("fexPreset", fexPreset);
+            data.put("fexVersion", fexVersion);
             data.put("desktopTheme", desktopTheme);
             data.put("extraData", extraData);
             data.put("rcfileId", rcfileId);
@@ -457,6 +468,9 @@ public class Container {
                     break;
                 case "fexPreset" :
                     setFexPreset(data.getInt(key));
+                    break;
+                case "fexVersion" :
+                    setFexVersion(data.getString(key));
                     break;
                 case "audioDriver" :
                     setAudioDriver(data.getString(key));

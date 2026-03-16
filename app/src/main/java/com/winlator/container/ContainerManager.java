@@ -206,6 +206,7 @@ public class ContainerManager {
 
     private void extractCommonDlls(String winePath, String srcName, String dstName, JSONObject commonDlls, File containerDir, OnExtractFileListener onExtractFileListener) throws JSONException {
         File srcDir = new File(ImageFs.find(context).getRootDir(), winePath + "/lib/wine/"+srcName);
+        if (!commonDlls.has(dstName)) return;
         JSONArray dlnames = commonDlls.getJSONArray(dstName);
 
         for (int i = 0; i < dlnames.length(); i++) {
@@ -229,9 +230,9 @@ public class ContainerManager {
 
             if (result) {
                 try {
-                    JSONObject commonDlls = new JSONObject(FileUtils.readString(context, "common_dlls.json"));
+                    String commonDllsFile = arch.equals("arm64ec") ? "arm64ec-common_dlls.json" : "x86_64-common_dlls.json";
+                    JSONObject commonDlls = new JSONObject(FileUtils.readString(context, commonDllsFile));
                     
-                    // 动态选择提取源：如果是 arm64ec，则从 aarch64-windows 提取到 system32
                     String nativeWindowsDir = arch.equals("arm64ec") ? "aarch64-windows" : "x86_64-windows";
                     
                     extractCommonDlls(wineInfo.path, nativeWindowsDir, "system32", commonDlls, containerDir, onExtractFileListener);

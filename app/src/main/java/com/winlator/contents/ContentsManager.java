@@ -32,6 +32,7 @@ public class ContentsManager {
     public static final String[] VKD3D_TRUST_FILES = {"${system32}/d3d12core.dll", "${system32}/d3d12.dll",
             "${syswow64}/d3d12core.dll", "${syswow64}/d3d12.dll"};
     public static final String[] BOX64_TRUST_FILES = {"${localbin}/box64"};
+    public static final String[] FEX_TRUST_FILES = {"${system32}/FEXInterpreter", "${system32}/FEXLoader", "${system32}/FEXServer"};
     private Map<String, String> dirTemplateMap;
     private Map<ContentProfile.ContentType, List<String>> trustedFilesMap;
 
@@ -53,7 +54,8 @@ public class ContentsManager {
         CONTENT_VIRGL_DIR_NAME("virgl"),
         CONTENT_DXVK_DIR_NAME("dxvk"),
         CONTENT_VKD3D_DIR_NAME("vkd3d"),
-        CONTENT_BOX64_DIR_NAME("box64");
+        CONTENT_BOX64_DIR_NAME("box64"),
+        CONTENT_FEX_DIR_NAME("fex");
 
         private String name;
 
@@ -328,6 +330,7 @@ public class ContentsManager {
                     case CONTENT_TYPE_DXVK -> DXVK_TRUST_FILES;
                     case CONTENT_TYPE_VKD3D -> VKD3D_TRUST_FILES;
                     case CONTENT_TYPE_BOX64 -> BOX64_TRUST_FILES;
+                    case CONTENT_TYPE_FEX -> FEX_TRUST_FILES;
                     default -> new String[0];
                 };
                 for (String path : paths)

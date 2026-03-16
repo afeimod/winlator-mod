@@ -238,6 +238,10 @@ public class ContainerDetailFragment extends Fragment {
         final Spinner sBox64Preset = view.findViewById(R.id.SBox64Preset);
         Box86_64PresetManager.loadSpinner("box64", sBox64Preset, isEditMode() ? container.getBox64Preset() : preferences.getString("box64_preset", Box86_64Preset.COMPATIBILITY));
 
+        final Spinner sFEXVersion = view.findViewById(R.id.SFEXVersion);
+        updateFEXVersionSpinner(context, contentsManager, sFEXVersion);
+        if (isEditMode()) AppUtils.setSpinnerSelectionFromValue(sFEXVersion, container.getFexVersion());
+
         final Spinner sFEXPreset = view.findViewById(R.id.SFEXPreset);
         if (isEditMode()) sFEXPreset.setSelection(container.getFexPreset());
 
@@ -292,6 +296,7 @@ public class ContainerDetailFragment extends Fragment {
                 byte startupSelection = (byte)sStartupSelection.getSelectedItemPosition();
                 String box86Preset = Box86_64PresetManager.getSpinnerSelectedId(sBox86Preset);
                 String box64Preset = Box86_64PresetManager.getSpinnerSelectedId(sBox64Preset);
+                String fexVersion = sFEXVersion.getSelectedItem().toString();
                 int fexPreset = sFEXPreset.getSelectedItemPosition();
                 String desktopTheme = getDesktopTheme(view);
                 int rcfileId = rcfileIds[0];
@@ -321,6 +326,7 @@ public class ContainerDetailFragment extends Fragment {
                     container.setStartupSelection(startupSelection);
                     container.setBox86Preset(box86Preset);
                     container.setBox64Preset(box64Preset);
+                    container.setFexVersion(fexVersion);
                     container.setFexPreset(fexPreset);
                     container.setDesktopTheme(desktopTheme);
                     container.setRcfileId(rcfileId);
@@ -351,6 +357,7 @@ public class ContainerDetailFragment extends Fragment {
                     data.put("startupSelection", startupSelection);
                     data.put("box86Preset", box86Preset);
                     data.put("box64Preset", box64Preset);
+                    data.put("fexVersion", fexVersion);
                     data.put("fexPreset", fexPreset);
                     data.put("desktopTheme", desktopTheme);
                     data.put("rcfileId", rcfileId);
@@ -710,6 +717,16 @@ public class ContainerDetailFragment extends Fragment {
         for (ContentProfile profile : manager.getProfiles(ContentProfile.ContentType.CONTENT_TYPE_TURNIP))
             itemList.add(ContentsManager.getEntryName(profile));
         for (ContentProfile profile : manager.getProfiles(ContentProfile.ContentType.CONTENT_TYPE_VIRGL))
+            itemList.add(ContentsManager.getEntryName(profile));
+        spinner.setAdapter(new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, itemList));
+    }
+
+    public static void updateFEXVersionSpinner(Context context, ContentsManager manager, Spinner spinner) {
+        List<String> itemList = new ArrayList<>();
+        itemList.add("FEX-2512");
+        itemList.add("FEX-2601");
+        itemList.add("FEX-2603");
+        for (ContentProfile profile : manager.getProfiles(ContentProfile.ContentType.CONTENT_TYPE_FEX))
             itemList.add(ContentsManager.getEntryName(profile));
         spinner.setAdapter(new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, itemList));
     }

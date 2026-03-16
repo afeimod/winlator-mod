@@ -571,6 +571,16 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
+                            android:text="@string/fex_version" />
+
+                        <Spinner
+                            style="@style/ComboBox"
+                            android:id="@+id/SFEXVersion"
+                            android:layout_width="match_parent" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
                             android:text="@string/fex_preset" />
 
                         <Spinner

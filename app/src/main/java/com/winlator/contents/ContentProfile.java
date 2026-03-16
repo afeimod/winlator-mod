@@ -23,7 +23,8 @@ public class ContentProfile {
         CONTENT_TYPE_VIRGL("VirGL"),
         CONTENT_TYPE_DXVK("DXVK"),
         CONTENT_TYPE_VKD3D("VKD3D"),
-        CONTENT_TYPE_BOX64("Box64");
+        CONTENT_TYPE_BOX64("Box64"),
+        CONTENT_TYPE_FEX("FEX");
 
         final String typeName;
 

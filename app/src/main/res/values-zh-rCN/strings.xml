@@ -8,7 +8,7 @@
     <string name="shortcuts">快捷方式</string>
     <string name="containers">容器</string>
     <string name="input_controls">输入控件</string>
-    <string name="no_items_to_display">没有要显示的项目</string>
+    <string name="no_items_to_display">没有可显示的项目</string>
     <string name="new_container">新容器</string>
     <string name="edit_container">编辑容器</string>
     <string name="creating_container">正在创建容器…</string>
@@ -21,12 +21,12 @@
     <string name="keyboard">键盘</string>
     <string name="toggle_fullscreen">切换全屏</string>
     <string name="exit">退出</string>
-    <string name="no_control_element_selected">未选择控件</string>
+    <string name="no_control_element_selected">未选择控件元素</string>
     <string name="scale">缩放</string>
     <string name="shape">形状</string>
     <string name="type">类型</string>
     <string name="binding">绑定</string>
-    <string name="binding_secondary">二次绑定</string>
+    <string name="binding_secondary">次要绑定</string>
     <string name="binding_up">绑定 向上</string>
     <string name="binding_right">绑定 向右</string>
     <string name="binding_down">绑定 向下</string>
@@ -127,6 +127,8 @@
     <string name="system">系统</string>
     <string name="box86_preset">Box86 预设</string>
     <string name="box64_preset">Box64 预设</string>
+    <string name="fex_preset">FEX 预设</string>
+    <string name="fex_version">FEX 版本</string>
     <string name="box86_version">Box86 版本</string>
     <string name="box64_version">Box64 版本</string>
     <string name="target_path">目标路径</string>
@@ -247,7 +249,7 @@
     <string name="reinstall_imagefs">重新安装文件系统</string>
     <string name="do_you_want_to_reinstall_imagefs">您想要重新安装文件系统吗？该操作会恢复文件系统，您的容器不会被更改。</string>
     <string name="unable_to_remove_content_since_container_using">无法删除该附加内容，因为 %s 正在使用该版本Wine.</string>
-    <string name="get_more_contents_form_github">你可以访问 https://github.com/longjunyu2/winlator/releases 获取更多附加内容。</string>
+    <string name="get_more_contents_form_github">你可以访问 https://github.com/moze30/winlator-glibc/releases 获取更多附加内容。</string>
     <string name="midi_sound_font">MIDI 音色库</string>
     <string name="sound">声音</string>
     <string name="do_you_want_to_remove_this_sound_font">您是否要删除该音色库？</string>
