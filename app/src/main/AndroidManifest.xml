@@ -76,13 +76,18 @@
             android:theme="@style/AppTheme"
             android:exported="false"
             android:screenOrientation="sensor" />
-
-        <provider
-            android:name=".core.WinlatorFilesProvider"
-            android:authorities="com.winlator.core.WinlatorFilesProvider"
+        <activity
+            android:name="bin.mt.file.content.MTDataFilesWakeUpActivity"
             android:exported="true"
-            android:grantUriPermissions="true"
-            android:permission="android.permission.MANAGE_DOCUMENTS">
+            android:taskAffinity="com.winlator.MTDataFilesWakeUp"
+            android:excludeFromRecents="true"
+            android:noHistory="true" />
+        <provider
+            android:name="bin.mt.file.content.MTDataFilesProvider"
+            android:permission="android.permission.MANAGE_DOCUMENTS"
+            android:exported="true"
+            android:authorities="com.winlator.MTDataFilesProvider"
+            android:grantUriPermissions="true">
             <intent-filter>
                 <action android:name="android.content.action.DOCUMENTS_PROVIDER" />
             </intent-filter>
