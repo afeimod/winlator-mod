@@ -14,7 +14,7 @@ import java.util.regex.Pattern;
 
 public class WineInfo implements Parcelable {
     public static final WineInfo WINE_X86_64 = new WineInfo("9.16", null, "x86_64", "/opt/x86_64-wine");
-    public static final WineInfo WINE_ARM64EC = new WineInfo("9.16", null, "arm64ec", "/opt/arm64ec-wine");
+    public static final WineInfo WINE_ARM64EC = new WineInfo("11.14", null, "arm64ec", "/opt/arm64ec-wine");
     public static final WineInfo MAIN_WINE_VERSION = WINE_X86_64;
     private static final Pattern pattern = Pattern.compile("^wine\\-([0-9\\.]+)\\-?([0-9\\.]+)?\\-(x86|x86_64|arm64ec)$");
     public final String version;
@@ -74,8 +74,8 @@ public class WineInfo implements Parcelable {
     }
 
     public String identifier() {
-        if (this == WINE_X86_64) return "wine-"+fullVersion()+"-x86_64-default";
-        if (this == WINE_ARM64EC) return "wine-"+fullVersion()+"-arm64ec-default";
+        if (this == WINE_X86_64) return "Wine-9.2-x86_64";
+        if (this == WINE_ARM64EC) return "Wine-11.14-arm64ec";
         return "wine-"+fullVersion()+"-"+arch;
     }
 
@@ -86,9 +86,7 @@ public class WineInfo implements Parcelable {
     @NonNull
     @Override
     public String toString() {
-        if (this == WINE_X86_64) return "Wine " + fullVersion() + " (x86_64)";
-        if (this == WINE_ARM64EC) return "Wine " + fullVersion() + " (ARM64EC)";
-        return "Wine "+fullVersion();
+        return identifier();
     }
 
     @Override
@@ -116,7 +114,7 @@ public class WineInfo implements Parcelable {
 
     @NonNull
     public static WineInfo fromIdentifier(Context context, String identifier) {
-        if (identifier.equals(WINE_X86_64.identifier()) || identifier.equals("wine-9.16-custom")) return WINE_X86_64;
+        if (identifier.equals(WINE_X86_64.identifier())) return WINE_X86_64;
         if (identifier.equals(WINE_ARM64EC.identifier())) return WINE_ARM64EC;
         Matcher matcher = pattern.matcher(identifier);
         if (matcher.find()) {
@@ -128,6 +126,6 @@ public class WineInfo implements Parcelable {
     }
 
     public static boolean isMainWineVersion(String wineVersion) {
-        return wineVersion == null || wineVersion.equals(WINE_X86_64.identifier()) || wineVersion.equals(WINE_ARM64EC.identifier()) || wineVersion.equals("wine-9.16-custom");
+        return wineVersion == null || wineVersion.equals(WINE_X86_64.identifier()) || wineVersion.equals(WINE_ARM64EC.identifier());
     }
 }

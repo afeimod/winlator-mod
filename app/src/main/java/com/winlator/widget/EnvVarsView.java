@@ -38,7 +38,7 @@ public class EnvVarsView extends FrameLayout {
         {"PULSE_LATENCY_MSEC", "NUMBER"},
         {"MESA_VK_WSI_PRESENT_MODE", "SELECT", "immediate", "mailbox", "fifo", "relaxed"},
         {"WINE_DO_NOT_CREATE_DXGI_DEVICE_MANAGER", "CHECKBOX", "0", "1"},
-        {"MANGOHUD", "CHECKBOX", "0", "1"}
+        {"MANGOHUD", "CHECKBOX", "0", "1"},
     };
     private final LinearLayout container;
     private final TextView emptyTextView;
