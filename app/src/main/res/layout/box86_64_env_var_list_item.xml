@@ -45,5 +45,15 @@
             android:visibility="gone"
             android:textOn=""
             android:textOff="" />
+
+        <EditText
+            android:id="@+id/EditText"
+            style="@style/EditText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="14sp"
+            android:gravity="center"
+            android:visibility="gone"
+            android:inputType="text" />
     </LinearLayout>
 </LinearLayout>

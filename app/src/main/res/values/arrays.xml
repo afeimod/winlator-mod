@@ -83,8 +83,8 @@
         <item>0.4.1</item>
     </string-array>
     <string-array name="fex_preset_entries">
-        <item>arm64ecfex (默认)</item>
-        <item>wow64fex</item>
+        <item>wowbox64.dll</item>
+        <item>libwow64fex.dll</item>
     </string-array>
     <string-array name="dinput_mapper_type_entries">
         <item>@string/dinput_legacy</item>

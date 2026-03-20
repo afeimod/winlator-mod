@@ -45,6 +45,9 @@ import com.winlator.core.PreloaderDialog;
 import com.winlator.core.StringUtils;
 import com.winlator.core.WineInfo;
 import com.winlator.core.WineUtils;
+import com.winlator.fex.FEXEditPresetDialog;
+import com.winlator.fex.FEXPreset;
+import com.winlator.fex.FEXPresetManager;
 import com.winlator.inputcontrols.ExternalController;
 import com.winlator.midi.MidiManager;
 import com.winlator.xenvironment.ImageFs;
@@ -124,6 +127,9 @@ public class SettingsFragment extends Fragment {
         final Spinner sBox86Preset = view.findViewById(R.id.SBox86Preset);
         final Spinner sBox64Preset = view.findViewById(R.id.SBox64Preset);
         loadBox86_64PresetSpinners(view, sBox86Preset, sBox64Preset);
+
+        final Spinner sFEXPreset = view.findViewById(R.id.SFEXPreset);
+        loadFEXPresetSpinner(view, sFEXPreset);
 
         final Spinner sMIDISoundFont = view.findViewById(R.id.SMIDISoundFont);
         final View btInstallSF = view.findViewById(R.id.BTInstallSF);
@@ -248,6 +254,7 @@ public class SettingsFragment extends Fragment {
             editor.putString("box64_version", StringUtils.parseIdentifier(sBox64Version.getSelectedItem()));
             editor.putString("box86_preset", Box86_64PresetManager.getSpinnerSelectedId(sBox86Preset));
             editor.putString("box64_preset", Box86_64PresetManager.getSpinnerSelectedId(sBox64Preset));
+            editor.putString("fex_preset", FEXPresetManager.getSpinnerSelectedId(sFEXPreset));
             editor.putBoolean("haptics", cbHaptics.isChecked());
             editor.putBoolean("use_dri3", cbUseDRI3.isChecked());
             editor.putBoolean("use_xr", cbUseXR.isChecked());
@@ -331,6 +338,51 @@ public class SettingsFragment extends Fragment {
         view.findViewById(R.id.BTEditBox64Preset).setOnClickListener((v) -> onEditPreset.call("box64"));
         view.findViewById(R.id.BTDuplicateBox64Preset).setOnClickListener((v) -> onDuplicatePreset.call("box64"));
         view.findViewById(R.id.BTRemoveBox64Preset).setOnClickListener((v) -> onRemovePreset.call("box64"));
+    }
+
+    private void loadFEXPresetSpinner(View view, final Spinner sFEXPreset) {
+        final Context context = getContext();
+
+        Runnable updateSpinner = () -> {
+            FEXPresetManager.loadSpinner(sFEXPreset, preferences.getString("fex_preset", FEXPreset.COMPATIBILITY));
+        };
+
+        View.OnClickListener onAddPreset = (v) -> {
+            FEXEditPresetDialog dialog = new FEXEditPresetDialog(context, null);
+            dialog.setOnConfirmCallback(updateSpinner);
+            dialog.show();
+        };
+
+        View.OnClickListener onEditPreset = (v) -> {
+            FEXEditPresetDialog dialog = new FEXEditPresetDialog(context, FEXPresetManager.getSpinnerSelectedId(sFEXPreset));
+            dialog.setOnConfirmCallback(updateSpinner);
+            dialog.show();
+        };
+
+        View.OnClickListener onDuplicatePreset = (v) -> ContentDialog.confirm(context, R.string.do_you_want_to_duplicate_this_preset, () -> {
+            FEXPresetManager.duplicatePreset(context, FEXPresetManager.getSpinnerSelectedId(sFEXPreset));
+            updateSpinner.run();
+            sFEXPreset.setSelection(sFEXPreset.getCount()-1);
+        });
+
+        View.OnClickListener onRemovePreset = (v) -> {
+            final String presetId = FEXPresetManager.getSpinnerSelectedId(sFEXPreset);
+            if (!presetId.startsWith(FEXPreset.CUSTOM)) {
+                AppUtils.showToast(context, R.string.you_cannot_remove_this_preset);
+                return;
+            }
+            ContentDialog.confirm(context, R.string.do_you_want_to_remove_this_preset, () -> {
+                FEXPresetManager.removePreset(context, presetId);
+                updateSpinner.run();
+            });
+        };
+
+        updateSpinner.run();
+
+        view.findViewById(R.id.BTAddFEXPreset).setOnClickListener(onAddPreset);
+        view.findViewById(R.id.BTEditFEXPreset).setOnClickListener(onEditPreset);
+        view.findViewById(R.id.BTDuplicateFEXPreset).setOnClickListener(onDuplicatePreset);
+        view.findViewById(R.id.BTRemoveFEXPreset).setOnClickListener(onRemovePreset);
     }
 
     private void removeInstalledWine(WineInfo wineInfo, Runnable onSuccess) {

@@ -4,6 +4,7 @@ import android.os.Environment;
 
 import com.winlator.XrActivity;
 import com.winlator.box86_64.Box86_64Preset;
+import com.winlator.fex.FEXPreset;
 import com.winlator.core.EnvVars;
 import com.winlator.core.FileUtils;
 import com.winlator.core.KeyValueSet;
@@ -57,6 +58,7 @@ public class Container {
     private String box86Preset = Box86_64Preset.COMPATIBILITY;
     private String box64Preset = Box86_64Preset.COMPATIBILITY;
     private int fexPreset = 0;
+    private String fexPresetCustom = FEXPreset.COMPATIBILITY;
     private String fexVersion = DEFAULT_FEX_VERSION;
     private File rootDir;
     private JSONObject extraData;
@@ -240,6 +242,14 @@ public class Container {
         this.fexPreset = fexPreset;
     }
 
+    public String getFexPresetCustom() {
+        return fexPresetCustom;
+    }
+
+    public void setFexPresetCustom(String fexPresetCustom) {
+        this.fexPresetCustom = fexPresetCustom;
+    }
+
     public String getFexVersion() {
         return fexVersion;
     }
@@ -386,6 +396,7 @@ public class Container {
             data.put("box86Preset", box86Preset);
             data.put("box64Preset", box64Preset);
             data.put("fexPreset", fexPreset);
+            data.put("fexPresetCustom", fexPresetCustom);
             data.put("fexVersion", fexVersion);
             data.put("desktopTheme", desktopTheme);
             data.put("extraData", extraData);
@@ -468,6 +479,9 @@ public class Container {
                     break;
                 case "fexPreset" :
                     setFexPreset(data.getInt(key));
+                    break;
+                case "fexPresetCustom" :
+                    setFexPresetCustom(data.getString(key));
                     break;
                 case "fexVersion" :
                     setFexVersion(data.getString(key));

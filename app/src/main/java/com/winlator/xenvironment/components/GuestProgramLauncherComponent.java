@@ -20,16 +20,16 @@ import com.winlator.xenvironment.ImageFs;
 import java.io.File;
 
 public class GuestProgramLauncherComponent extends EnvironmentComponent {
-    private String guestExecutable;
-    private static int pid = -1;
-    private String[] bindingPaths;
-    private EnvVars envVars;
-    private String box86Preset = Box86_64Preset.COMPATIBILITY;
-    private String box64Preset = Box86_64Preset.COMPATIBILITY;
-    private Callback<Integer> terminationCallback;
-    private static final Object lock = new Object();
-    private boolean wow64Mode = true;
-    private String logFilePath;
+    protected String guestExecutable;
+    protected static int pid = -1;
+    protected String[] bindingPaths;
+    protected EnvVars envVars;
+    protected String box86Preset = Box86_64Preset.COMPATIBILITY;
+    protected String box64Preset = Box86_64Preset.COMPATIBILITY;
+    protected Callback<Integer> terminationCallback;
+    protected static final Object lock = new Object();
+    protected boolean wow64Mode = true;
+    protected String logFilePath;
 
     @Override
     public void start() {
@@ -110,7 +110,7 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
         this.logFilePath = logFilePath;
     }
 
-    private int execGuestProgram() {
+    protected int execGuestProgram() {
         Context context = environment.getContext();
         ImageFs imageFs = environment.getImageFs();
         File rootDir = imageFs.getRootDir();
@@ -172,7 +172,7 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
         }, logFilePath);
     }
 
-    private void extractBox86_64Files() {
+    protected void extractBox86_64Files() {
         ImageFs imageFs = environment.getImageFs();
         Context context = environment.getContext();
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
@@ -200,7 +200,7 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
         }
     }
 
-    private void addBox86EnvVars(EnvVars envVars, boolean enableLogs) {
+    protected void addBox86EnvVars(EnvVars envVars, boolean enableLogs) {
         envVars.put("BOX86_NOBANNER", ProcessHelper.PRINT_DEBUG && enableLogs ? "0" : "1");
         envVars.put("BOX86_DYNAREC", "1");
 
@@ -214,7 +214,7 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
         envVars.put("BOX86_NORCFILES", "1");
     }
 
-    private void addBox64EnvVars(EnvVars envVars, boolean enableLogs) {
+    protected void addBox64EnvVars(EnvVars envVars, boolean enableLogs) {
         envVars.put("BOX64_NOBANNER", ProcessHelper.PRINT_DEBUG && enableLogs ? "0" : "1");
         envVars.put("BOX64_DYNAREC", "1");
         if (wow64Mode) envVars.put("BOX64_MMAP32", "1");

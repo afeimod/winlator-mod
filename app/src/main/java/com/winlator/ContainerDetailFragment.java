@@ -51,6 +51,8 @@ import com.winlator.core.WineInfo;
 import com.winlator.core.WineRegistryEditor;
 import com.winlator.core.WineThemeManager;
 import com.winlator.core.WineUtils;
+import com.winlator.fex.FEXPreset;
+import com.winlator.fex.FEXPresetManager;
 import com.winlator.midi.MidiManager;
 import com.winlator.widget.CPUListView;
 import com.winlator.widget.ColorPickerView;
@@ -240,7 +242,14 @@ public class ContainerDetailFragment extends Fragment {
 
         final Spinner sFEXVersion = view.findViewById(R.id.SFEXVersion);
         updateFEXVersionSpinner(context, contentsManager, sFEXVersion);
-        if (isEditMode()) AppUtils.setSpinnerSelectionFromValue(sFEXVersion, container.getFexVersion());
+        if (isEditMode()) {
+            AppUtils.setSpinnerSelectionFromValue(sFEXVersion, container.getFexVersion());
+        } else {
+            AppUtils.setSpinnerSelectionFromValue(sFEXVersion, preferences.getString("fex_version", "FEX-2603"));
+        }
+
+        final Spinner sFEXPresetCustom = view.findViewById(R.id.SFEXPresetCustom);
+        FEXPresetManager.loadSpinner(sFEXPresetCustom, isEditMode() ? container.getFexPresetCustom() : preferences.getString("fex_preset", FEXPreset.COMPATIBILITY));
 
         final Spinner sFEXPreset = view.findViewById(R.id.SFEXPreset);
         if (isEditMode()) sFEXPreset.setSelection(container.getFexPreset());
@@ -298,6 +307,7 @@ public class ContainerDetailFragment extends Fragment {
                 String box64Preset = Box86_64PresetManager.getSpinnerSelectedId(sBox64Preset);
                 String fexVersion = sFEXVersion.getSelectedItem().toString();
                 int fexPreset = sFEXPreset.getSelectedItemPosition();
+                String fexPresetCustom = FEXPresetManager.getSpinnerSelectedId(sFEXPresetCustom);
                 String desktopTheme = getDesktopTheme(view);
                 int rcfileId = rcfileIds[0];
                 int primaryController = sPrimaryController.getSelectedItemPosition();
@@ -328,6 +338,7 @@ public class ContainerDetailFragment extends Fragment {
                     container.setBox64Preset(box64Preset);
                     container.setFexVersion(fexVersion);
                     container.setFexPreset(fexPreset);
+                    container.setFexPresetCustom(fexPresetCustom);
                     container.setDesktopTheme(desktopTheme);
                     container.setRcfileId(rcfileId);
                     container.setMidiSoundFont(midiSoundFont);
@@ -359,6 +370,7 @@ public class ContainerDetailFragment extends Fragment {
                     data.put("box64Preset", box64Preset);
                     data.put("fexVersion", fexVersion);
                     data.put("fexPreset", fexPreset);
+                    data.put("fexPresetCustom", fexPresetCustom);
                     data.put("desktopTheme", desktopTheme);
                     data.put("rcfileId", rcfileId);
                     data.put("midiSoundFont", midiSoundFont);

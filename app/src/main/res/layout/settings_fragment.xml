@@ -152,6 +152,48 @@
                             android:layout_marginRight="0dp"
                             android:src="@drawable/icon_remove" />
                     </LinearLayout>
+
+                    <View style="@style/FieldSeparator" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/fex_preset" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <Spinner
+                            style="@style/ComboBox"
+                            android:id="@+id/SFEXPreset"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1" />
+
+                        <ImageButton
+                            style="@style/ListMenuButton"
+                            android:id="@+id/BTAddFEXPreset"
+                            android:src="@drawable/icon_add" />
+
+                        <ImageButton
+                            style="@style/ListMenuButton"
+                            android:id="@+id/BTEditFEXPreset"
+                            android:src="@drawable/icon_edit" />
+
+                        <ImageButton
+                            style="@style/ListMenuButton"
+                            android:id="@+id/BTDuplicateFEXPreset"
+                            android:src="@drawable/icon_duplicate" />
+
+                        <ImageButton
+                            style="@style/ListMenuButton"
+                            android:id="@+id/BTRemoveFEXPreset"
+                            android:layout_marginRight="0dp"
+                            android:src="@drawable/icon_remove" />
+                    </LinearLayout>
                 </LinearLayout>
 
                 <TextView

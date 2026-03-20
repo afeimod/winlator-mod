@@ -585,6 +585,16 @@
 
                         <Spinner
                             style="@style/ComboBox"
+                            android:id="@+id/SFEXPresetCustom"
+                            android:layout_width="match_parent" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="32位模拟" />
+
+                        <Spinner
+                            style="@style/ComboBox"
                             android:id="@+id/SFEXPreset"
                             android:layout_width="match_parent"
                             android:entries="@array/fex_preset_entries" />
