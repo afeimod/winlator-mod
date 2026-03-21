@@ -37,7 +37,6 @@ import com.winlator.container.ContainerManager;
 import com.winlator.contentdialog.AddEnvVarDialog;
 import com.winlator.contentdialog.ContentDialog;
 import com.winlator.contentdialog.DXVKConfigDialog;
-import com.winlator.contentdialog.VKD3DConfigDialog;
 import com.winlator.contents.ContentProfile;
 import com.winlator.contents.ContentsManager;
 import com.winlator.core.AppUtils;
@@ -601,10 +600,7 @@ public class ContainerDetailFragment extends Fragment {
                     vDXWrapperConfig.setOnClickListener((v) -> (new DXVKConfigDialog(vDXWrapperConfig)).show());
                     vDXWrapperConfig.setVisibility(View.VISIBLE);
                 }
-                else if (dxwrapper.equals("vkd3d")) {
-                    vDXWrapperConfig.setOnClickListener((v) -> (new VKD3DConfigDialog(vDXWrapperConfig)).show());
-                    vDXWrapperConfig.setVisibility(View.VISIBLE);
-                } else vDXWrapperConfig.setVisibility(View.GONE);
+                else vDXWrapperConfig.setVisibility(View.GONE);
             }
 
             @Override

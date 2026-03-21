@@ -35,7 +35,6 @@ import com.winlator.contentdialog.ContentDialog;
 import com.winlator.contentdialog.DXVKConfigDialog;
 import com.winlator.contentdialog.DebugDialog;
 import com.winlator.contentdialog.NavigationDialog;
-import com.winlator.contentdialog.VKD3DConfigDialog;
 import com.winlator.contents.ContentProfile;
 import com.winlator.contents.ContentsManager;
 import com.winlator.core.AppUtils;
@@ -250,7 +249,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
                 if (!inputType.isEmpty()) winHandler.setInputType(Byte.parseByte(inputType));
             }
 
-            if (dxwrapper.equals("dxvk") || dxwrapper.equals("vkd3d")) this.dxwrapperConfig = DXVKConfigDialog.parseConfig(dxwrapperConfig);
+            if (dxwrapper.equals("dxvk")) this.dxwrapperConfig = DXVKConfigDialog.parseConfig(dxwrapperConfig);
 
             if (!wineInfo.isWin64()) {
                 onExtractFileListener = (file, size) -> {
@@ -462,8 +461,6 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         String dxwrapper = this.dxwrapper;
         if (dxwrapper.equals("dxvk"))
             dxwrapper = "dxvk-"+dxwrapperConfig.get("version");
-        else if (dxwrapper.equals("vkd3d"))
-            dxwrapper = "vkd3d-"+dxwrapperConfig.get("vkd3dVersion");
 
         if (!dxwrapper.equals(container.getExtra("dxwrapper"))) {
             extractDXWrapperFiles(dxwrapper);
@@ -762,8 +759,6 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         if (graphicsDriver.startsWith("turnip")) {
             if (dxwrapper.equals("dxvk"))
                 DXVKConfigDialog.setEnvVars(this, dxwrapperConfig, envVars);
-            else if (dxwrapper.equals("vkd3d"))
-                VKD3DConfigDialog.setEnvVars(this, dxwrapperConfig, envVars);
 
             envVars.put("GALLIUM_DRIVER", "zink");
             envVars.put("TU_OVERRIDE_HEAP_SIZE", "4096");
@@ -895,7 +890,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
     private void extractDXWrapperFiles(String dxwrapper) {
         final String[] dlls = {"d3d10.dll", "d3d10_1.dll", "d3d10core.dll", "d3d11.dll", "d3d12.dll", "d3d12core.dll", "d3d8.dll", "d3d9.dll", "dxgi.dll", "ddraw.dll"};
-        if (firstTimeBoot && !dxwrapper.equals("vkd3d")) cloneOriginalDllFiles(dlls);
+        if (firstTimeBoot) cloneOriginalDllFiles(dlls);
         File rootDir = imageFs.getRootDir();
         File windowsDir = new File(rootDir, ImageFs.WINEPREFIX+"/drive_c/windows");
 
@@ -913,29 +908,27 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
                 FileUtils.copy(this, assetDir+"/Shaders", shadersDir);
                 TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, assetDir+"/ddraw.tzst", windowsDir, onExtractFileListener);
                 break;
-            case "vkd3d":
-                // FIXME: maybe we need first boot config here
-                TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "dxwrapper/dxvk-"+DefaultVersion.DXVK+".tzst", windowsDir, onExtractFileListener);
-                TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "dxwrapper/vkd3d-"+DefaultVersion.VKD3D+".tzst", windowsDir, onExtractFileListener);
-                break;
             default:
                 if (dxwrapper.startsWith("dxvk")) {
                     restoreOriginalDllFiles("d3d12.dll", "d3d12core.dll", "ddraw.dll");
-                    ContentProfile profile = contentsManager.getProfileByEntryName(dxwrapper);
-                    if (profile != null)
-                        contentsManager.applyContent(profile);
+                    
+                    // 1. Apply DXVK (D3D9/10/11)
+                    ContentProfile dxvkProfile = contentsManager.getProfileByEntryName(dxwrapper);
+                    if (dxvkProfile != null)
+                        contentsManager.applyContent(dxvkProfile);
                     else {
                         TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "dxwrapper/" + dxwrapper + ".tzst", windowsDir, onExtractFileListener);
-                        // d8vk merged into dxvk since dxvk-2.4, so we don't need to extract d8vk after that
                         if (compareVersion(StringUtils.parseNumber(dxwrapper), "2.4") < 0)
                             TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "dxwrapper/d8vk-" + DefaultVersion.D8VK + ".tzst", windowsDir, onExtractFileListener);
                     }
-                } else if (dxwrapper.startsWith("vkd3d")) {
-                    ContentProfile profile = contentsManager.getProfileByEntryName(dxwrapper);
-                    if (profile != null)
-                        contentsManager.applyContent(profile);
+
+                    // 2. Apply VKD3D (D3D12)
+                    String vkd3dVer = "vkd3d-" + dxwrapperConfig.get("vkd3dVersion");
+                    ContentProfile vkd3dProfile = contentsManager.getProfileByEntryName(vkd3dVer);
+                    if (vkd3dProfile != null)
+                        contentsManager.applyContent(vkd3dProfile);
                     else
-                        TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "dxwrapper/" + dxwrapper + ".tzst", windowsDir, onExtractFileListener);
+                        TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "dxwrapper/" + vkd3dVer + ".tzst", windowsDir, onExtractFileListener);
                 }
                 break;
         }
