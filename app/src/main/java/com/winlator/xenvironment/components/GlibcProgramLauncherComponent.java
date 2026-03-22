@@ -175,8 +175,10 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
     }
 
     private void addFEXEnvVars(EnvVars envVars) {
-        if (fexPreset == 1) {
+        if (fexPreset == 0) {
             envVars.put("HODLL", "libwow64fex.dll");
+        } else if (fexPreset == 1) {
+            envVars.put("HODLL", "wowbox64.dll");
         } else {
             envVars.remove("HODLL");
         }

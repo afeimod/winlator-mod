@@ -176,12 +176,10 @@ public abstract class WineUtils {
             registryEditor.setStringValue("Software\\Classes\\inifile\\DefaultIcon", null, "shell32.dll,-151");
         }
 
-        final String[] direct3dLibs = {"d3d8", "d3d9", "d3d10", "d3d10_1", "d3d10core", "d3d11", "d3d12", "d3d12core", "ddraw", "dxgi", "wined3d"};
-        final String[] xinputLibs = {"dinput", "dinput8", "xinput1_1", "xinput1_2", "xinput1_3", "xinput1_4", "xinput9_1_0", "xinputuap"};
         final String dllOverridesKey = "Software\\Wine\\DllOverrides";
+        final String[] xinputLibs = {"dinput", "dinput8", "xinput1_1", "xinput1_2", "xinput1_3", "xinput1_4", "xinput9_1_0", "xinputuap"};
 
         try (WineRegistryEditor registryEditor = new WineRegistryEditor(userRegFile)) {
-            for (String name : direct3dLibs) registryEditor.setStringValue(dllOverridesKey, name, "native,builtin");
             for (String name : xinputLibs) registryEditor.setStringValue(dllOverridesKey, name, "builtin,native");
 
             registryEditor.removeKey("Software\\Winlator\\WFM\\ContextMenu\\7-Zip");
@@ -203,6 +201,18 @@ public abstract class WineUtils {
         for (String dlname : dlnames) {
             FileUtils.copy(new File(wineSysWoW64Dir, dlname), new File(win64 ? containerSysWoW64Dir : containerSystem32Dir, dlname));
             if (win64) FileUtils.copy(new File(wineSystem32Dir, dlname), new File(containerSystem32Dir, dlname));
+        }
+    }
+
+    public static void setDirect3DLibOverrides(Container container, boolean useNative) {
+        final String[] direct3dLibs = {"d3d8", "d3d9", "d3d10", "d3d10_1", "d3d10core", "d3d11", "d3d12", "d3d12core", "ddraw", "dxgi", "wined3d"};
+        final String dllOverridesKey = "Software\\Wine\\DllOverrides";
+        File userRegFile = new File(container.getRootDir(), ".wine/user.reg");
+        try (WineRegistryEditor registryEditor = new WineRegistryEditor(userRegFile)) {
+            for (String name : direct3dLibs) {
+                if (useNative) registryEditor.setStringValue(dllOverridesKey, name, "native,builtin");
+                else registryEditor.setStringValue(dllOverridesKey, name, "builtin");
+            }
         }
     }
 

@@ -230,11 +230,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             tvGlibcTermuxPacman.setMovementMethod(LinkMovementMethod.getInstance());
 
             String modifyByHTML = String.join("<br />",
-                "Waim908 <a href=\"https://github.com/Waim908\">github.com/Waim908</a>",
-                "Afeimod <a href=\"https://github.com/afeimod\">github.com/afeimod</a>",
-                "Hostei <a href=\"https://github.com/hostei33\">github.com/hostei33</a>",
-                "Ewt45 <a href=\"https://github.com/ewt45\">github.com/ewt45</a>",
-                "Moze <a href=\"https://github.com/moze30\">github.com/moze30</a>"
+                "Waim908 (<a href=\"https://github.com/Waim908\">github.com/Waim908</a>)",
+                "Afeimod (<a href=\"https://github.com/afeimod\">github.com/afeimod</a>)",
+                "Hostei (<a href=\"https://github.com/hostei33\">github.com/hostei33</a>)",
+                "Ewt45 (<a href=\"https://github.com/ewt45\">github.com/ewt45</a>)",
+                "Moze (<a href=\"https://github.com/moze30\">github.com/moze30</a>)"
             );
             TextView tvModifyBy = dialog.findViewById(R.id.TVModifyBy);
             tvModifyBy.setText(Html.fromHtml(modifyByHTML, Html.FROM_HTML_MODE_LEGACY));
