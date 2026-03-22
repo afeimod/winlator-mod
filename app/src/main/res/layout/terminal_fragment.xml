@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#1e1e1e">
+
+    <!-- Top toolbar with export button, interrupt button and real-time log switch -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="8dp"
+        android:gravity="center_vertical"
+        android:background="#2d2d2d">
+
+        <Button
+            android:id="@+id/BTInterrupt"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Ctrl+C"
+            android:textSize="12sp"
+            android:padding="8dp" />
+
+        <Button
+            android:id="@+id/BTExportOutput"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/export_terminal_output"
+            android:textSize="12sp"
+            android:padding="8dp"
+            android:layout_marginStart="4dp" />
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/real_time_log"
+                android:textSize="12sp"
+                android:textColor="#ffffff"
+                android:layout_marginEnd="8dp" />
+
+            <Switch
+                android:id="@+id/SWRealTimeLog"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
+
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Terminal output display -->
+    <ScrollView
+        android:id="@+id/SVTerminal"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:background="#1e1e1e"
+        android:padding="8dp"
+        android:fillViewport="true">
+
+        <TextView
+            android:id="@+id/TVTerminalOutput"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text=""
+            android:textColor="#00ff00"
+            android:textSize="12sp"
+            android:fontFamily="monospace"
+            android:typeface="monospace"
+            android:textIsSelectable="true"
+            android:focusable="true"
+            android:focusableInTouchMode="true" />
+    </ScrollView>
+
+    <!-- Command input -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="8dp"
+        android:background="#2d2d2d"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="$ "
+            android:textColor="#00ff00"
+            android:textSize="14sp"
+            android:fontFamily="monospace"
+            android:typeface="monospace" />
+
+        <EditText
+            android:id="@+id/ETCommandInput"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:hint="Enter command..."
+            android:textColor="#ffffff"
+            android:textColorHint="#808080"
+            android:textSize="14sp"
+            android:fontFamily="monospace"
+            android:typeface="monospace"
+            android:singleLine="true"
+            android:imeOptions="actionDone"
+            android:background="@android:color/transparent"
+            android:padding="4dp" />
+
+        <Button
+            android:id="@+id/BTExecuteCommand"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Run"
+            android:textSize="12sp"
+            android:padding="8dp" />
+    </LinearLayout>
+
+</LinearLayout>

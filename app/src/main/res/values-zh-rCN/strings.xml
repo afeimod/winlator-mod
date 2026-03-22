@@ -308,4 +308,9 @@
     <string name="thumbstick_right">摇杆 右</string>
     <string name="thumbstick_up">摇杆 上</string>
     <string name="thumbstick_down">摇杆 下</string>
+    <string name="terminal">终端</string>
+    <string name="export_terminal_output">导出输出</string>
+    <string name="real_time_log">实时日志</string>
+    <string name="terminal_output_exported">终端输出已导出到</string>
+    <string name="export_failed">导出失败</string>
 </resources>

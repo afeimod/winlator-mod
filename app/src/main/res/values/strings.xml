@@ -362,4 +362,9 @@
     <string name="thumbstick_right">Thumbstick right</string>
     <string name="thumbstick_up">Thumbstick up</string>
     <string name="thumbstick_down">Thumbstick down</string>
+    <string name="terminal">Terminal</string>
+    <string name="export_terminal_output">Export Output</string>
+    <string name="real_time_log">Real-time Log</string>
+    <string name="terminal_output_exported">Terminal output exported to</string>
+    <string name="export_failed">Export failed</string>
 </resources>
