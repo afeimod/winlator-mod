@@ -39,6 +39,7 @@ public class EnvVarsView extends FrameLayout {
         {"MESA_VK_WSI_PRESENT_MODE", "SELECT", "immediate", "mailbox", "fifo", "relaxed"},
         {"WINE_DO_NOT_CREATE_DXGI_DEVICE_MANAGER", "CHECKBOX", "0", "1"},
         {"MANGOHUD", "CHECKBOX", "0", "1"},
+        {"GST_DEBUG", "CHECKBOX", "0", "1", "2", "3", "4"},
     };
     private final LinearLayout container;
     private final TextView emptyTextView;
