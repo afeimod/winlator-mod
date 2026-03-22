@@ -749,7 +749,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             envVars.put("GALLIUM_DRIVER", "zink");
             envVars.put("TU_OVERRIDE_HEAP_SIZE", "4096");
             if (!envVars.has("MESA_VK_WSI_PRESENT_MODE")) envVars.put("MESA_VK_WSI_PRESENT_MODE", "mailbox");
-            envVars.put("vblank_mode", "0");
+            if (!envVars.has("vblank_mode")) envVars.put("vblank_mode", "0");
 
             if (!GPUInformation.isAdreno6xx(this)) {
                 EnvVars userEnvVars = new EnvVars(container.getEnvVars());
