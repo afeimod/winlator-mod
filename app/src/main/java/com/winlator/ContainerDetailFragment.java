@@ -251,7 +251,11 @@ public class ContainerDetailFragment extends Fragment {
         FEXPresetManager.loadSpinner(sFEXPresetCustom, isEditMode() ? container.getFexPresetCustom() : preferences.getString("fex_preset", FEXPreset.COMPATIBILITY));
 
         final Spinner sFEXPreset = view.findViewById(R.id.SFEXPreset);
-        if (isEditMode()) sFEXPreset.setSelection(container.getFexPreset());
+        if (isEditMode()) {
+            sFEXPreset.setSelection(container.getFexPreset());
+        } else {
+            sFEXPreset.setSelection(0);
+        }
 
         final Spinner sRCFile = view.findViewById(R.id.SRCFile);
         final int[] rcfileIds = {0};

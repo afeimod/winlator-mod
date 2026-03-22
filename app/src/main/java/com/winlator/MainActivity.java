@@ -208,7 +208,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 "DXVK (<a href=\"https://github.com/doitsujin/dxvk\">github.com/doitsujin/dxvk</a>)",
                 "VKD3D (<a href=\"https://gitlab.winehq.org/wine/vkd3d\">gitlab.winehq.org/wine/vkd3d</a>)",
                 "D8VK (<a href=\"https://github.com/AlpyneDreams/d8vk\">github.com/AlpyneDreams/d8vk</a>)",
-                "CNC DDraw (<a href=\"https://github.com/FunkyFr3sh/cnc-ddraw\">github.com/FunkyFr3sh/cnc-ddraw</a>)"
+                "CNC DDraw (<a href=\"https://github.com/FunkyFr3sh/cnc-ddraw\">github.com/FunkyFr3sh/cnc-ddraw</a>)",
+                "Hangover (<a href=\"https://github.com/AndreRH/hangover\">github.com/AndreRH/hangover</a>)",
+                "FEX (<a href=\"https://github.com/FEX-Emu/FEX\">github.com/FEX-Emu/FEX</a>)"
             );
 
             TextView tvCreditsAndThirdPartyApps = dialog.findViewById(R.id.TVCreditsAndThirdPartyApps);
@@ -221,12 +223,22 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             tvGlibcExpVersionFork.setText(Html.fromHtml(glibcExpVersionForkHTML, Html.FROM_HTML_MODE_LEGACY));
             tvGlibcExpVersionFork.setMovementMethod(LinkMovementMethod.getInstance());
 
-
             String glibcTermuxPacman = String.join("<br />",
                     "Termux-pacman (<a href=\"https://github.com/termux-pacman/glibc-packages\">github.com/termux-pacman/glibc-packages</a>)");
             TextView tvGlibcTermuxPacman = dialog.findViewById(R.id.TVGlibcTermuxPacman);
             tvGlibcTermuxPacman.setText(Html.fromHtml(glibcTermuxPacman, Html.FROM_HTML_MODE_LEGACY));
             tvGlibcTermuxPacman.setMovementMethod(LinkMovementMethod.getInstance());
+
+            String modifyByHTML = String.join("<br />",
+                "Waim908 <a href=\"https://github.com/Waim908\">github.com/Waim908</a>",
+                "Afeimod <a href=\"https://github.com/afeimod\">github.com/afeimod</a>",
+                "Hostei <a href=\"https://github.com/hostei33\">github.com/hostei33</a>",
+                "Ewt45 <a href=\"https://github.com/ewt45\">github.com/ewt45</a>",
+                "Moze <a href=\"https://github.com/moze30\">github.com/moze30</a>"
+            );
+            TextView tvModifyBy = dialog.findViewById(R.id.TVModifyBy);
+            tvModifyBy.setText(Html.fromHtml(modifyByHTML, Html.FROM_HTML_MODE_LEGACY));
+            tvModifyBy.setMovementMethod(LinkMovementMethod.getInstance());
         }
         catch (PackageManager.NameNotFoundException e) {}
 

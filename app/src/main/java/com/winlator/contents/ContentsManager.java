@@ -22,7 +22,7 @@ import java.util.Map;
 
 public class ContentsManager {
     public static final String PROFILE_NAME = "profile.json";
-    public static final String REMOTE_PROFILES_URL = "https://raw.githubusercontent.com/longjunyu2/winlator/main/content/metadata.json";
+    public static final String REMOTE_PROFILES_URL = "https://raw.githubusercontent.com/moze30/winlator-wcp/main/wcp/metadata.json";
     public static final String[] TURNIP_TRUST_FILES = {"${libdir}/libvulkan_freedreno.so", "${libdir}/libvulkan.so.1",
             "${sharedir}/vulkan/icd.d/freedreno_icd.aarch64.json", "${libdir}/libGL.so.1", "${libdir}/libglapi.so.0"};
     public static final String[] VIRGL_TRUST_FILES = {"${libdir}/libGL.so.1", "${libdir}/libglapi.so.0"};

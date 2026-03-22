@@ -78,5 +78,16 @@
             android:id="@+id/TVGlibcTermuxPacman"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textStyle="bold"
+            android:text="Modify by" />
+
+        <TextView
+            android:id="@+id/TVModifyBy"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
     </LinearLayout>
 </LinearLayout>

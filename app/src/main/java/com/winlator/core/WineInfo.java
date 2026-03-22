@@ -16,8 +16,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class WineInfo implements Parcelable {
-    public static final WineInfo WINE_X86_64 = new WineInfo("9.2", null, "x86_64", "/opt/x86_64-wine");
-    public static final WineInfo WINE_ARM64EC = new WineInfo("11.14", null, "arm64ec", "/opt/arm64ec-wine");
+    public static final WineInfo WINE_X86_64 = new WineInfo("9.16", null, "x86_64", "/opt/x86_64-wine");
+    public static final WineInfo WINE_ARM64EC = new WineInfo("11.4", null, "arm64ec", "/opt/arm64ec-wine");
     public static final WineInfo MAIN_WINE_VERSION = WINE_X86_64;
     private static final Pattern pattern = Pattern.compile("^wine\\-([0-9\\.]+)\\-?(?:(.+)\\-)?(x86|x86_64|arm64ec)$", Pattern.CASE_INSENSITIVE);
     public final String version;
@@ -82,8 +82,8 @@ public class WineInfo implements Parcelable {
     }
 
     public String identifier() {
-        if (this == WINE_X86_64) return "Wine-9.2-x86_64";
-        if (this == WINE_ARM64EC) return "Wine-11.14-arm64ec";
+        if (this == WINE_X86_64) return "Wine-9.16-x86_64";
+        if (this == WINE_ARM64EC) return "Wine-11.4-arm64ec";
         return "wine-"+fullVersion()+"-"+arch;
     }
 
@@ -124,7 +124,7 @@ public class WineInfo implements Parcelable {
     public static WineInfo fromIdentifier(Context context, String identifier) {
         if (identifier == null) return MAIN_WINE_VERSION;
 
-        if (identifier.equalsIgnoreCase("Wine-9.2-x86_64") || identifier.equalsIgnoreCase("Wine-9.16-x86_64")) return WINE_X86_64;
+        if (identifier.equalsIgnoreCase(WINE_X86_64.identifier())) return WINE_X86_64;
         if (identifier.equalsIgnoreCase(WINE_ARM64EC.identifier())) return WINE_ARM64EC;
 
         // 优先检查 ContentsManager (WCP 安装方式)
@@ -135,32 +135,21 @@ public class WineInfo implements Parcelable {
             File installDir = ContentsManager.getInstallDir(context, profile);
             if (installDir.exists()) {
                 String arch = identifier.contains("x86_64") ? "x86_64" : (identifier.contains("arm64ec") ? "arm64ec" : "x86");
-                // WCP 内部路径相对于 imagefs 根目录通常是 /opt/contents/wine/verName-verCode
                 String relPath = "/opt/contents/wine/" + profile.verName + "-" + profile.verCode;
                 Log.d("Winlator", "Found WCP Wine: " + relPath);
                 return new WineInfo(profile.verName, null, arch, relPath);
             }
         }
 
-        // 备选检查旧的 installed-wine (如果存在)
-        File installedWineDir = ImageFs.find(context).getInstalledWineDir();
-        File customDir = new File(installedWineDir, identifier);
-        if (customDir.exists() && customDir.isDirectory()) {
-            String arch = identifier.contains("x86_64") ? "x86_64" : (identifier.contains("arm64ec") ? "arm64ec" : "x86");
-            Matcher m = Pattern.compile("([0-9\\.]+)").matcher(identifier);
-            String version = m.find() ? m.group(1) : "custom";
-            return new WineInfo(version, null, arch, "/opt/installed-wine/" + identifier);
-        }
-
         Matcher matcher = pattern.matcher(identifier);
         if (matcher.find()) {
-            String path = "/opt/installed-wine/" + identifier;
+            String path = "/opt/contents/wine/" + identifier;
             return new WineInfo(matcher.group(1), matcher.group(2), matcher.group(3).toLowerCase(), path);
         }
         else return MAIN_WINE_VERSION;
     }
 
     public static boolean isMainWineVersion(String wineVersion) {
-        return wineVersion == null || wineVersion.equalsIgnoreCase("Wine-9.2-x86_64") || wineVersion.equalsIgnoreCase("Wine-9.16-x86_64") || wineVersion.equalsIgnoreCase(WINE_ARM64EC.identifier());
+        return wineVersion == null || wineVersion.equalsIgnoreCase(WINE_X86_64.identifier()) || wineVersion.equalsIgnoreCase(WINE_ARM64EC.identifier());
     }
 }
