@@ -6,7 +6,7 @@
     <string name="remove">删除</string>
     <string name="add">添加</string>
     <string name="shortcuts">快捷方式</string>
-    <string name="containers">容器</string>
+    <string name="containers">容器管理</string>
     <string name="input_controls">输入控件</string>
     <string name="no_items_to_display">没有可显示的项目</string>
     <string name="new_container">新容器</string>
@@ -55,7 +55,7 @@
     <string name="enabled">已启用</string>
     <string name="disabled">已禁用</string>
     <string name="container">容器</string>
-    <string name="screen_size">屏幕大小</string>
+    <string name="screen_size">屏幕分辨率</string>
     <string name="new_environment_variable">新环境变量</string>
     <string name="environment_variables">环境变量</string>
     <string name="value">值</string>
@@ -105,9 +105,9 @@
     <string name="drives">驱动器</string>
     <string name="force_fullscreen">强制全屏</string>
     <string name="range">范围</string>
-    <string name="enable">启用</string>
-    <string name="disable">禁用</string>
-    <string name="force">强制</string>
+    <string name="enable">Enable</string>
+    <string name="disable">Disable</string>
+    <string name="force">Force</string>
     <string name="installed_wine">已安装的 Wine</string>
     <string name="install_wine">安装 Wine</string>
     <string name="version">版本</string>
@@ -177,6 +177,7 @@
     <string name="logs">日志</string>
     <string name="enable_wine_debug">启用 Wine 调试</string>
     <string name="enable_box86_64_logs">启用 Box86/Box64 日志</string>
+    <string name="enable_startup_desktop_logs">日志写入文件(Download/Winlator/startup_desktop_logs.txt)</string>
     <string name="export">导出</string>
     <string name="logs_exported_to">日志已导出到</string>
     <string name="general">常规</string>
