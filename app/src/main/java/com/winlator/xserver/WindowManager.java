@@ -6,6 +6,7 @@ import com.winlator.core.Bitmask;
 import com.winlator.xconnector.XInputStream;
 import com.winlator.xserver.errors.BadIdChoice;
 import com.winlator.xserver.errors.BadMatch;
+import com.winlator.xserver.errors.BadValue;
 import com.winlator.xserver.errors.XRequestError;
 import com.winlator.xserver.events.ConfigureNotify;
 import com.winlator.xserver.events.ConfigureRequest;
@@ -238,7 +239,7 @@ public class WindowManager extends XResourceManager {
         triggerOnChangeWindowZOrder(window);
     }
 
-    public void configureWindow(Window window, Bitmask valueMask, XInputStream inputStream) {
+    public void configureWindow(Window window, Bitmask valueMask, XInputStream inputStream) throws XRequestError {
         short x = window.getX();
         short y = window.getY();
         short width = window.getWidth();
@@ -272,6 +273,9 @@ public class WindowManager extends XResourceManager {
                     break;
             }
         }
+
+        if (width <= 0) throw new BadValue(width);
+        if (height <= 0) throw new BadValue(height);
 
         Window parent = window.getParent();
         boolean overrideRedirect = window.attributes.isOverrideRedirect();
