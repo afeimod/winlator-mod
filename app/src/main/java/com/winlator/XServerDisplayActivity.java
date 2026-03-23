@@ -1101,8 +1101,10 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
     private void changeFrameRatingVisibility(Window window, boolean visible) {
         if (frameRating == null) return;
         if (visible) {
-            if (window.attributes.isMapped() && window.isSurface()) {
-                frameRatingWindowId = window.id;
+            Window child = window.getChildCount() > 0 ? window.getChildren().get(0) : null;
+            boolean viewable = window.attributes.isMapped() && window.getWidth() >= ScreenInfo.MIN_WIDTH && window.getHeight() >= ScreenInfo.MIN_HEIGHT;
+            if (viewable && (window.isSurface() || (child != null && child.isSurface()))) {
+                frameRatingWindowId = window.isSurface() ? window.id : child.id;
                 frameRating.reset();
             }
         }
