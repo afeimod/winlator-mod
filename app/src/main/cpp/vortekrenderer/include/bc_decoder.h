@@ -41,10 +41,10 @@ static inline uint8_t BCDecoder_getAlpha(uint64_t data, int i) {
     return (uint8_t)(alpha | (alpha << 4));
 }
 
-static inline void BCDecoder_extract565(int* c, uint32_t c565) {
-    c[0] = ((c565 & 0x0000001F) << 3) | ((c565 & 0x0000001C) >> 2);
-    c[1] = ((c565 & 0x000007E0) >> 3) | ((c565 & 0x00000600) >> 9);
-    c[2] = ((c565 & 0x0000F800) >> 8) | ((c565 & 0x0000E000) >> 13);
+static inline void BCDecoder_extract565(uint8_t* c, uint32_t c565) {
+    c[0] = ((c565 & 0x001F) << 3) | ((c565 & 0x001C) >> 2);
+    c[1] = ((c565 & 0x07E0) >> 3) | ((c565 & 0x0600) >> 9);
+    c[2] = ((c565 & 0xF800) >> 8) | ((c565 & 0xE000) >> 13);
 }
 
 static inline void BCDecoder_decodeAlpha(uint64_t data, uint8_t* dst, int x, int y, int width, int endY, int stride) {
@@ -62,8 +62,8 @@ static inline void BCDecoder_decodeChannel(uint64_t data, uint8_t* dst, int x, i
     int c[8] = {0};
 
     if (isSigned) {
-        c[0] = (signed char)(data & 0xFF);
-        c[1] = (signed char)((data & 0xFF00) >> 8);
+        c[0] = (int8_t)(data & 0xFF);
+        c[1] = (int8_t)((data & 0xFF00) >> 8);
     }
     else {
         c[0] = (uint8_t)(data & 0xFF);
@@ -94,11 +94,11 @@ static inline void BCDecoder_decodeChannel(uint64_t data, uint8_t* dst, int x, i
 }
 
 static inline void BCDecoder_decodeColor(const BCColor* color, uint8_t* dst, int x, int y, int width, int endY, int stride, bool hasAlphaChannel, bool hasSeparateAlpha) {
-    int c[4][4] = {0};
-    c[0][3] = 0xFF000000;
-    c[1][3] = 0xFF000000;
-    c[2][3] = 0xFF000000;
-    c[3][3] = 0xFF000000;
+    uint8_t c[4][4] = {0};
+    c[0][3] = 255;
+    c[1][3] = 255;
+    c[2][3] = 255;
+    c[3][3] = 255;
 
     BCDecoder_extract565(c[0], color->c0);
     BCDecoder_extract565(c[1], color->c1);
