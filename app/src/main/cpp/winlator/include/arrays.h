@@ -61,7 +61,7 @@ extern void ArrayList_addAt(ArrayList* arrayList, int index, void* element);
 extern void ArrayList_fill(ArrayList* arrayList, int size, void* element);
 extern void* ArrayList_removeAt(ArrayList* arrayList, int index);
 extern void ArrayList_remove(ArrayList* arrayList, void* element);
-extern void ArrayList_free(ArrayList* arrayList);
+extern void ArrayList_free(ArrayList* arrayList, bool freeValues);
 extern ArrayList* ArrayList_fromStrings(const char** strings, int size);
 extern int ArrayList_containsString(ArrayList* arrayList, const char* string);
 
@@ -77,7 +77,6 @@ typedef struct ArrayMap {
 } ArrayMap;
 
 extern int ArrayMap_indexOfKey(ArrayMap* arrayMap, const char* key);
-extern int ArrayMap_indexOfValue(ArrayMap* arrayMap, void* value);
 extern void ArrayMap_put(ArrayMap* arrayMap, const char* key, void* value);
 extern void* ArrayMap_get(ArrayMap* arrayMap, const char* key);
 extern void* ArrayMap_removeAt(ArrayMap* arrayMap, int index);
@@ -102,6 +101,24 @@ extern void* SparseArray_get(SparseArray* sparseArray, int key);
 extern void* SparseArray_removeAt(SparseArray* sparseArray, int index);
 extern void* SparseArray_remove(SparseArray* sparseArray, int key);
 extern void SparseArray_free(SparseArray* sparseArray, bool freeValues);
+
+typedef struct SparseIntArray_Entry {
+    int key;
+    int value;
+} SparseIntArray_Entry;
+
+typedef struct SparseIntArray {
+    int size;
+    int capacity;
+    SparseIntArray_Entry* entries;
+} SparseIntArray;
+
+extern int SparseIntArray_indexOfKey(SparseIntArray* sparseArray, int key);
+extern void SparseIntArray_put(SparseIntArray* sparseArray, int key, int value);
+extern int SparseIntArray_get(SparseIntArray* sparseArray, int key);
+extern void SparseIntArray_removeAt(SparseIntArray* sparseArray, int index);
+extern void SparseIntArray_remove(SparseIntArray* sparseArray, int key);
+extern void SparseIntArray_free(SparseIntArray* sparseArray);
 
 typedef struct ArrayDeque {
     int head;

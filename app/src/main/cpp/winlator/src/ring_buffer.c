@@ -12,12 +12,12 @@
 #include "time_utils.h"
 #include "events.h"
 
-#define STRUCT_OFFSETS(x) \
+#define STRUCT_OFFSETS() \
     struct Offsets { \
-        __attribute__((aligned(x))) uint32_t head; \
-        __attribute__((aligned(x))) uint32_t tail; \
-        __attribute__((aligned(x))) uint32_t status; \
-        __attribute__((aligned(x))) void* buffer; \
+        uint32_t head; \
+        uint32_t tail; \
+        uint32_t status; \
+        void* buffer; \
     }
 
 #ifdef __ANDROID__
@@ -58,7 +58,7 @@ bool RingBuffer_hasStatus(RingBuffer* ring, uint32_t status) {
 RingBuffer* RingBuffer_create(int shmFd, uint32_t bufferSize) {
     RingBuffer* ring = calloc(1, sizeof(RingBuffer));
 
-    STRUCT_OFFSETS(64);
+    STRUCT_OFFSETS();
 
     int shmSize = RingBuffer_getSHMemSize(bufferSize);
     void* sharedData = mmap(NULL, shmSize, PROT_READ | PROT_WRITE, MAP_SHARED, shmFd, 0);
@@ -130,7 +130,7 @@ bool RingBuffer_write(RingBuffer* ring, const void* data, uint32_t size) {
 }
 
 uint32_t RingBuffer_getSHMemSize(uint32_t bufferSize) {
-    STRUCT_OFFSETS(64);
+    STRUCT_OFFSETS();
 
     return bufferSize + offsetof(struct Offsets, buffer);
 }

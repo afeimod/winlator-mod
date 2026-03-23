@@ -158,13 +158,13 @@ void destroyVkContext(JNIEnv* env, VkContext* context) {
         context->textureDecoder = NULL;
     }
 
-    ArrayList_free(context->exposedDeviceExtensions);
+    ArrayList_free(context->exposedDeviceExtensions, true);
     context->exposedDeviceExtensions = NULL;
 
-    ArrayList_free(context->disabledDeviceExtensions);
+    ArrayList_free(context->disabledDeviceExtensions, true);
     context->disabledDeviceExtensions = NULL;
 
-    ArrayList_free(&context->extraDataRequests);
+    ArrayList_free(&context->extraDataRequests, true);
     pthread_mutex_destroy(&context->extraDataRequestsMutex);
 
     MEMFREE(context->memoryPool.data);

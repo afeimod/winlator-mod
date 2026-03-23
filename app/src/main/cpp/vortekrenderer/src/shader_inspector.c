@@ -539,8 +539,8 @@ static void inspectFragmentShaderCode(ShaderInspector* shaderInspector, ShaderMo
         }
     }
 
-    ArrayList_free(&vsVariables);
-    ArrayList_free(&fsVariables);
+    ArrayList_free(&vsVariables, true);
+    ArrayList_free(&fsVariables, true);
 
     mergeCodesSorted(fsModule, &mergeCodes);
 }

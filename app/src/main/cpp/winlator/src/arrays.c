@@ -273,14 +273,16 @@ void ArrayList_remove(ArrayList* arrayList, void* element) {
     if (index != -1) ArrayList_removeAt(arrayList, index);
 }
 
-void ArrayList_free(ArrayList* arrayList) {
+void ArrayList_free(ArrayList* arrayList, bool freeValues) {
     if (!arrayList) return;
 
     if (arrayList->elements) {
-        for (int i = 0; i < arrayList->size; i++) {
-            if (arrayList->elements[i]) {
-                free(arrayList->elements[i]);
-                arrayList->elements[i] = NULL;
+        if (freeValues) {
+            for (int i = 0; i < arrayList->size; i++) {
+                if (arrayList->elements[i]) {
+                    free(arrayList->elements[i]);
+                    arrayList->elements[i] = NULL;
+                }
             }
         }
 
@@ -336,13 +338,6 @@ int ArrayMap_indexOfKey(ArrayMap* arrayMap, const char* key) {
     return ~end;
 }
 
-int ArrayMap_indexOfValue(ArrayMap* arrayMap, void* value) {
-    for (int i = 0; i < arrayMap->size; i++) {
-        if (arrayMap->entries[i].value == value) return i;
-    }
-    return -1;
-}
-
 void ArrayMap_put(ArrayMap* arrayMap, const char* key, void* value) {
     int index = ArrayMap_indexOfKey(arrayMap, key);
     if (index >= 0) {
@@ -396,54 +391,50 @@ void ArrayMap_free(ArrayMap* arrayMap, bool freeKeys, bool freeValues) {
     arrayMap->capacity = 0;
 }
 
-static int SparseArray_binarySearch(SparseArray* sparseArray, int key) {
-    int lo = 0;
-    int hi = sparseArray->size - 1;
+#define SPARSEARRAY_BINARY_SEARCH(sparseArray, key) \
+    int lo = 0; \
+    int hi = sparseArray->size - 1; \
+    int mid, midVal; \
+\
+    while (lo <= hi) { \
+        mid = (lo + hi) >> 1; \
+        midVal = sparseArray->entries[mid].key; \
+\
+        if (midVal < key) { \
+            lo = mid + 1; \
+        } \
+        else if (midVal > key) { \
+            hi = mid - 1; \
+        } \
+        else return mid; \
+    } \
+    return ~lo
 
-    while (lo <= hi) {
-        int mid = (lo + hi) >> 1;
-        int midVal = sparseArray->entries[mid].key;
-
-        if (midVal < key) {
-            lo = mid + 1;
-        }
-        else if (midVal > key) {
-            hi = mid - 1;
-        }
-        else return mid;
-    }
-    return ~lo;
-}
+#define SPARSEARRAY_PUT(className, sparseArray, key, value) \
+    int index = className##_indexOfKey(sparseArray, key); \
+    if (index >= 0) { \
+        sparseArray->entries[index].value = value; \
+        return; \
+    } \
+\
+    index = ~index; \
+    ENSURE_ARRAY_CAPACITY(sparseArray->size + 1, sparseArray->capacity, sparseArray->entries, sizeof(className##_Entry)); \
+\
+    if (index < sparseArray->size) { \
+        memmove(sparseArray->entries + index + 1, sparseArray->entries + index, (sparseArray->size - index) * sizeof(className##_Entry)); \
+    } \
+\
+    sparseArray->entries[index].key = key; \
+    sparseArray->entries[index].value = value; \
+    sparseArray->size++
 
 int SparseArray_indexOfKey(SparseArray* sparseArray, int key) {
     if (!sparseArray->entries) return -1;
-    return SparseArray_binarySearch(sparseArray, key);
-}
-
-int SparseArray_indexOfValue(SparseArray* sparseArray, void* value) {
-    for (int i = 0; i < sparseArray->size; i++) {
-        if (sparseArray->entries[i].value == value) return i;
-    }
-    return -1;
+    SPARSEARRAY_BINARY_SEARCH(sparseArray, key);
 }
 
 void SparseArray_put(SparseArray* sparseArray, int key, void* value) {
-    int index = SparseArray_indexOfKey(sparseArray, key);
-    if (index >= 0) {
-        sparseArray->entries[index].value = value;
-        return;
-    }
-
-    index = ~index;
-    ENSURE_ARRAY_CAPACITY(sparseArray->size + 1, sparseArray->capacity, sparseArray->entries, sizeof(SparseArray_Entry));
-
-    if (index < sparseArray->size) {
-        memmove(sparseArray->entries + index + 1, sparseArray->entries + index, (sparseArray->size - index) * sizeof(SparseArray_Entry));
-    }
-
-    sparseArray->entries[index].key = key;
-    sparseArray->entries[index].value = value;
-    sparseArray->size++;
+    SPARSEARRAY_PUT(SparseArray, sparseArray, key, value);
 }
 
 void* SparseArray_get(SparseArray* sparseArray, int key) {
@@ -473,6 +464,43 @@ void SparseArray_free(SparseArray* sparseArray, bool freeValues) {
                 if (sparseArray->entries[i].value) free(sparseArray->entries[i].value);
             }
         }
+        free(sparseArray->entries);
+        sparseArray->entries = NULL;
+    }
+
+    sparseArray->size = 0;
+    sparseArray->capacity = 0;
+}
+
+int SparseIntArray_indexOfKey(SparseIntArray* sparseArray, int key) {
+    if (!sparseArray->entries) return -1;
+    SPARSEARRAY_BINARY_SEARCH(sparseArray, key);
+}
+
+void SparseIntArray_put(SparseIntArray* sparseArray, int key, int value) {
+    SPARSEARRAY_PUT(SparseIntArray, sparseArray, key, value);
+}
+
+int SparseIntArray_get(SparseIntArray* sparseArray, int key) {
+    int index = SparseIntArray_indexOfKey(sparseArray, key);
+    return index >= 0 ? sparseArray->entries[index].value : 0;
+}
+
+void SparseIntArray_removeAt(SparseIntArray* sparseArray, int index) {
+    if (index >= sparseArray->size) return;
+    memmove(sparseArray->entries + index, sparseArray->entries + index + 1, (sparseArray->size - (index + 1)) * sizeof(SparseIntArray_Entry));
+    sparseArray->size--;
+    sparseArray->entries[sparseArray->size].key = 0;
+    sparseArray->entries[sparseArray->size].value = 0;
+}
+
+void SparseIntArray_remove(SparseIntArray* sparseArray, int key) {
+    int index = SparseIntArray_indexOfKey(sparseArray, key);
+    if (index >= 0) SparseIntArray_removeAt(sparseArray, index);
+}
+
+void SparseIntArray_free(SparseIntArray* sparseArray) {
+    if (sparseArray->entries) {
         free(sparseArray->entries);
         sparseArray->entries = NULL;
     }

@@ -31,12 +31,12 @@ static bool isExternalMemoryHandleTypeSupported(VkPhysicalDevice physicalDevice,
 static void setupExposedDeviceExtensions(VkContext* context) {
     if (!context->engineName) return;
 
-    ArrayList_free(context->disabledDeviceExtensions);
+    ArrayList_free(context->disabledDeviceExtensions, true);
     context->disabledDeviceExtensions = NULL;
 
     if (strcmp(context->engineName, "mesa zink") == 0) {
         const char* disabledDeviceExtensions[] = {"VK_EXT_extended_dynamic_state", "VK_EXT_color_write_enable", "VK_KHR_push_descriptor"};
-        ArrayList_free(context->exposedDeviceExtensions);
+        ArrayList_free(context->exposedDeviceExtensions, true);
         context->disabledDeviceExtensions = ArrayList_fromStrings(disabledDeviceExtensions, ARRAY_SIZE(disabledDeviceExtensions));
         context->exposedDeviceExtensions = ArrayList_fromStrings(globalExposedDeviceExtensions, ARRAY_SIZE(globalExposedDeviceExtensions));
     }
