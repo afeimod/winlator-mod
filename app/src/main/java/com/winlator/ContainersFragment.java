@@ -30,6 +30,7 @@ import com.winlator.container.ContainerManager;
 import com.winlator.container.Shortcut;
 import com.winlator.contentdialog.ContentDialog;
 import com.winlator.contentdialog.StorageInfoDialog;
+import com.winlator.core.AppUtils;
 import com.winlator.core.PreloaderDialog;
 import com.winlator.xenvironment.ImageFs;
 
@@ -143,12 +144,7 @@ public class ContainersFragment extends Fragment {
         }
 
         private void runContainer(Container container) {
-            if (!XrActivity.isEnabled(getContext())) {
-                Intent intent = new Intent(getContext(), XServerDisplayActivity.class);
-                intent.putExtra("container_id", container.id);
-                requireActivity().startActivity(intent);
-            }
-            else XrActivity.openIntent(getActivity(), container.id, null);
+            AppUtils.startWineAndXServer(requireActivity(), container.id, null);
         }
 
         private void showListItemMenu(View anchorView, Container container) {

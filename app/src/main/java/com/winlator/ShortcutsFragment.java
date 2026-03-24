@@ -31,6 +31,7 @@ import com.winlator.container.ContainerManager;
 import com.winlator.container.Shortcut;
 import com.winlator.contentdialog.ContentDialog;
 import com.winlator.contentdialog.ShortcutSettingsDialog;
+import com.winlator.core.AppUtils;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -153,6 +154,7 @@ public class ShortcutsFragment extends Fragment {
         }
 
         private void runFromShortcut(Shortcut shortcut) {
+            AppUtils.startWineAndXServer(requireActivity(), shortcut.container.id, shortcut.file.getPath());
             Activity activity = getActivity();
 
             if (!XrActivity.isEnabled(getContext())) {

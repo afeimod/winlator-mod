@@ -105,7 +105,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
     private DrawerLayout drawerLayout;
     private ContainerManager containerManager;
     protected Container container;
-    private XServer xServer;
+    protected XServer xServer;
     private InputControlsManager inputControlsManager;
     private ImageFs imageFs;
     private FrameRating frameRating;
@@ -131,7 +131,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
     private MidiHandler midiHandler;
     private String midiSoundFont = "";
     private String lc_all = "";
-    PreloaderDialog preloaderDialog = null;
+    protected PreloaderDialog preloaderDialog = null;
     private Runnable configChangedCallback = null;
 
     @Override
