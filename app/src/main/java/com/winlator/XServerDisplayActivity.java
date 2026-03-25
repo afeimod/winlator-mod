@@ -746,7 +746,8 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             if (dxwrapper.equals("dxvk"))
                 DXVKConfigDialog.setEnvVars(this, dxwrapperConfig, envVars);
 
-            envVars.put("GALLIUM_DRIVER", "zink");
+            // envVars.put("GALLIUM_DRIVER", "zink");
+            if (!envVars.has("GALLIUM_DRIVER")) envVars.put("GALLIUM_DRIVER", "zink");
             envVars.put("TU_OVERRIDE_HEAP_SIZE", "4096");
             if (!envVars.has("MESA_VK_WSI_PRESENT_MODE")) envVars.put("MESA_VK_WSI_PRESENT_MODE", "mailbox");
             if (!envVars.has("vblank_mode")) envVars.put("vblank_mode", "0");
