@@ -46,7 +46,7 @@ public class LorieView extends SurfaceView {
     /** 桌面分辨率，在 MainActivity.onCreate 中设置 */
     public final Point p = new Point();
     private SharedPreferences preferences;
-    private boolean toggleFullscreen = false;
+    private boolean stretchFullscreen = false;
     boolean commitedText = false;
     private final SurfaceHolder.Callback mSurfaceCallback = new SurfaceHolder.Callback() {
         @Override public void surfaceCreated(@NonNull SurfaceHolder holder) {
@@ -106,12 +106,11 @@ public class LorieView extends SurfaceView {
         MainActivity.getInstance().runOnUiThread(() -> mSurfaceCallback.surfaceChanged(getHolder(), PixelFormat.BGRA_8888, r.width(), r.height()));
     }
 
-    // TODO 适配宽高
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         super.onMeasure(widthMeasureSpec, heightMeasureSpec);
 
-        if (toggleFullscreen) {
+        if (stretchFullscreen) {
             getHolder().setSizeFromLayout();
             return;
         }
@@ -131,13 +130,13 @@ public class LorieView extends SurfaceView {
         setMeasuredDimension(width, height);
     }
 
-    public void toggleFullscreen() {
-        toggleFullscreen = !toggleFullscreen;
+    public void toggleStretchFullscreen() {
+        stretchFullscreen = !stretchFullscreen;
         requestLayout();
     }
 
-    public boolean isToggleFullscreen() {
-        return toggleFullscreen;
+    public boolean isStretchFullscreen() {
+        return stretchFullscreen;
     }
 
     // It is used in native code

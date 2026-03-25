@@ -1,6 +1,5 @@
 package com.winlator.widget;
 
-import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.StateListDrawable;
@@ -14,13 +13,13 @@ import android.widget.FrameLayout;
 
 import com.winlator.R;
 import com.winlator.core.AppUtils;
+import com.winlator.xserverbridge.IXServerBridge;
 import com.winlator.math.Mathf;
 import com.winlator.math.XForm;
 import com.winlator.renderer.ViewTransformation;
 import com.winlator.winhandler.MouseEventFlags;
 import com.winlator.winhandler.WinHandler;
 import com.winlator.xserver.Pointer;
-import com.winlator.xserver.XServer;
 
 public class TouchpadView extends View implements View.OnCapturedPointerListener {
     private static final int EFFECTIVE_TOUCH_DISTANCE = 20;
@@ -62,14 +61,14 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
     private int initialPointerX;
     private int initialPointerY;
 
-    private final XServer xServer;
+    private final IXServerBridge xServer;
     private final float[] xform;
 
-    public TouchpadView(Context context, XServer xServer) {
+    public TouchpadView(Context context, IXServerBridge xServer) {
         this(context, xServer, false);
     }
 
-    public TouchpadView(Context context, XServer xServer, boolean capturePointerOnExternalMouse) {
+    public TouchpadView(Context context, IXServerBridge xServer, boolean capturePointerOnExternalMouse) {
         super(context);
 
         this.xServer = xServer;
@@ -96,8 +95,8 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
         setPointerIcon(PointerIcon.load(getResources(), R.drawable.hidden_pointer_arrow)); // 隐藏系统指针
 
         updateXform(AppUtils.getScreenWidth(), AppUtils.getScreenHeight(),
-                xServer.screenInfo.width, xServer.screenInfo.height);
-        resolutionScale = 1000.0f / Math.min(xServer.screenInfo.width, xServer.screenInfo.height);
+                xServer.getScreenWidth(), xServer.getScreenHeight());
+        resolutionScale = 1000.0f / Math.min(xServer.getScreenWidth(), xServer.getScreenHeight());
 
         setOnGenericMotionListener((v, event) -> {
             if (event.getToolType(0) == MotionEvent.TOOL_TYPE_STYLUS) {
@@ -125,7 +124,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
         ViewTransformation viewTransformation = new ViewTransformation();
         viewTransformation.update(outerWidth, outerHeight, innerWidth, innerHeight);
         float invAspect = 1.0f / viewTransformation.aspect;
-        if (!xServer.getRenderer().isFullscreen()) {
+        if (!xServer.isStretchFullscreen()) {
             XForm.makeTranslation(xform, -viewTransformation.viewOffsetX, -viewTransformation.viewOffsetY);
             XForm.scale(xform, invAspect, invAspect);
         } else {
@@ -136,8 +135,8 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
     @Override
     protected void onSizeChanged(int w, int h, int oldw, int oldh) {
         super.onSizeChanged(w, h, oldw, oldh);
-        updateXform(w, h, xServer.screenInfo.width, xServer.screenInfo.height);
-        resolutionScale = 1000.0f / Math.min(xServer.screenInfo.width, xServer.screenInfo.height);
+        updateXform(w, h, xServer.getScreenWidth(), xServer.getScreenHeight());
+        resolutionScale = 1000.0f / Math.min(xServer.getScreenWidth(), xServer.getScreenHeight());
     }
 
     @Override
@@ -191,8 +190,8 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
         if (simTouchScreen && pointerId == 0) {
             isShortDrag = false;
             isLongDrag = false;
-            initialPointerX = xServer.pointer.getX();
-            initialPointerY = xServer.pointer.getY();
+            initialPointerX = xServer.getPointerX();
+            initialPointerY = xServer.getPointerY();
             if (Math.hypot(fingers[0].getX() - lastTouchedPosX,
                     fingers[0].getY() - lastTouchedPosY) * resolutionScale > EFFECTIVE_TOUCH_DISTANCE) {
                 lastTouchedPosX = fingers[0].getX();
@@ -270,13 +269,13 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
     private void handleStylusLeftClick(MotionEvent event) {
         float[] point = XForm.transformPoint(xform, event.getX(), event.getY());
         xServer.injectPointerMove((int) point[0], (int) point[1]);
-        xServer.injectPointerButtonPress(Pointer.Button.BUTTON_LEFT);
+        xServer.injectPointerButtonPress(Pointer.Button.BUTTON_LEFT.code());
     }
 
     private void handleStylusRightClick(MotionEvent event) {
         float[] point = XForm.transformPoint(xform, event.getX(), event.getY());
         xServer.injectPointerMove((int) point[0], (int) point[1]);
-        xServer.injectPointerButtonPress(Pointer.Button.BUTTON_RIGHT);
+        xServer.injectPointerButtonPress(Pointer.Button.BUTTON_RIGHT.code());
     }
 
     private void handleStylusMove(MotionEvent event) {
@@ -285,8 +284,8 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
     }
 
     private void handleStylusUp(MotionEvent event) {
-        xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_LEFT);
-        xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_RIGHT);
+        xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_LEFT.code());
+        xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_RIGHT.code());
     }
 
     public void mouseMove(float x, float y, int action) {
@@ -405,17 +404,17 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
                 scrollAccumY += ((finger.getY() + secondFinger.getY()) * 0.5f)
                         - ((finger.getLastY() + secondFinger.getLastY()) * 0.5f);
                 if (scrollAccumY < -100.0f) {
-                    xServer.injectPointerButtonPress(Pointer.Button.BUTTON_SCROLL_DOWN);
-                    xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_SCROLL_DOWN);
+                    xServer.injectPointerButtonPress(Pointer.Button.BUTTON_SCROLL_DOWN.code());
+                    xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_SCROLL_DOWN.code());
                     scrollAccumY = 0.0f;
                 } else if (scrollAccumY > 100.0f) {
-                    xServer.injectPointerButtonPress(Pointer.Button.BUTTON_SCROLL_UP);
-                    xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_SCROLL_UP);
+                    xServer.injectPointerButtonPress(Pointer.Button.BUTTON_SCROLL_UP.code());
+                    xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_SCROLL_UP.code());
                     scrollAccumY = 0.0f;
                 }
                 scrolling = true;
             } else if (!simTouchScreen && currDistance >= 350.0f
-                    && !xServer.pointer.isButtonPressed(Pointer.Button.BUTTON_LEFT)
+                    && !xServer.isPointerButtonPressed(Pointer.Button.BUTTON_LEFT.code())
                     && secondFinger.getTravelDistance() < MAX_TAP_TRAVEL_DISTANCE) {
                 pressPointerButtonLeft(finger);
                 skipPointerMove = true;
@@ -450,18 +449,13 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
             }
             int dx = finger.getDeltaX();
             int dy = finger.getDeltaY();
-            WinHandler winHandler = xServer.getWinHandler();
-            if (xServer.isRelativeMouseMovement()) {
-                winHandler.mouseEvent(MouseEventFlags.MOVE, dx, dy, 0);
-            } else {
-                xServer.injectPointerMoveDelta(dx, dy);
-            }
+            xServer.injectPointerMoveDelta(dx, dy);
         }
     }
 
     private void moveCursorToEdge(Finger finger) {
-        int screenWidth = xServer.screenInfo.width;
-        int screenHeight = xServer.screenInfo.height;
+        int screenWidth = xServer.getScreenWidth();
+        int screenHeight = xServer.getScreenHeight();
         int deltaX = finger.getX() - finger.getLastX();
         int deltaY = finger.getY() - finger.getLastY();
         if (Math.abs(deltaX) < 2 && Math.abs(deltaY) < 2) {
@@ -488,25 +482,25 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
 
     private void pressPointerButtonLeft(Finger finger) {
         if (isEnabled() && pointerButtonLeftEnabled
-                && !xServer.pointer.isButtonPressed(Pointer.Button.BUTTON_LEFT)) {
-            xServer.injectPointerButtonPress(Pointer.Button.BUTTON_LEFT);
+                && !xServer.isPointerButtonPressed(Pointer.Button.BUTTON_LEFT.code())) {
+            xServer.injectPointerButtonPress(Pointer.Button.BUTTON_LEFT.code());
             fingerPointerButtonLeft = finger;
         }
     }
 
     private void pressPointerButtonRight(Finger finger) {
         if (isEnabled() && pointerButtonRightEnabled
-                && !xServer.pointer.isButtonPressed(Pointer.Button.BUTTON_RIGHT)) {
-            xServer.injectPointerButtonPress(Pointer.Button.BUTTON_RIGHT);
+                && !xServer.isPointerButtonPressed(Pointer.Button.BUTTON_RIGHT.code())) {
+            xServer.injectPointerButtonPress(Pointer.Button.BUTTON_RIGHT.code());
             fingerPointerButtonRight = finger;
         }
     }
 
     private void releasePointerButtonLeft(Finger finger) {
         if (pointerButtonLeftEnabled && finger == fingerPointerButtonLeft
-                && xServer.pointer.isButtonPressed(Pointer.Button.BUTTON_LEFT)) {
+                && xServer.isPointerButtonPressed(Pointer.Button.BUTTON_LEFT.code())) {
             postDelayed(() -> {
-                xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_LEFT);
+                xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_LEFT.code());
                 fingerPointerButtonLeft = null;
             }, MOVE_TO_CLICK_DELAY_MS);
         }
@@ -514,9 +508,9 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
 
     private void releasePointerButtonRight(Finger finger) {
         if (pointerButtonRightEnabled && finger == fingerPointerButtonRight
-                && xServer.pointer.isButtonPressed(Pointer.Button.BUTTON_RIGHT)) {
+                && xServer.isPointerButtonPressed(Pointer.Button.BUTTON_RIGHT.code())) {
             postDelayed(() -> {
-                xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_RIGHT);
+                xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_RIGHT.code());
                 fingerPointerButtonRight = null;
             }, MOVE_TO_CLICK_DELAY_MS);
         }
@@ -553,27 +547,27 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
                 case MotionEvent.ACTION_SCROLL:
                     float scrollY = event.getAxisValue(MotionEvent.AXIS_VSCROLL);
                     if (scrollY <= -1.0f) {
-                        xServer.injectPointerButtonPress(Pointer.Button.BUTTON_SCROLL_DOWN);
-                        xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_SCROLL_DOWN);
+                        xServer.injectPointerButtonPress(Pointer.Button.BUTTON_SCROLL_DOWN.code());
+                        xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_SCROLL_DOWN.code());
                     } else if (scrollY >= 1.0f) {
-                        xServer.injectPointerButtonPress(Pointer.Button.BUTTON_SCROLL_UP);
-                        xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_SCROLL_UP);
+                        xServer.injectPointerButtonPress(Pointer.Button.BUTTON_SCROLL_UP.code());
+                        xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_SCROLL_UP.code());
                     }
                     handled = true;
                     break;
                 case MotionEvent.ACTION_BUTTON_PRESS:
                     if (actionButton == MotionEvent.BUTTON_PRIMARY) {
-                        xServer.injectPointerButtonPress(Pointer.Button.BUTTON_LEFT);
+                        xServer.injectPointerButtonPress(Pointer.Button.BUTTON_LEFT.code());
                     } else if (actionButton == MotionEvent.BUTTON_SECONDARY) {
-                        xServer.injectPointerButtonPress(Pointer.Button.BUTTON_RIGHT);
+                        xServer.injectPointerButtonPress(Pointer.Button.BUTTON_RIGHT.code());
                     }
                     handled = true;
                     break;
                 case MotionEvent.ACTION_BUTTON_RELEASE:
                     if (actionButton == MotionEvent.BUTTON_PRIMARY) {
-                        xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_LEFT);
+                        xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_LEFT.code());
                     } else if (actionButton == MotionEvent.BUTTON_SECONDARY) {
-                        xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_RIGHT);
+                        xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_RIGHT.code());
                     }
                     handled = true;
                     break;
@@ -651,7 +645,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
 
     public void toggleFullscreen() {
         new Handler().postDelayed(() ->
-                updateXform(getWidth(), getHeight(), xServer.screenInfo.width, xServer.screenInfo.height),
+                updateXform(getWidth(), getHeight(), xServer.getScreenWidth(), xServer.getScreenHeight()),
                 UPDATE_FORM_DELAYED_TIME);
     }
 

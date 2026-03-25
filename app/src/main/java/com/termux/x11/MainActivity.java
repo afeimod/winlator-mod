@@ -4,7 +4,6 @@ import static android.os.Build.VERSION.SDK_INT;
 import static android.os.Build.VERSION_CODES.TIRAMISU;
 import static com.termux.x11.CmdEntryPoint.ACTION_START;
 
-import android.annotation.SuppressLint;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -17,10 +16,10 @@ import android.os.RemoteException;
 import android.util.Log;
 import android.view.Display;
 import android.view.Gravity;
+import android.view.KeyEvent;
 import android.view.MenuItem;
 import android.view.PointerIcon;
 import android.view.View;
-import android.view.ViewGroup;
 import android.widget.FrameLayout;
 
 //import com.termux.x11.MainActivity;
@@ -29,8 +28,9 @@ import androidx.annotation.NonNull;
 
 import com.winlator.R;
 import com.winlator.XServerDisplayActivity;
-import com.winlator.core.AppUtils;
 import com.winlator.widget.XServerView;
+import com.winlator.xserverbridge.IXServerBridge;
+import com.winlator.xserverbridge.TX11XServerBridge;
 
 // native 中固定包名类名获取 java 函数，所以这个类不能移动或重命名
 public class MainActivity extends XServerDisplayActivity {
@@ -42,11 +42,9 @@ public class MainActivity extends XServerDisplayActivity {
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
-        instance = this;
-        super.onCreate(savedInstanceState);
         Log.d(TAG, "onCreate: 启动 tx11 activity");
+        instance = this;
 
-        // 添加 LorieView
         lorieView = new LorieView(this);
         lorieView.setCallback((surfaceWidth, surfaceHeight, screenWidth, screenHeight) -> {
             String name;
@@ -60,13 +58,15 @@ public class MainActivity extends XServerDisplayActivity {
                 name = "external";
             LorieView.sendWindowChange(screenWidth, screenHeight, framerate, name);
         });
+
+        // 原 XServerDisplayActivity 逻辑
+        super.onCreate(savedInstanceState);
+
+        // 添加 LorieView
         FrameLayout rootView = findViewById(R.id.FLXServerDisplay);
         FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(-1, -1);
         lp.gravity = Gravity.CENTER;
         rootView.addView(lorieView, 0, lp);
-        if (rootView.getChildCount() > 1 && (rootView.getChildAt(1) instanceof XServerView)) {
-            rootView.getChildAt(1).setVisibility(View.GONE);
-        }
         // 桌面分辨率
         lorieView.p.set(xServer.screenInfo.width, xServer.screenInfo.height);
 
@@ -86,7 +86,6 @@ public class MainActivity extends XServerDisplayActivity {
         startService(new Intent(this, TX11Service.class));
         preloaderDialog.close();
         // 目前原 xserver 也会启动 (XServerComponent)，不知道不关会不会有影响
-
     }
 
     void onReceiveConnection(Intent intent) {
@@ -168,19 +167,31 @@ public class MainActivity extends XServerDisplayActivity {
     }
 
     @Override
-    public void onConfigurationChanged(@NonNull Configuration newConfig) {
-        super.onConfigurationChanged(newConfig);
-        // onCreate 中如果旋转屏幕，会在旋转屏幕后再创建 XServerView
+    protected IXServerBridge createXServerBridge() {
+        return new TX11XServerBridge(lorieView, xServer);
+    }
+
+    @Override
+    protected void setupUI() {
+        super.setupUI();
+        // LorieView 放在了最下层，所以要隐藏原 xServerView 防止挡住
         FrameLayout rootView = findViewById(R.id.FLXServerDisplay);
-        if (rootView.getChildCount() > 1 && (rootView.getChildAt(1) instanceof XServerView)) {
-            rootView.getChildAt(1).setVisibility(View.GONE);
+        for (int i = 0; i < rootView.getChildCount(); i ++) {
+            if (rootView.getChildAt(i) instanceof XServerView) {
+                rootView.getChildAt(i).setVisibility(View.GONE);
+            }
         }
+    }
+
+    @Override
+    protected boolean onXServerKeyboardKeyEvent(KeyEvent event) {
+        return KeyEventSender.instance.sendKeyEvent(event, lorieView);
     }
 
     @Override
     public boolean onNavigationItemSelected(@NonNull MenuItem item) {
         if (item.getItemId() == R.id.main_menu_toggle_fullscreen) {
-            lorieView.toggleFullscreen();
+            lorieView.toggleStretchFullscreen();
         }
         return super.onNavigationItemSelected(item);
     }

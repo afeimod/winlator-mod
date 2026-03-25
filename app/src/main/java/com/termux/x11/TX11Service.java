@@ -86,7 +86,7 @@ public class TX11Service extends Service {
             thread.interrupt();
         started = false;
         stopForeground(true);
-        // FIXME 要完全杀死进程否则第二次启动容器无法连接
+        // 要完全杀死进程否则第二次启动容器无法连接
         Process.killProcess(Process.myPid());
     }
     @Override

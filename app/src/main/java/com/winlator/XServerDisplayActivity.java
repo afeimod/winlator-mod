@@ -84,6 +84,8 @@ import com.winlator.xserver.ScreenInfo;
 import com.winlator.xserver.Window;
 import com.winlator.xserver.WindowManager;
 import com.winlator.xserver.XServer;
+import com.winlator.xserverbridge.IXServerBridge;
+import com.winlator.xserverbridge.WinlatorXServerBridge;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -582,7 +584,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         dxwrapperConfig = null;
     }
 
-    private void setupUI() {
+    protected void setupUI() {
         FrameLayout rootView = findViewById(R.id.FLXServerDisplay);
         xServerView = new XServerView(this, xServer);
         final GLRenderer renderer = xServerView.getRenderer();
@@ -597,7 +599,8 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         rootView.addView(xServerView);
 
         globalCursorSpeed = preferences.getFloat("cursor_speed", 1.0f);
-        touchpadView = new TouchpadView(this, xServer);
+        IXServerBridge xServerBridge = createXServerBridge();
+        touchpadView = new TouchpadView(this, xServerBridge);
         touchpadView.setSensitivity(globalCursorSpeed);
         touchpadView.setFourFingersTapCallback(() -> {
             if (!drawerLayout.isDrawerOpen(GravityCompat.START)) drawerLayout.openDrawer(GravityCompat.START);
@@ -607,7 +610,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         inputControlsView = new InputControlsView(this);
         inputControlsView.setOverlayOpacity(preferences.getFloat("overlay_opacity", InputControlsView.DEFAULT_OVERLAY_OPACITY));
         inputControlsView.setTouchpadView(touchpadView);
-        inputControlsView.setXServer(xServer);
+        inputControlsView.setXServer(xServerBridge);
         inputControlsView.setVisibility(View.GONE);
         rootView.addView(inputControlsView);
 
@@ -629,6 +632,10 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         }
 
         AppUtils.observeSoftKeyboardVisibility(drawerLayout, renderer::setScreenOffsetYRelativeToCursor);
+    }
+
+    protected IXServerBridge createXServerBridge() {
+        return new WinlatorXServerBridge(xServer);
     }
 
     private ActivityResultLauncher<Intent> controlsEitorActivityResultLauncher = registerForActivityResult(
@@ -807,8 +814,12 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
-        return (!inputControlsView.onKeyEvent(event) && !winHandler.onKeyEvent(event) && xServer.keyboard.onKeyEvent(event)) ||
-                (!ExternalController.isGameController(event.getDevice()) && super.dispatchKeyEvent(event));
+        return (!inputControlsView.onKeyEvent(event) && !winHandler.onKeyEvent(event) && onXServerKeyboardKeyEvent(event))
+                || (!ExternalController.isGameController(event.getDevice()) && super.dispatchKeyEvent(event));
+    }
+
+    protected boolean onXServerKeyboardKeyEvent(KeyEvent event) {
+        return xServer.keyboard.onKeyEvent(event);
     }
 
     public InputControlsView getInputControlsView() {
