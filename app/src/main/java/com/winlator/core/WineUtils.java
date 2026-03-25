@@ -153,12 +153,12 @@ public abstract class WineUtils {
     private static void setWindowMetrics(WineRegistryEditor registryEditor) {
         byte[] fontNormalData = (new MSLogFont()).toByteArray();
         byte[] fontBoldData = (new MSLogFont()).setWeight(700).toByteArray();
-        registryEditor.setHexValue("Control Panel300\\Desktop\\WindowMetrics", "CaptionFont", fontBoldData);
-        registryEditor.setHexValue("Control Panel300\\Desktop\\WindowMetrics", "IconFont", fontNormalData);
-        registryEditor.setHexValue("Control Panel300\\Desktop\\WindowMetrics", "MenuFont", fontNormalData);
-        registryEditor.setHexValue("Control Panel300\\Desktop\\WindowMetrics", "MessageFont", fontNormalData);
-        registryEditor.setHexValue("Control Panel300\\Desktop\\WindowMetrics", "SmCaptionFont", fontNormalData);
-        registryEditor.setHexValue("Control Panel300\\Desktop\\WindowMetrics", "StatusFont", fontNormalData);
+        registryEditor.setHexValue("Control Panel\\Desktop\\WindowMetrics", "CaptionFont", fontBoldData);
+        registryEditor.setHexValue("Control Panel\\Desktop\\WindowMetrics", "IconFont", fontNormalData);
+        registryEditor.setHexValue("Control Panel\\Desktop\\WindowMetrics", "MenuFont", fontNormalData);
+        registryEditor.setHexValue("Control Panel\\Desktop\\WindowMetrics", "MessageFont", fontNormalData);
+        registryEditor.setHexValue("Control Panel\\Desktop\\WindowMetrics", "SmCaptionFont", fontNormalData);
+        registryEditor.setHexValue("Control Panel\\Desktop\\WindowMetrics", "StatusFont", fontNormalData);
     }
 
     public static void applySystemTweaks(Context context, WineInfo wineInfo) {
@@ -187,7 +187,7 @@ public abstract class WineUtils {
             registryEditor.setStringValue("Software\\Winlator\\WFM\\ContextMenu\\7-Zip", "Extract Here", "Z:\\opt\\apps\\7-Zip\\7zG.exe x \"%FILE%\" -r -o\"%DIR%\" -y");
             registryEditor.setStringValue("Software\\Winlator\\WFM\\ContextMenu\\7-Zip", "Extract to Folder", "Z:\\opt\\apps\\7-Zip\\7zG.exe x \"%FILE%\" -r -o\"%DIR%\\%BASENAME%\" -y");
 
-            setWindowMetrics(registryEditor);
+            // setWindowMetrics(registryEditor);
         }
 
         String nativeWindowsDir = wineInfo.getArch().equals("arm64ec") ? "/aarch64-windows" : "/x86_64-windows";
