@@ -69,6 +69,7 @@ import com.winlator.widget.XServerView;
 import com.winlator.winhandler.TaskManagerDialog;
 import com.winlator.winhandler.WinHandler;
 import com.winlator.xconnector.UnixSocketConfig;
+import com.winlator.xenvironment.EnvironmentComponent;
 import com.winlator.xenvironment.ImageFs;
 import com.winlator.xenvironment.XEnvironment;
 import com.winlator.xenvironment.components.ALSAServerComponent;
@@ -536,7 +537,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
         environment = new XEnvironment(this, imageFs);
         environment.addComponent(new SysVSharedMemoryComponent(xServer, UnixSocketConfig.createSocket(rootPath, UnixSocketConfig.SYSVSHM_SERVER_PATH)));
-        environment.addComponent(new XServerComponent(xServer, UnixSocketConfig.createSocket(rootPath, UnixSocketConfig.XSERVER_PATH)));
+        environment.addComponent(createXServerComponent());
         environment.addComponent(new NetworkInfoUpdateComponent());
 
         if (audioDriver.equals("alsa")) {
@@ -636,6 +637,10 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
     protected IXServerBridge createXServerBridge() {
         return new WinlatorXServerBridge(xServer);
+    }
+
+    protected EnvironmentComponent createXServerComponent() {
+        return new XServerComponent(xServer, UnixSocketConfig.createSocket(imageFs.getRootDir().getPath(), UnixSocketConfig.XSERVER_PATH));
     }
 
     private ActivityResultLauncher<Intent> controlsEitorActivityResultLauncher = registerForActivityResult(

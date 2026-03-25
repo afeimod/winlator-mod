@@ -1,14 +1,6 @@
 package com.termux.x11;
 
-import static android.os.Build.VERSION.SDK_INT;
-import static android.os.Build.VERSION_CODES.TIRAMISU;
-import static com.termux.x11.CmdEntryPoint.ACTION_START;
-
-import android.content.BroadcastReceiver;
-import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
-import android.content.res.Configuration;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.os.ParcelFileDescriptor;
@@ -22,13 +14,13 @@ import android.view.PointerIcon;
 import android.view.View;
 import android.widget.FrameLayout;
 
-//import com.termux.x11.MainActivity;
 import androidx.annotation.Keep;
 import androidx.annotation.NonNull;
 
 import com.winlator.R;
 import com.winlator.XServerDisplayActivity;
 import com.winlator.widget.XServerView;
+import com.winlator.xenvironment.EnvironmentComponent;
 import com.winlator.xserverbridge.IXServerBridge;
 import com.winlator.xserverbridge.TX11XServerBridge;
 
@@ -38,7 +30,6 @@ public class MainActivity extends XServerDisplayActivity {
     private static MainActivity instance = null;
     private LorieView lorieView = null;
     protected ICmdEntryInterface service = null;
-    private BroadcastReceiver receiver = null;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -49,9 +40,6 @@ public class MainActivity extends XServerDisplayActivity {
         lorieView.setCallback((surfaceWidth, surfaceHeight, screenWidth, screenHeight) -> {
             String name;
             int framerate = (int) ((lorieView.getDisplay() != null) ? lorieView.getDisplay().getRefreshRate() : 30);
-
-//            mInputHandler.handleHostSizeChanged(surfaceWidth, surfaceHeight);
-//            mInputHandler.handleClientSizeChanged(screenWidth, screenHeight);
             if (lorieView.getDisplay() == null || lorieView.getDisplay().getDisplayId() == Display.DEFAULT_DISPLAY)
                 name = "builtin";
             else
@@ -69,25 +57,12 @@ public class MainActivity extends XServerDisplayActivity {
         rootView.addView(lorieView, 0, lp);
         // 桌面分辨率
         lorieView.p.set(xServer.screenInfo.width, xServer.screenInfo.height);
-
-        // 启动 service 后，CmdEntryPoint 会将自身作为 binder 放入 Intent,发送 ACTION_START 的广播,
-        // 在这里接收广播，获取 binder 并尝试连接 x server
-        receiver = new BroadcastReceiver() {
-            @Override
-            public void onReceive(Context context, Intent intent) {
-                if (ACTION_START.equals(intent.getAction())) {
-                    onReceiveConnection(intent);
-                }
-            }
-        };
-        registerReceiver(receiver, new IntentFilter(ACTION_START), SDK_INT >= TIRAMISU ? RECEIVER_NOT_EXPORTED : 0);
-
-        // 启动 service (x server)
-        startService(new Intent(this, TX11Service.class));
-        preloaderDialog.close();
-        // 目前原 xserver 也会启动 (XServerComponent)，不知道不关会不会有影响
     }
 
+    /**
+     * CmdEntryPoint 会将自身作为 binder 放入 Intent,发送 ACTION_START 的广播,
+     * 该函数获取 binder 并尝试连接 x server 到 LorieView
+     */
     void onReceiveConnection(Intent intent) {
         Bundle bundle = intent == null ? null : intent.getBundleExtra(null);
         IBinder ibinder = bundle == null ? null : bundle.getBinder(null);
@@ -100,9 +75,13 @@ public class MainActivity extends XServerDisplayActivity {
                 service = null;
 
                 Log.v("Lorie", "Disconnected");
-                runOnUiThread(() -> { LorieView.connect(-1); clientConnectedStateChanged();} );
+                runOnUiThread(() -> {
+                    LorieView.connect(-1);
+                    clientConnectedStateChanged();
+                });
             }, 0);
-        } catch (RemoteException ignored) {}
+        } catch (RemoteException ignored) {
+        }
 
         try {
             if (service != null && service.asBinder().isBinderAlive()) {
@@ -150,11 +129,12 @@ public class MainActivity extends XServerDisplayActivity {
         return false;
     }
 
-    @Keep // used in native code
+    @Keep
+        // used in native code
     void clientConnectedStateChanged() {
-        runOnUiThread(()-> {
+        runOnUiThread(() -> {
             boolean connected = LorieView.connected();
-            getLorieView().setVisibility(connected? View.VISIBLE:View.INVISIBLE);
+            getLorieView().setVisibility(connected ? View.VISIBLE : View.INVISIBLE);
 
             // We should recover connection in the case if file descriptor for some reason was broken...
             if (!connected)
@@ -167,6 +147,11 @@ public class MainActivity extends XServerDisplayActivity {
     }
 
     @Override
+    protected EnvironmentComponent createXServerComponent() {
+        return new TX11XServerComponent(this);
+    }
+
+    @Override
     protected IXServerBridge createXServerBridge() {
         return new TX11XServerBridge(lorieView, xServer);
     }
@@ -176,7 +161,7 @@ public class MainActivity extends XServerDisplayActivity {
         super.setupUI();
         // LorieView 放在了最下层，所以要隐藏原 xServerView 防止挡住
         FrameLayout rootView = findViewById(R.id.FLXServerDisplay);
-        for (int i = 0; i < rootView.getChildCount(); i ++) {
+        for (int i = 0; i < rootView.getChildCount(); i++) {
             if (rootView.getChildAt(i) instanceof XServerView) {
                 rootView.getChildAt(i).setVisibility(View.GONE);
             }
@@ -199,7 +184,6 @@ public class MainActivity extends XServerDisplayActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        unregisterReceiver(receiver);
         stopService(new Intent(this, TX11Service.class));
         instance = null;
     }
@@ -213,14 +197,7 @@ public class MainActivity extends XServerDisplayActivity {
         return lorieView;
     }
 
-    //    @Override
-//    protected void onCreate(Bundle savedInstanceState) {
-////        MainActivity.HOST_PKG_NAME = getPackageName();
-//        super.onCreate(savedInstanceState);
-//        // 要不还是继承XServerDisplayActivity 然后 tx11activity的内容移植过来。aar 里有没有用到 MainActivity 的地方？
-//        // 运行 xserver
-//        startService(new Intent(this, TX11Service.class));
-//        // 显示安卓视图
-//    }
-
+    public void closePreloadDialog() {
+        preloaderDialog.closeOnUiThread();
+    }
 }

@@ -1,7 +1,5 @@
 package com.termux.x11;
 
-import static android.content.pm.ApplicationInfo.FLAG_TEST_ONLY;
-
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -9,7 +7,6 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
-import android.os.Build;
 import android.os.IBinder;
 import android.os.Looper;
 import android.os.Process;
@@ -20,17 +17,16 @@ import android.util.Log;
 import androidx.core.app.NotificationCompat;
 
 import com.winlator.R;
-import com.winlator.core.ProcessHelper;
 import com.winlator.xenvironment.ImageFs;
 
 import java.io.File;
 
-// TODO rootfs 缺少 xkb
 public class TX11Service extends Service {
     private static final String TAG = "X11Service";
     public static TX11Service instance = null;
     private boolean started = false;
     private Thread thread = null;
+
     public TX11Service() {
     }
 
@@ -89,6 +85,7 @@ public class TX11Service extends Service {
         // 要完全杀死进程否则第二次启动容器无法连接
         Process.killProcess(Process.myPid());
     }
+
     @Override
     public IBinder onBind(Intent intent) {
         return null;
