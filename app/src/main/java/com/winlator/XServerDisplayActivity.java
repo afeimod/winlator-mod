@@ -69,6 +69,7 @@ import com.winlator.widget.XServerView;
 import com.winlator.winhandler.TaskManagerDialog;
 import com.winlator.winhandler.WinHandler;
 import com.winlator.xconnector.UnixSocketConfig;
+import com.winlator.xenvironment.EnvironmentComponent;
 import com.winlator.xenvironment.ImageFs;
 import com.winlator.xenvironment.XEnvironment;
 import com.winlator.xenvironment.components.ALSAServerComponent;
@@ -84,6 +85,8 @@ import com.winlator.xserver.ScreenInfo;
 import com.winlator.xserver.Window;
 import com.winlator.xserver.WindowManager;
 import com.winlator.xserver.XServer;
+import com.winlator.xserverbridge.IXServerBridge;
+import com.winlator.xserverbridge.WinlatorXServerBridge;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -105,7 +108,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
     private DrawerLayout drawerLayout;
     private ContainerManager containerManager;
     protected Container container;
-    private XServer xServer;
+    protected XServer xServer;
     private InputControlsManager inputControlsManager;
     private ImageFs imageFs;
     private FrameRating frameRating;
@@ -131,7 +134,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
     private MidiHandler midiHandler;
     private String midiSoundFont = "";
     private String lc_all = "";
-    PreloaderDialog preloaderDialog = null;
+    protected PreloaderDialog preloaderDialog = null;
     private Runnable configChangedCallback = null;
 
     @Override
@@ -534,7 +537,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
         environment = new XEnvironment(this, imageFs);
         environment.addComponent(new SysVSharedMemoryComponent(xServer, UnixSocketConfig.createSocket(rootPath, UnixSocketConfig.SYSVSHM_SERVER_PATH)));
-        environment.addComponent(new XServerComponent(xServer, UnixSocketConfig.createSocket(rootPath, UnixSocketConfig.XSERVER_PATH)));
+        environment.addComponent(createXServerComponent());
         environment.addComponent(new NetworkInfoUpdateComponent());
 
         if (audioDriver.equals("alsa")) {
@@ -582,7 +585,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         dxwrapperConfig = null;
     }
 
-    private void setupUI() {
+    protected void setupUI() {
         FrameLayout rootView = findViewById(R.id.FLXServerDisplay);
         xServerView = new XServerView(this, xServer);
         final GLRenderer renderer = xServerView.getRenderer();
@@ -597,7 +600,8 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         rootView.addView(xServerView);
 
         globalCursorSpeed = preferences.getFloat("cursor_speed", 1.0f);
-        touchpadView = new TouchpadView(this, xServer);
+        IXServerBridge xServerBridge = createXServerBridge();
+        touchpadView = new TouchpadView(this, xServerBridge);
         touchpadView.setSensitivity(globalCursorSpeed);
         touchpadView.setFourFingersTapCallback(() -> {
             if (!drawerLayout.isDrawerOpen(GravityCompat.START)) drawerLayout.openDrawer(GravityCompat.START);
@@ -607,7 +611,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         inputControlsView = new InputControlsView(this);
         inputControlsView.setOverlayOpacity(preferences.getFloat("overlay_opacity", InputControlsView.DEFAULT_OVERLAY_OPACITY));
         inputControlsView.setTouchpadView(touchpadView);
-        inputControlsView.setXServer(xServer);
+        inputControlsView.setXServer(xServerBridge);
         inputControlsView.setVisibility(View.GONE);
         rootView.addView(inputControlsView);
 
@@ -629,6 +633,14 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         }
 
         AppUtils.observeSoftKeyboardVisibility(drawerLayout, renderer::setScreenOffsetYRelativeToCursor);
+    }
+
+    protected IXServerBridge createXServerBridge() {
+        return new WinlatorXServerBridge(xServer);
+    }
+
+    protected EnvironmentComponent createXServerComponent() {
+        return new XServerComponent(xServer, UnixSocketConfig.createSocket(imageFs.getRootDir().getPath(), UnixSocketConfig.XSERVER_PATH));
     }
 
     private ActivityResultLauncher<Intent> controlsEitorActivityResultLauncher = registerForActivityResult(
@@ -807,8 +819,12 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
-        return (!inputControlsView.onKeyEvent(event) && !winHandler.onKeyEvent(event) && xServer.keyboard.onKeyEvent(event)) ||
-                (!ExternalController.isGameController(event.getDevice()) && super.dispatchKeyEvent(event));
+        return (!inputControlsView.onKeyEvent(event) && !winHandler.onKeyEvent(event) && onXServerKeyboardKeyEvent(event))
+                || (!ExternalController.isGameController(event.getDevice()) && super.dispatchKeyEvent(event));
+    }
+
+    protected boolean onXServerKeyboardKeyEvent(KeyEvent event) {
+        return xServer.keyboard.onKeyEvent(event);
     }
 
     public InputControlsView getInputControlsView() {

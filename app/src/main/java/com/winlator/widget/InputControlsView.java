@@ -36,6 +36,7 @@ import com.winlator.math.Mathf;
 import com.winlator.winhandler.WinHandler;
 import com.winlator.xserver.Pointer;
 import com.winlator.xserver.XServer;
+import com.winlator.xserverbridge.IXServerBridge;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -58,7 +59,7 @@ public class InputControlsView extends View {
     private ControlsProfile profile;
     private float overlayOpacity = DEFAULT_OVERLAY_OPACITY;
     private TouchpadView touchpadView;
-    private XServer xServer;
+    private IXServerBridge xServer;
     private final Bitmap[] icons = new Bitmap[17];
     private Timer mouseMoveTimer;
     private final PointF mouseMoveOffset = new PointF();
@@ -265,11 +266,11 @@ public class InputControlsView extends View {
         this.touchpadView = touchpadView;
     }
 
-    public XServer getXServer() {
+    public IXServerBridge getXServer() {
         return xServer;
     }
 
-    public void setXServer(XServer xServer) {
+    public void setXServer(IXServerBridge xServer) {
         this.xServer = xServer;
         createMouseMoveTimer();
     }
@@ -508,15 +509,15 @@ public class InputControlsView extends View {
                 Pointer.Button pointerButton = binding.getPointerButton();
                 if (isActionDown) {
                     if (pointerButton != null) {
-                        xServer.injectPointerButtonPress(pointerButton);
+                        xServer.injectPointerButtonPress(pointerButton.code());
                     }
-                    else xServer.injectKeyPress(binding.keycode);
+                    else xServer.injectKeyPress(binding.keycode.id, 0);
                 }
                 else {
                     if (pointerButton != null) {
-                        xServer.injectPointerButtonRelease(pointerButton);
+                        xServer.injectPointerButtonRelease(pointerButton.code());
                     }
-                    else xServer.injectKeyRelease(binding.keycode);
+                    else xServer.injectKeyRelease(binding.keycode.id);
                 }
             }
         }

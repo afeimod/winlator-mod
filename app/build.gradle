@@ -23,6 +23,10 @@ android {
         }
     }
 
+    buildFeatures {
+        aidl true
+    }
+
     buildTypes {
         debug {
             minifyEnabled false
