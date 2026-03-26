@@ -167,7 +167,6 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
         }
 
         envVars.putAll(Box64PresetManager.getEnvVars(context, box64Preset));
-        envVars.put("BOX64_X11GLX", "1");
 
         File box64RCFile = new File(rootFS.getRootDir(), "/etc/config.box64rc");
         envVars.put("BOX64_RCFILE", box64RCFile.getPath());
