@@ -84,6 +84,7 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
         envVars.put("USER", ImageFs.USER);
         envVars.put("TMPDIR", imageFs.getRootDir().getPath() + "/tmp");
         envVars.put("DISPLAY", ":0");
+        envVars.put("WINE_HOST_XDG_CURRENT_DESKTOP", "1");
 
         ContentProfile profile = contentsManager.getProfileByEntryName(wineVersion);
         File wineDirAbs;
