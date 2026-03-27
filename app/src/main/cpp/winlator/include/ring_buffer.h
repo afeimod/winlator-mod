@@ -40,8 +40,7 @@ extern bool RingBuffer_waitForWrite(RingBuffer* ring, uint32_t size);
     uint32_t ringHead = 0; \
     void* ringData = NULL; \
     do { \
-        if (size == 0) break; \
-        if (!RingBuffer_waitForRead(ring, size)) return; \
+        if (size == 0 || !RingBuffer_waitForRead(ring, size)) break; \
         ringHead = RingBuffer_getHead(ring); \
         uint32_t ringOffset = ringHead & (ring->bufferSize - 1); \
         if ((ringOffset + size) <= ring->bufferSize) { \
@@ -65,6 +64,39 @@ extern bool RingBuffer_waitForWrite(RingBuffer* ring, uint32_t size);
             ringData = NULL; \
         } \
         if (ringHead > 0) RingBuffer_setHead(ring, ringHead); \
+    } \
+    while (0)
+
+#define RING_WRITE_BEGIN(ring, size) \
+    uint32_t ringTail = 0; \
+    void* ringData = NULL; \
+    uint32_t ringDataSize = 0; \
+    uint32_t ringOffset = 0; \
+    do { \
+        if (size == 0 || !RingBuffer_waitForWrite(ring, size)) break; \
+        ringTail = RingBuffer_getTail(ring); \
+        ringOffset = ringTail & (ring->bufferSize - 1); \
+        if ((ringOffset + size) <= ring->bufferSize) { \
+            ringData = ring->buffer + ringOffset; \
+        } \
+        else { \
+            ringData = malloc(size); \
+            ringDataSize = size; \
+        } \
+        ringTail += size; \
+    } \
+    while (0)
+
+#define RING_WRITE_END(ring) \
+    do { \
+        if (ringDataSize > 0) {  \
+            uint32_t ringStart = ring->bufferSize - ringOffset; \
+            memcpy(ring->buffer + ringOffset, ringData, ringStart); \
+            memcpy(ring->buffer, ringData + ringStart, ringDataSize - ringStart); \
+            free(ringData); \
+            ringData = NULL; \
+        } \
+        if (ringTail > 0) RingBuffer_setTail(ring, ringTail); \
     } \
     while (0)
 
