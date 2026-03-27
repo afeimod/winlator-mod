@@ -385,7 +385,7 @@ void gd_handle_glClearStencil(GLContext* context) {
 void gd_handle_glClientActiveTexture(GLContext* context) {
     GLenum texture = ArrayBuffer_getInt(&context->inputBuffer);
 
-    GLTexture_setActiveUnit(texture);
+    currentRenderer->clientState.activeTexCoord = texture - GL_TEXTURE0;
 }
 
 void gd_handle_glClientWaitSync(GLContext* context) {
@@ -2501,7 +2501,7 @@ void gd_handle_glTexCoord4f(GLContext* context) {
 }
 
 void gd_handle_glTexCoordPointer(GLContext* context) {
-    GL_READ_VERTEX_ARRAY(TEXCOORD_ARRAY_INDEX + currentRenderer->clientState.activeTexture);
+    GL_READ_VERTEX_ARRAY(TEXCOORD_ARRAY_INDEX + currentRenderer->clientState.activeTexCoord);
 }
 
 void gd_handle_glTexEnvf(GLContext* context) {

@@ -11,6 +11,7 @@
 
 typedef struct GLClientState {
     uint8_t activeTexture;
+    uint8_t activeTexCoord;
     int indexStart;
     GLVertexArrayObject defaultVAO;
     GLVertexArrayObject* vao;

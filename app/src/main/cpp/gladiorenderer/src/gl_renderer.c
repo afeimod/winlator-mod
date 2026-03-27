@@ -833,8 +833,8 @@ int GLRenderer_getParamsv(GLRenderer* renderer, GLenum pname, GLenum type, void*
             break;
         case GL_CURRENT_TEXTURE_COORDS:
             if (params) {
-                int activeTexture = renderer->clientState.activeTexture;
-                memcpy(params, renderer->state.texCoords[activeTexture], sizeof(renderer->state.texCoords[0]));
+                uint8_t activeTexCoord = renderer->clientState.activeTexCoord;
+                memcpy(params, renderer->state.texCoords[activeTexCoord], sizeof(renderer->state.texCoords[0]));
             }
             paramSize = sizeof(renderer->state.texCoords[0]);
             break;

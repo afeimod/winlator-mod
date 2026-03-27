@@ -35,7 +35,7 @@ typedef struct GLVertexArrayObject {
 #define GL_SEND_VERTEX_ARRAY(requestCode, arrayIdx) \
     GL_CALL_LOCK(); \
     GLClientState* clientState = currentGLContext->clientState; \
-    GLuint index = arrayIdx == TEXCOORD_ARRAY_INDEX ? arrayIdx + clientState->activeTexture : arrayIdx; \
+    GLuint index = arrayIdx == TEXCOORD_ARRAY_INDEX ? arrayIdx + clientState->activeTexCoord : arrayIdx; \
     GLBuffer* arrayBuffer = GLBuffer_getBound(GL_ARRAY_BUFFER); \
     if (arrayBuffer) { \
         if (clientState->program > 0) { \

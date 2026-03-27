@@ -19,6 +19,7 @@ void AttribStack_push(GLbitfield mask) {
     }
 
     if (mask & GL_CURRENT_BIT) {
+        stack->activeTexCoord = currentRenderer->clientState.activeTexCoord;
         GLRenderer_getParamsv(currentRenderer, GL_CURRENT_COLOR, GL_FLOAT, &stack->color);
         GLRenderer_getParamsv(currentRenderer, GL_CURRENT_NORMAL, GL_FLOAT, &stack->normal);
         GLRenderer_getParamsv(currentRenderer, GL_CURRENT_TEXTURE_COORDS, GL_FLOAT, &stack->texCoord);
@@ -101,7 +102,7 @@ void AttribStack_pop() {
     if (stack->mask & GL_CURRENT_BIT) {
         memcpy(currentRenderer->state.color, stack->color, sizeof(stack->color));
         memcpy(currentRenderer->state.normal, stack->normal, sizeof(stack->normal));
-        memcpy(&currentRenderer->state.texCoords[stack->activeTexture], stack->texCoord, sizeof(stack->texCoord));
+        memcpy(&currentRenderer->state.texCoords[stack->activeTexCoord], stack->texCoord, sizeof(stack->texCoord));
     }
 
     if (stack->mask & GL_DEPTH_BUFFER_BIT) {

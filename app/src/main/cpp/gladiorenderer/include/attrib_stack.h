@@ -46,6 +46,7 @@ typedef struct AttribStack {
     GLenum stencilPassDepthPass;
 
     uint8_t activeTexture;
+    uint8_t activeTexCoord;
     GLuint boundTexture[MAX_TEXTURE_TARGETS];
 
     GLint viewportSize[4];
