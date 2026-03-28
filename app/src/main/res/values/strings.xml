@@ -73,7 +73,6 @@
     <string name="offscreen_rendering_mode">Offscreen Rendering Mode</string>
     <string name="enable_strict_shader_math">Enable Strict Shader Math</string>
     <string name="video_memory_size">Video Memory Size</string>
-    <string name="show_fps">Show FPS</string>
     <string name="none">None</string>
     <string name="custom_text">Custom Text</string>
     <string name="icon">Icon</string>
@@ -343,4 +342,7 @@
     <string name="controls_profile">Controls Profile</string>
     <string name="do_you_want_to_reset_configurations">Do you want to reset the configurations?</string>
     <string name="the_settings_have_been_changed_do_you_want_to_restart_the_app">The settings have been changed. Do you want to restart the app?</string>
+    <string name="hud_mode">HUD Mode</string>
+    <string name="simple_fps">Simple (FPS)</string>
+    <string name="full">Full</string>
 </resources>

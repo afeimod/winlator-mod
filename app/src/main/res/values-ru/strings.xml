@@ -73,7 +73,6 @@
     <string name="offscreen_rendering_mode">Режим внеэкранного рендеринга</string>
     <string name="enable_strict_shader_math">Включить Strict Shader Math</string>
     <string name="video_memory_size">Объем видеопамяти</string>
-    <string name="show_fps">Показывать FPS</string>
     <string name="none">Ничего</string>
     <string name="custom_text">Пользовательский текст</string>
     <string name="icon">Иконка</string>
@@ -286,4 +285,7 @@
     <string name="controls_profile">Контрольный профиль</string>
     <string name="do_you_want_to_reset_configurations">Вы хотите сбросить настройки?</string>
     <string name="the_settings_have_been_changed_do_you_want_to_restart_the_app">Настройки были изменены. Хотите перезапустить приложение?</string>
+    <string name="hud_mode">Режим HUD</string>
+    <string name="simple_fps">Простой (FPS)</string>
+    <string name="full">Полный</string>
 </resources>
