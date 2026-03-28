@@ -203,12 +203,16 @@
                     android:src="@drawable/icon_audio_settings" />
             </LinearLayout>
 
-            <CheckBox
-                android:id="@+id/CBShowFPS"
+            <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/show_fps"
-                android:layout_marginTop="8dp" />
+                android:text="@string/hud_mode" />
+
+            <Spinner
+                style="@style/ComboBox"
+                android:id="@+id/SHUDMode"
+                android:layout_width="match_parent"
+                android:entries="@array/hud_mode_entries" />
 
             <com.google.android.material.tabs.TabLayout
                 android:id="@+id/TabLayout"

@@ -85,6 +85,8 @@ import com.winlator.xenvironment.components.SysVSharedMemoryComponent;
 import com.winlator.xenvironment.components.VirGLRendererComponent;
 import com.winlator.xenvironment.components.VortekRendererComponent;
 import com.winlator.xenvironment.components.XServerComponent;
+import com.winlator.xserver.Atom;
+import com.winlator.xserver.Property;
 import com.winlator.xserver.ScreenInfo;
 import com.winlator.xserver.Window;
 import com.winlator.xserver.WindowManager;
@@ -512,6 +514,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         GuestProgramLauncherComponent guestProgramLauncherComponent = new GuestProgramLauncherComponent();
 
         if (container != null) {
+            if (container.getHUDMode() == FrameRating.Mode.FULL.ordinal()) envVars.put("X11_WND_GPU_INFO", "1");
             if (container.getStartupSelection() == Container.STARTUP_SELECTION_AGGRESSIVE) winHandler.killProcess("services.exe");
 
             String desktopName = shortcut != null || getIntent().hasExtra("exec_path") ? "nogui" : "shell";
@@ -610,8 +613,9 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         inputControlsView.setVisibility(View.GONE);
         rootView.addView(inputControlsView);
 
-        if (container != null && container.isShowFPS()) {
+        if (container != null && container.getHUDMode() != FrameRating.Mode.DISABLED.ordinal()) {
             frameRating = new FrameRating(this);
+            frameRating.setMode(FrameRating.Mode.values()[container.getHUDMode()]);
             frameRating.setVisibility(View.GONE);
             rootView.addView(frameRating);
         }
@@ -1104,7 +1108,12 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             Window child = window.getChildCount() > 0 ? window.getChildren().get(0) : null;
             boolean viewable = window.attributes.isMapped() && window.getWidth() >= ScreenInfo.MIN_WIDTH && window.getHeight() >= ScreenInfo.MIN_HEIGHT;
             if (viewable && (window.isSurface() || (child != null && child.isSurface()))) {
-                frameRatingWindowId = window.isSurface() ? window.id : child.id;
+                Window frameRatingWindow = window.isSurface() ? window : child;
+                if (frameRating.getMode() == FrameRating.Mode.FULL) {
+                    Property gpuInfo = frameRatingWindow.getProperty(Atom._NET_WM_GPU_INFO);
+                    frameRating.setGPUInfo(gpuInfo != null ? new String(gpuInfo.data.array()) : "N/A");
+                }
+                frameRatingWindowId = frameRatingWindow.id;
                 frameRating.reset();
             }
         }

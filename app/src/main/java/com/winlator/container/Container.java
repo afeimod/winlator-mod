@@ -7,6 +7,7 @@ import com.winlator.core.FileUtils;
 import com.winlator.core.KeyValueSet;
 import com.winlator.core.WineInfo;
 import com.winlator.core.WineThemeManager;
+import com.winlator.widget.FrameRating;
 import com.winlator.xenvironment.RootFS;
 
 import org.json.JSONException;
@@ -41,7 +42,7 @@ public class Container {
     private String audioDriver = DEFAULT_AUDIO_DRIVER;
     private String drives = DEFAULT_DRIVES;
     private String wineVersion = WineInfo.MAIN_WINE_INFO.identifier();
-    private boolean showFPS;
+    private byte hudMode = (byte)FrameRating.Mode.DISABLED.ordinal();
     private byte startupSelection = STARTUP_SELECTION_ESSENTIAL;
     private String cpuList;
     private String cpuListWoW64;
@@ -143,12 +144,12 @@ public class Container {
         this.drives = drives;
     }
 
-    public boolean isShowFPS() {
-        return showFPS;
+    public byte getHUDMode() {
+        return hudMode;
     }
 
-    public void setShowFPS(boolean showFPS) {
-        this.showFPS = showFPS;
+    public void setHUDMode(byte hudMode) {
+        this.hudMode = hudMode;
     }
 
     public byte getStartupSelection() {
@@ -299,7 +300,7 @@ public class Container {
             data.put("audioDriver", audioDriver);
             data.put("wincomponents", wincomponents);
             data.put("drives", drives);
-            data.put("showFPS", showFPS);
+            data.put("hudMode", hudMode);
             data.put("startupSelection", startupSelection);
             data.put("box64Preset", box64Preset);
             data.put("desktopTheme", desktopTheme);
@@ -359,7 +360,10 @@ public class Container {
                     setDrives(data.getString(key));
                     break;
                 case "showFPS" :
-                    setShowFPS(data.getBoolean(key));
+                    setHUDMode((byte)(data.getBoolean(key) ? FrameRating.Mode.SIMPLE.ordinal() : FrameRating.Mode.DISABLED.ordinal()));
+                    break;
+                case "hudMode" :
+                    setHUDMode((byte)data.getInt(key));
                     break;
                 case "startupSelection" :
                     setStartupSelection((byte)data.getInt(key));

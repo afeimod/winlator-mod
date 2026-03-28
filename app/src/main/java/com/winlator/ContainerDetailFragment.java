@@ -62,6 +62,7 @@ import com.winlator.core.WineUtils;
 import com.winlator.widget.CPUListView;
 import com.winlator.widget.ColorPickerView;
 import com.winlator.widget.EnvVarsView;
+import com.winlator.widget.FrameRating;
 import com.winlator.widget.ImagePickerView;
 import com.winlator.widget.SeekBar;
 import com.winlator.win32.MSLogFont;
@@ -163,8 +164,8 @@ public class ContainerDetailFragment extends Fragment {
         vAudioDriverConfig.setTag(isEditMode() ? container.getAudioDriverConfig() : "");
         vAudioDriverConfig.setOnClickListener((v) -> (new AudioDriverConfigDialog(v)).show());
 
-        final CheckBox cbShowFPS = view.findViewById(R.id.CBShowFPS);
-        cbShowFPS.setChecked(isEditMode() && container.isShowFPS());
+        final Spinner sHUDMode = view.findViewById(R.id.SHUDMode);
+        sHUDMode.setSelection(isEditMode() ? container.getHUDMode() : FrameRating.Mode.DISABLED.ordinal());
 
         final Spinner sStartupSelection = view.findViewById(R.id.SStartupSelection);
         byte previousStartupSelection = isEditMode() ? container.getStartupSelection() : -1;
@@ -204,7 +205,7 @@ public class ContainerDetailFragment extends Fragment {
                 String audioDriver = StringUtils.parseIdentifier(sAudioDriver.getSelectedItem());
                 String wincomponents = getWinComponents(view);
                 String drives = getDrives(view);
-                boolean showFPS = cbShowFPS.isChecked();
+                byte hudMode = (byte)sHUDMode.getSelectedItemPosition();
                 String cpuList = cpuListView.getCheckedCPUListAsString();
                 String cpuListWoW64 = cpuListViewWoW64.getCheckedCPUListAsString();
                 byte startupSelection = (byte)sStartupSelection.getSelectedItemPosition();
@@ -225,7 +226,7 @@ public class ContainerDetailFragment extends Fragment {
                     container.setAudioDriverConfig(audioDriverConfig);
                     container.setWinComponents(wincomponents);
                     container.setDrives(drives);
-                    container.setShowFPS(showFPS);
+                    container.setHUDMode(hudMode);
                     container.setStartupSelection(startupSelection);
                     container.setBox64Preset(box64Preset);
                     container.setDesktopTheme(desktopTheme);
@@ -253,7 +254,7 @@ public class ContainerDetailFragment extends Fragment {
                     data.put("audioDriverConfig", audioDriverConfig);
                     data.put("wincomponents", wincomponents);
                     data.put("drives", drives);
-                    data.put("showFPS", showFPS);
+                    data.put("hudMode", hudMode);
                     data.put("startupSelection", startupSelection);
                     data.put("box64Preset", box64Preset);
                     data.put("desktopTheme", desktopTheme);
