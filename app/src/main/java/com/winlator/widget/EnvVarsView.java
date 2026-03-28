@@ -40,7 +40,7 @@ public class EnvVarsView extends FrameLayout {
         {"WINE_DO_NOT_CREATE_DXGI_DEVICE_MANAGER", "CHECKBOX", "0", "1"},
         {"MANGOHUD", "CHECKBOX", "0", "1"},
         {"GST_DEBUG", "CHECKBOX", "0", "1", "2", "3", "4"},
-        {"vblank_mode", "SELECT", "0", "1"},
+        {"vblank_mode", "CHECKBOX", "0", "1"},
     };
     private final LinearLayout container;
     private final TextView emptyTextView;

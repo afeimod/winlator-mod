@@ -1,0 +1,70 @@
+From 6de72bba367da0b2e67f70f9b4361390bcb99c85 Mon Sep 17 00:00:00 2001
+From: Suall1969 <suall1969@teleworm.us>
+Date: Fri, 25 Apr 2025 17:02:41 +0000
+Subject: [PATCH] Add option to select WineD3D renderer
+
+---
+ .../java/com/winlator/ContainerDetailFragment.java     |  8 ++++++++
+ app/src/main/res/layout/container_detail_fragment.xml  | 10 ++++++++++
+ app/src/main/res/values/strings.xml                    |  1 +
+ 3 files changed, 19 insertions(+)
+
+diff --git a/app/src/main/java/com/winlator/ContainerDetailFragment.java b/app/src/main/java/com/winlator/ContainerDetailFragment.java
+index 707917b648..6e24b759d0 100644
+--- a/app/src/main/java/com/winlator/ContainerDetailFragment.java
++++ b/app/src/main/java/com/winlator/ContainerDetailFragment.java
+@@ -257,6 +257,9 @@ public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup r
+     private void saveWineRegistryKeys(View view) {
+         File userRegFile = new File(container.getRootDir(), ".wine/user.reg");
+         try (WineRegistryEditor registryEditor = new WineRegistryEditor(userRegFile)) {
++            Spinner sRenderer = view.findViewById(R.id.SRenderer);
++            registryEditor.setStringValue("Software\\Wine\\Direct3D", "renderer", Arrays.asList("vulkan", "gl", "no3d").get(sRenderer.getSelectedItemPosition()));
++
+             Spinner sCSMT = view.findViewById(R.id.SCSMT);
+             registryEditor.setDwordValue("Software\\Wine\\Direct3D", "csmt", sCSMT.getSelectedItemPosition() != 0 ? 3 : 0);
+ 
+@@ -320,6 +323,11 @@ public void onNothingSelected(AdapterView<?> parent) {}
+         File userRegFile = new File(containerDir, ".wine/user.reg");
+ 
+         try (WineRegistryEditor registryEditor = new WineRegistryEditor(userRegFile)) {
++            List<String> rendererList = Arrays.asList("Vulkan", "OpenGL", "GDI (no3d)");
++            Spinner sRenderer = view.findViewById(R.id.SRenderer);
++            sRenderer.setAdapter(new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, rendererList));
++            sRenderer.setSelection(Arrays.asList("vulkan", "gl", "no3d").indexOf(registryEditor.getStringValue("Software\\Wine\\Direct3D", "renderer", "gl")));
++
+             List<String> stateList = Arrays.asList(context.getString(R.string.disable), context.getString(R.string.enable));
+             Spinner sCSMT = view.findViewById(R.id.SCSMT);
+             sCSMT.setAdapter(new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, stateList));
+diff --git a/app/src/main/res/layout/container_detail_fragment.xml b/app/src/main/res/layout/container_detail_fragment.xml
+index 985872eae7..14c0027e16 100644
+--- a/app/src/main/res/layout/container_detail_fragment.xml
++++ b/app/src/main/res/layout/container_detail_fragment.xml
+@@ -284,6 +284,16 @@
+                     android:layout_height="wrap_content">
+ 
+                     <LinearLayout style="@style/FieldSet">
++                        <TextView
++                            android:layout_width="wrap_content"
++                            android:layout_height="wrap_content"
++                            android:text="@string/renderer" />
++
++                        <Spinner
++                            style="@style/ComboBox"
++                            android:id="@+id/SRenderer"
++                            android:layout_width="match_parent" />
++
+                         <TextView
+                             android:layout_width="wrap_content"
+                             android:layout_height="wrap_content"
+diff --git a/app/src/main/res/values/strings.xml b/app/src/main/res/values/strings.xml
+index 4879afecf5..5c91d80705 100644
+--- a/app/src/main/res/values/strings.xml
++++ b/app/src/main/res/values/strings.xml
+@@ -67,6 +67,7 @@
+     <string name="unable_to_import_profile">Unable to import profile</string>
+     <string name="wine_configuration">Wine Configuration</string>
+     <string name="registry_keys">Registry Keys</string>
++    <string name="renderer">Renderer</string>
+     <string name="csmt">CSMT (Command Stream Multi-Thread)</string>
+     <string name="gpu_name">GPU Name</string>
+     <string name="offscreen_rendering_mode">Offscreen Rendering Mode</string>
