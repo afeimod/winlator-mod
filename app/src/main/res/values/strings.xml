@@ -135,14 +135,12 @@
     <string name="clear_cache">Clear Cache</string>
     <string name="estimated_used_space">Estimated Used Space</string>
     <string name="advanced">Advanced</string>
-    <string name="box86_box64" translatable="false">Box86/Box64</string>
+    <string name="box64" translatable="false">Box64</string>
     <string name="fex" translatable="false">FEX</string>
     <string name="system">System</string>
-    <string name="box86_preset">Box86 Preset</string>
     <string name="box64_preset">Box64 Preset</string>
     <string name="fex_preset">FEX Preset</string>
     <string name="fex_version">FEX Version</string>
-    <string name="box86_version">Box86 Version</string>
     <string name="box64_version">Box64 Version</string>
     <string name="letter">Letter</string>
     <string name="target_path">Target Path</string>
@@ -182,39 +180,39 @@
         <i><b>VKD3D</b></i> is a translation layer for Direct3D 12 API to Vulkan.<br /><br />
         <i><b>CNC DDraw</b></i> is an implementation of DirectDraw for better compatibility with classic games.
     ]]></string>
-    <string name="box86_64_env_var_help__dynarec_safeflags" translatable="false"><![CDATA[
+    <string name="box64_env_var_help__dynarec_safeflags" translatable="false"><![CDATA[
         Handling of flags on CALL/RET opcodes<br /><br />
         <b>0</b> : Treats CALL/RET as if it never needed flags (faster, unstable)<br />
         <b>1</b> : Most RET will need flags, most CALLS will not<br />
         <b>2</b> : All CALL/RET will need flags (slower)
     ]]></string>
-    <string name="box86_64_env_var_help__dynarec_fastnan" translatable="false">Generation of -NAN like on x86</string>
-    <string name="box86_64_env_var_help__dynarec_fastround" translatable="false">Generation of precise x86 rounding</string>
-    <string name="box86_64_env_var_help__dynarec_x87double" translatable="false">Use of Float/Double for x87 emulation</string>
-    <string name="box86_64_env_var_help__dynarec_bigblock" translatable="false"><![CDATA[
+    <string name="box64_env_var_help__dynarec_fastnan" translatable="false">Generation of -NAN like on x86</string>
+    <string name="box64_env_var_help__dynarec_fastround" translatable="false">Generation of precise x86 rounding</string>
+    <string name="box64_env_var_help__dynarec_x87double" translatable="false">Use of Float/Double for x87 emulation</string>
+    <string name="box64_env_var_help__dynarec_bigblock" translatable="false"><![CDATA[
         Dynarec building BigBlock<br /><br />
         <b>0</b> : Don\'t try to build block as big as possible<br />
         <b>1</b> : Build Dynarec block as big as possible<br />
         <b>2</b> : Build Dynarec block bigger (continue when block overlaps, but only for blocks in elf memory)<br />
         <b>3</b> : Build Dynarec block bigger (continue when block overlaps, for all types of memory)
     ]]></string>
-    <string name="box86_64_env_var_help__dynarec_strongmem" translatable="false"><![CDATA[
+    <string name="box64_env_var_help__dynarec_strongmem" translatable="false"><![CDATA[
         Simulation of Strong Memory model<br /><br />
         <b>0</b> : Don\'t try anything special<br />
         <b>1</b> : Enable some Memory Barrier when writing to memory (on some MOV opcode)<br />
         <b>2</b> : All 1 plus a Memory Barrier on every write to memory using MOV<br />
         <b>3</b> : All 2 plus Memory Barrier when reading from memory and on some SSE/SSE2 opcodes
     ]]></string>
-    <string name="box86_64_env_var_help__dynarec_forward" translatable="false">Defines the max allowed forward value when building Block</string>
-    <string name="box86_64_env_var_help__dynarec_callret" translatable="false">Optimization of CALL/RET opcodes</string>
-    <string name="box86_64_env_var_help__dynarec_wait" translatable="false">Defines whether or not Dynarec will wait for the FillBlock to be ready</string>
-    <string name="box86_64_env_var_help__avx" translatable="false"><![CDATA[
+    <string name="box64_env_var_help__dynarec_forward" translatable="false">Defines the max allowed forward value when building Block</string>
+    <string name="box64_env_var_help__dynarec_callret" translatable="false">Optimization of CALL/RET opcodes</string>
+    <string name="box64_env_var_help__dynarec_wait" translatable="false">Defines whether or not Dynarec will wait for the FillBlock to be ready</string>
+    <string name="box64_env_var_help__avx" translatable="false"><![CDATA[
         AVX and AVX2 implemented, along with BMI1, BMI2, ADX, FMA, F16C and RDANDR extension!<br /><br />
         <b>0</b> : Disable AVX extension<br />
         <b>1</b> : enable AVX, BMI1, F16C and VAES extension.<br />
         <b>2</b> : All 1 plus enable AVX2, BMI2, FMA, ADX,VPCLMULQDQ and RDRAND.<br />\
     ]]></string>
-    <string name="box86_64_env_var_help__unityplayer" translatable="false">Detect UnityPlayer.dll and apply strongmem settings</string>
+    <string name="box64_env_var_help__unityplayer" translatable="false">Detect UnityPlayer.dll and apply strongmem settings</string>
     <string name="columns">Columns</string>
     <string name="directinput_mapper_type">DirectInput Mapper Type</string>
     <string name="desktop">Desktop</string>
@@ -230,7 +228,7 @@
     <string name="enable_experimental_wow64_mode">Enable experimental WoW64 mode</string>
     <string name="logs">Logs</string>
     <string name="enable_wine_debug">Enable Wine debug</string>
-    <string name="enable_box86_64_logs">Enable Box86/Box64 logs</string>
+    <string name="enable_box64_logs">Enable Box64 logs</string>
     <string name="export">Export</string>
     <string name="logs_exported_to">Logs exported to</string>
     <string name="general">General</string>
@@ -242,7 +240,6 @@
     <string name="as_axis">Is Axis</string>
     <string name="both">Both</string>
     <string name="trigger_type">Trigger Type</string>
-    <string name="use_glibc">Use native Glibc instead of Proot</string>
     <string name="experimental">Experimental</string>
     <string name="glibc_exp_edition">Glibc Experimental Edition</string>
     <string name="enabled_async">Enable Async</string>
@@ -268,7 +265,7 @@
     <string name="cannot_remove_default_profile">Cannot remove default profile.</string>
     <string name="cannot_edit_default_profile">Cannot edit default profile.</string>
     <string name="do_you_want_to_restore_default_profile">Do you want to restore default profile?</string>
-    <string name="box86_64_rc_files">RC File</string>
+    <string name="box64_rc_files">RC File</string>
     <string name="simulate_touch_screen">Simulate touch screen</string>
     <string name="install_content">Install Content</string>
     <string name="content_type">Content Type</string>
@@ -309,8 +306,8 @@
     <string name="sound_font_removed_success">Soundfont removed successfully!</string>
     <string name="sound_font_removed_failed">Soundfont removed failed!</string>
     <string name="sound_font_installed_success">Soundfont installed successfully!</string>
-    <string name="sound_font_installed_failed">Soundfont installed failed!</string>
     <string name="sound_font_already_exist">Soundfont you want to install is already exist.</string>
+    <string name="sound_font_installed_failed">Soundfont installed failed!</string>
     <string name="installing_soundfont">Installing SoundFont…</string>
     <string name="sound_font_bad_format">Bad SoundFont Format.</string>
     <string name="cannot_remove_default_sound_font">Cannot remove default soundfont</string>

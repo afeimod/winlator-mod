@@ -19,7 +19,7 @@ public class WineInfo implements Parcelable {
     public static final WineInfo WINE_X86_64 = new WineInfo("9.16", null, "x86_64", "/opt/x86_64-wine");
     public static final WineInfo WINE_ARM64EC = new WineInfo("11.4", null, "arm64ec", "/opt/arm64ec-wine");
     public static final WineInfo MAIN_WINE_VERSION = WINE_X86_64;
-    private static final Pattern pattern = Pattern.compile("^wine\\-([0-9\\.]+)\\-?(?:(.+)\\-)?(x86|x86_64|arm64ec)$", Pattern.CASE_INSENSITIVE);
+    private static final Pattern pattern = Pattern.compile("^wine\\-([0-9\\.]+)\\-?(?:(.+)\\-)?(x86_64|arm64ec)$", Pattern.CASE_INSENSITIVE);
     public final String version;
     public final String subversion;
     public final String path;
@@ -55,26 +55,12 @@ public class WineInfo implements Parcelable {
     }
 
     public boolean isWin64() {
-        return arch.equals("x86_64") || arch.equals("arm64ec");
+        return true; // 强制为 64 位环境
     }
 
     public String getExecutable(Context context, boolean wow64Mode) {
-        if (isDefaultWine()) {
-            File wineBinDir = new File(ImageFs.find(context).getRootDir(), path + "/bin");
-            File wineBinFile = new File(wineBinDir, "wine");
-            File winePreloaderBinFile = new File(wineBinDir, "wine-preloader");
-            FileUtils.copy(new File(wineBinDir, wow64Mode ? "wine-wow64" : "wine32"), wineBinFile);
-            FileUtils.copy(new File(wineBinDir, wow64Mode ? "wine-preloader-wow64" : "wine32-preloader"), winePreloaderBinFile);
-            FileUtils.chmod(wineBinFile, 0771);
-            FileUtils.chmod(winePreloaderBinFile, 0771);
-            return wow64Mode ? "wine" : "wine64";
-        }
-        else {
-            File rootDir = ImageFs.find(context).getRootDir();
-            String winePathStr = path;
-            if (winePathStr.startsWith("/")) winePathStr = winePathStr.substring(1);
-            return (new File(rootDir, winePathStr + "/bin/wine64")).isFile() ? "wine64" : "wine";
-        }
+        // 现代 Glibc Wine 统一使用 wine64 启动，WoW64 由 Wine 内部处理
+        return "wine64";
     }
 
     public boolean isDefaultWine() {
@@ -127,16 +113,14 @@ public class WineInfo implements Parcelable {
         if (identifier.equalsIgnoreCase(WINE_X86_64.identifier())) return WINE_X86_64;
         if (identifier.equalsIgnoreCase(WINE_ARM64EC.identifier())) return WINE_ARM64EC;
 
-        // 优先检查 ContentsManager (WCP 安装方式)
         ContentsManager contentsManager = new ContentsManager(context);
         contentsManager.syncContents();
         ContentProfile profile = contentsManager.getProfileByEntryName(identifier);
         if (profile != null && profile.type == ContentProfile.ContentType.CONTENT_TYPE_WINE) {
             File installDir = ContentsManager.getInstallDir(context, profile);
             if (installDir.exists()) {
-                String arch = identifier.contains("x86_64") ? "x86_64" : (identifier.contains("arm64ec") ? "arm64ec" : "x86");
+                String arch = identifier.contains("arm64ec") ? "arm64ec" : "x86_64";
                 String relPath = "/opt/contents/wine/" + profile.verName + "-" + profile.verCode;
-                Log.d("Winlator", "Found WCP Wine: " + relPath);
                 return new WineInfo(profile.verName, null, arch, relPath);
             }
         }

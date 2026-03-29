@@ -7,9 +7,9 @@ import android.widget.ListView;
 import android.widget.Spinner;
 
 import com.winlator.R;
-import com.winlator.box86_64.rc.RCFile;
-import com.winlator.box86_64.rc.RCGroup;
-import com.winlator.box86_64.rc.RCManager;
+import com.winlator.box64.rc.RCFile;
+import com.winlator.box64.rc.RCGroup;
+import com.winlator.box64.rc.RCManager;
 import com.winlator.core.Callback;
 
 import java.util.ArrayList;
@@ -17,7 +17,7 @@ import java.util.List;
 
 public class ImportGroupDialog extends ContentDialog {
     public ImportGroupDialog(View anchor, RCManager manager, Callback<RCGroup> callback) {
-        super(anchor.getContext(), R.layout.box86_64_rc_groups_dialog);
+        super(anchor.getContext(), R.layout.box64_rc_groups_dialog);
         setIcon(R.drawable.icon_settings);
         setTitle(anchor.getContext().getString(R.string.import_group));
 

@@ -162,7 +162,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 show(new InputControlsFragment(selectedProfileId));
                 break;
             case R.id.main_menu_box_rc:
-                show(new Box86_64RCFragment());
+                show(new Box64RCFragment());
                 break;
             case R.id.main_menu_terminal:
                 show(new TerminalFragment());
@@ -205,7 +205,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             String creditsAndThirdPartyAppsHTML = String.join("<br />",
                 "Ubuntu RootFs (<a href=\"https://releases.ubuntu.com/focal\">Focal Fossa</a>)",
                 "Wine (<a href=\"https://www.winehq.org\">winehq.org</a>)",
-                "Box86/Box64 by <a href=\"https://github.com/ptitSeb\">ptitseb</a>",
+                "Box64 by <a href=\"https://github.com/ptitSeb\">ptitseb</a>",
                 "PRoot (<a href=\"https://proot-me.github.io\">proot-me.github.io</a>)",
                 "Mesa (Turnip/Zink/VirGL) (<a href=\"https://www.mesa3d.org\">mesa3d.org</a>)",
                 "DXVK (<a href=\"https://github.com/doitsujin/dxvk\">github.com/doitsujin/dxvk</a>)",

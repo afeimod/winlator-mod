@@ -140,7 +140,6 @@ public class ContainerManager {
         dstContainer.setScreenSize(srcContainer.getScreenSize());
         dstContainer.setEnvVars(srcContainer.getEnvVars());
         dstContainer.setCPUList(srcContainer.getCPUList());
-        dstContainer.setCPUListWoW64(srcContainer.getCPUListWoW64());
         dstContainer.setGraphicsDriver(srcContainer.getGraphicsDriver());
         dstContainer.setDXWrapper(srcContainer.getDXWrapper());
         dstContainer.setDXWrapperConfig(srcContainer.getDXWrapperConfig());
@@ -148,9 +147,7 @@ public class ContainerManager {
         dstContainer.setWinComponents(srcContainer.getWinComponents());
         dstContainer.setDrives(srcContainer.getDrives());
         dstContainer.setShowFPS(srcContainer.isShowFPS());
-        dstContainer.setWoW64Mode(srcContainer.isWoW64Mode());
         dstContainer.setStartupSelection(srcContainer.getStartupSelection());
-        dstContainer.setBox86Preset(srcContainer.getBox86Preset());
         dstContainer.setBox64Preset(srcContainer.getBox64Preset());
         dstContainer.setFexVersion(srcContainer.getFexVersion());
         dstContainer.setFexPreset(srcContainer.getFexPreset());

@@ -3,7 +3,7 @@ package com.winlator.container;
 import android.os.Environment;
 
 import com.winlator.XrActivity;
-import com.winlator.box86_64.Box86_64Preset;
+import com.winlator.box64.Box64Preset;
 import com.winlator.fex.FEXPreset;
 import com.winlator.core.EnvVars;
 import com.winlator.core.FileUtils;
@@ -50,13 +50,10 @@ public class Container {
     private String drives = DEFAULT_DRIVES;
     private String wineVersion = WineInfo.MAIN_WINE_VERSION.identifier();
     private boolean showFPS;
-    private boolean wow64Mode = true;
     private byte startupSelection = STARTUP_SELECTION_ESSENTIAL;
     private String cpuList;
-    private String cpuListWoW64;
     private String desktopTheme = WineThemeManager.DEFAULT_DESKTOP_THEME;
-    private String box86Preset = Box86_64Preset.COMPATIBILITY;
-    private String box64Preset = Box86_64Preset.COMPATIBILITY;
+    private String box64Preset = Box64Preset.COMPATIBILITY;
     private int fexPreset = 0;
     private String fexPresetCustom = FEXPreset.COMPATIBILITY;
     private String fexVersion = DEFAULT_FEX_VERSION;
@@ -179,11 +176,7 @@ public class Container {
     }
 
     public boolean isWoW64Mode() {
-        return wow64Mode;
-    }
-
-    public void setWoW64Mode(boolean wow64Mode) {
-        this.wow64Mode = wow64Mode;
+        return true; // 强制启用
     }
 
     public byte getStartupSelection() {
@@ -207,23 +200,11 @@ public class Container {
     }
 
     public String getCPUListWoW64() {
-        return getCPUListWoW64(false);
+        return getCPUList(false); // 统一使用同一个 CPU 绑定
     }
 
     public String getCPUListWoW64(boolean allowFallback) {
-        return cpuListWoW64 != null ? cpuListWoW64 : (allowFallback ? getFallbackCPUListWoW64() : null);
-    }
-
-    public void setCPUListWoW64(String cpuListWoW64) {
-        this.cpuListWoW64 = cpuListWoW64 != null && !cpuListWoW64.isEmpty() ? cpuListWoW64 : null;
-    }
-
-    public String getBox86Preset() {
-        return box86Preset;
-    }
-
-    public void setBox86Preset(String box86Preset) {
-        this.box86Preset = box86Preset;
+        return getCPUList(allowFallback);
     }
 
     public String getBox64Preset() {
@@ -382,7 +363,6 @@ public class Container {
             data.put("screenSize", screenSize);
             data.put("envVars", envVars);
             data.put("cpuList", cpuList);
-            data.put("cpuListWoW64", cpuListWoW64);
             data.put("graphicsDriver", graphicsDriver);
             data.put("dxwrapper", dxwrapper);
             if (!dxwrapperConfig.isEmpty()) data.put("dxwrapperConfig", dxwrapperConfig);
@@ -391,9 +371,7 @@ public class Container {
             data.put("drives", drives);
             data.put("showFPS", showFPS);
             data.put("inputType", inputType);
-            data.put("wow64Mode", wow64Mode);
             data.put("startupSelection", startupSelection);
-            data.put("box86Preset", box86Preset);
             data.put("box64Preset", box64Preset);
             data.put("fexPreset", fexPreset);
             data.put("fexPresetCustom", fexPresetCustom);
@@ -432,9 +410,6 @@ public class Container {
                 case "cpuList" :
                     setCPUList(data.getString(key));
                     break;
-                case "cpuListWoW64" :
-                    setCPUListWoW64(data.getString(key));
-                    break;
                 case "graphicsDriver" :
                     setGraphicsDriver(data.getString(key));
                     break;
@@ -456,9 +431,6 @@ public class Container {
                 case "inputType" :
                     setInputType(data.getInt(key));
                     break;
-                case "wow64Mode" :
-                    setWoW64Mode(data.getBoolean(key));
-                    break;
                 case "startupSelection" :
                     setStartupSelection((byte)data.getInt(key));
                     break;
@@ -470,9 +442,6 @@ public class Container {
                 }
                 case "wineVersion" :
                     setWineVersion(data.getString(key));
-                    break;
-                case "box86Preset" :
-                    setBox86Preset(data.getString(key));
                     break;
                 case "box64Preset" :
                     setBox64Preset(data.getString(key));
@@ -579,10 +548,6 @@ public class Container {
     }
 
     public static String getFallbackCPUListWoW64() {
-//        String cpuList = "";
-//        int numProcessors = Runtime.getRuntime().availableProcessors();
-//        for (int i = numProcessors / 2; i < numProcessors; i++) cpuList += (!cpuList.isEmpty() ? "," : "")+i;
-//        return cpuList;
         return getFallbackCPUList();
     }
 }

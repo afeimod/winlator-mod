@@ -4,9 +4,10 @@ import android.content.Context;
 import android.net.Uri;
 
 import com.winlator.container.Container;
+import com.winlator.contents.ContentsManager;
 import com.winlator.xenvironment.ImageFs;
 import com.winlator.xenvironment.XEnvironment;
-import com.winlator.xenvironment.components.GuestProgramLauncherComponent;
+import com.winlator.xenvironment.components.GlibcProgramLauncherComponent;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -123,13 +124,14 @@ public abstract class WineUtils {
         FileUtils.symlink(wineDir, linkFile);
 
         XEnvironment environment = new XEnvironment(context, imageFs);
-        GuestProgramLauncherComponent guestProgramLauncherComponent = new GuestProgramLauncherComponent();
-        guestProgramLauncherComponent.setGuestExecutable(wineBinRelPath+" --version");
-        guestProgramLauncherComponent.setTerminationCallback((status) -> {
+        ContentsManager contentsManager = new ContentsManager(context);
+        GlibcProgramLauncherComponent glibcProgramLauncherComponent = new GlibcProgramLauncherComponent(contentsManager, WineInfo.MAIN_WINE_VERSION.identifier());
+        glibcProgramLauncherComponent.setGuestExecutable(wineBinRelPath+" --version");
+        glibcProgramLauncherComponent.setTerminationCallback((status) -> {
             callback.call(wineInfoRef.get());
             ProcessHelper.removeDebugCallback(debugCallback);
         });
-        environment.addComponent(guestProgramLauncherComponent);
+        environment.addComponent(glibcProgramLauncherComponent);
         environment.startEnvironmentComponents();
     }
 
@@ -290,14 +292,15 @@ public abstract class WineUtils {
         envVars.put("WINEDLLOVERRIDES", "mscoree,mshtml=d");
 
         XEnvironment environment = new XEnvironment(context, imageFs);
-        GuestProgramLauncherComponent guestProgramLauncherComponent = new GuestProgramLauncherComponent();
-        guestProgramLauncherComponent.setEnvVars(envVars);
-        guestProgramLauncherComponent.setGuestExecutable(WineInfo.MAIN_WINE_VERSION.getExecutable(context, true)+" wineboot -u");
-        guestProgramLauncherComponent.setTerminationCallback((status) -> {
+        ContentsManager contentsManager = new ContentsManager(context);
+        GlibcProgramLauncherComponent glibcProgramLauncherComponent = new GlibcProgramLauncherComponent(contentsManager, WineInfo.MAIN_WINE_VERSION.identifier());
+        glibcProgramLauncherComponent.setEnvVars(envVars);
+        glibcProgramLauncherComponent.setGuestExecutable(WineInfo.MAIN_WINE_VERSION.getExecutable(context, true)+" wineboot -u");
+        glibcProgramLauncherComponent.setTerminationCallback((status) -> {
             FileUtils.writeString(new File(rootDir, ImageFs.WINEPREFIX+"/.update-timestamp"), "disable\n");
             if (terminationCallback != null) terminationCallback.call(status);
         });
-        environment.addComponent(guestProgramLauncherComponent);
+        environment.addComponent(glibcProgramLauncherComponent);
         environment.startEnvironmentComponents();
     }
 

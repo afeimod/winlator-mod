@@ -22,15 +22,14 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.collection.ArrayMap;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.preference.PreferenceManager;
 
 import com.google.android.material.navigation.NavigationView;
-import com.winlator.box86_64.Box86_64EditPresetDialog;
-import com.winlator.box86_64.Box86_64Preset;
-import com.winlator.box86_64.Box86_64PresetManager;
+import com.winlator.box64.Box64EditPresetDialog;
+import com.winlator.box64.Box64Preset;
+import com.winlator.box64.Box64PresetManager;
 import com.winlator.container.Container;
 import com.winlator.container.ContainerManager;
 import com.winlator.contentdialog.ContentDialog;
@@ -107,12 +106,6 @@ public class SettingsFragment extends Fragment {
         final Context context = getContext();
         preferences = PreferenceManager.getDefaultSharedPreferences(context);
 
-        final Spinner sBox86Version = view.findViewById(R.id.SBox86Version);
-        String box86Version = preferences.getString("box86_version", DefaultVersion.BOX86);
-        if (!AppUtils.setSpinnerSelectionFromIdentifier(sBox86Version, box86Version)) {
-            AppUtils.setSpinnerSelectionFromIdentifier(sBox86Version, DefaultVersion.BOX86);
-        }
-
         final Spinner sBox64Version = view.findViewById(R.id.SBox64Version);
         String box64Version = preferences.getString("box64_version", DefaultVersion.BOX64);
 
@@ -124,9 +117,8 @@ public class SettingsFragment extends Fragment {
             AppUtils.setSpinnerSelectionFromIdentifier(sBox64Version, DefaultVersion.BOX64);
         }
 
-        final Spinner sBox86Preset = view.findViewById(R.id.SBox86Preset);
         final Spinner sBox64Preset = view.findViewById(R.id.SBox64Preset);
-        loadBox86_64PresetSpinners(view, sBox86Preset, sBox64Preset);
+        loadBox64PresetSpinner(view, sBox64Preset);
 
         final Spinner sFEXPreset = view.findViewById(R.id.SFEXPreset);
         loadFEXPresetSpinner(view, sFEXPreset);
@@ -198,8 +190,8 @@ public class SettingsFragment extends Fragment {
         final ArrayList<String> wineDebugChannels = new ArrayList<>(Arrays.asList(preferences.getString("wine_debug_channels", DEFAULT_WINE_DEBUG_CHANNELS).split(",")));
         loadWineDebugChannels(view, wineDebugChannels);
 
-        final CheckBox cbEnableBox86_64Logs = view.findViewById(R.id.CBEnableBox86_64Logs);
-        cbEnableBox86_64Logs.setChecked(preferences.getBoolean("enable_box86_64_logs", false));
+        final CheckBox cbEnableBox64Logs = view.findViewById(R.id.CBEnableBox64Logs);
+        cbEnableBox64Logs.setChecked(preferences.getBoolean("enable_box64_logs", false));
 
         final CheckBox cbEnableStartupDesktopLogs = view.findViewById(R.id.CBEnableStartupDesktopLogs);
         cbEnableStartupDesktopLogs.setChecked(preferences.getBoolean("enable_startup_desktop_logs", false));
@@ -230,10 +222,6 @@ public class SettingsFragment extends Fragment {
         }
         btHelpTriggerMode.setOnClickListener(v -> AppUtils.showHelpBox(context, v, R.string.help_trigger_mode));
 
-        final CheckBox cbUseGlibc = view.findViewById(R.id.CBUseGlibc);
-        cbUseGlibc.setChecked(preferences.getBoolean("use_glibc", true));
-        cbUseGlibc.setEnabled(false);
-
         final CheckBox cbEnableFileProvider = view.findViewById(R.id.CBEnableFileProvider);
         final View btHelpFileProvider = view.findViewById(R.id.BTHelpFileProvider);
 
@@ -253,10 +241,8 @@ public class SettingsFragment extends Fragment {
 
         view.findViewById(R.id.BTConfirm).setOnClickListener((v) -> {
             SharedPreferences.Editor editor = preferences.edit();
-            editor.putString("box86_version", StringUtils.parseIdentifier(sBox86Version.getSelectedItem()));
             editor.putString("box64_version", StringUtils.parseIdentifier(sBox64Version.getSelectedItem()));
-            editor.putString("box86_preset", Box86_64PresetManager.getSpinnerSelectedId(sBox86Preset));
-            editor.putString("box64_preset", Box86_64PresetManager.getSpinnerSelectedId(sBox64Preset));
+            editor.putString("box64_preset", Box64PresetManager.getSpinnerSelectedId(sBox64Preset));
             editor.putString("fex_preset", FEXPresetManager.getSpinnerSelectedId(sFEXPreset));
             editor.putBoolean("haptics", cbHaptics.isChecked());
             editor.putBoolean("use_dri3", cbUseDRI3.isChecked());
@@ -264,10 +250,9 @@ public class SettingsFragment extends Fragment {
             editor.putBoolean("use_tx11", cbUseTX11.isChecked());
             editor.putFloat("cursor_speed", sbCursorSpeed.getProgress() / 100.0f);
             editor.putBoolean("enable_wine_debug", cbEnableWineDebug.isChecked());
-            editor.putBoolean("enable_box86_64_logs", cbEnableBox86_64Logs.isChecked());
+            editor.putBoolean("enable_box64_logs", cbEnableBox64Logs.isChecked());
             editor.putBoolean("enable_startup_desktop_logs", cbEnableStartupDesktopLogs.isChecked());
             editor.putInt("trigger_type", triggerRbIds.indexOf(rgTriggerType.getCheckedRadioButtonId()));
-            editor.putBoolean("use_glibc", cbUseGlibc.isChecked());
             editor.putBoolean("enable_file_provider", cbEnableFileProvider.isChecked());
 
             if (!wineDebugChannels.isEmpty()) {
@@ -288,60 +273,49 @@ public class SettingsFragment extends Fragment {
         return view;
     }
 
-    private void loadBox86_64PresetSpinners(View view, final Spinner sBox86Preset, final Spinner sBox64Preset) {
-        final ArrayMap<String, Spinner> spinners = new ArrayMap<String, Spinner>() {{
-            put("box86", sBox86Preset);
-            put("box64", sBox64Preset);
-        }};
+    private void loadBox64PresetSpinner(View view, final Spinner sBox64Preset) {
         final Context context = getContext();
 
-        Callback<String> updateSpinner = (prefix) -> {
-            Box86_64PresetManager.loadSpinner(prefix, spinners.get(prefix), preferences.getString(prefix+"_preset", Box86_64Preset.COMPATIBILITY));
+        Runnable updateSpinner = () -> {
+            Box64PresetManager.loadSpinner(sBox64Preset, preferences.getString("box64_preset", Box64Preset.COMPATIBILITY));
         };
 
-        Callback<String> onAddPreset = (prefix) -> {
-            Box86_64EditPresetDialog dialog = new Box86_64EditPresetDialog(context, prefix, null);
-            dialog.setOnConfirmCallback(() -> updateSpinner.call(prefix));
+        View.OnClickListener onAddPreset = (v) -> {
+            Box64EditPresetDialog dialog = new Box64EditPresetDialog(context, null);
+            dialog.setOnConfirmCallback(updateSpinner);
             dialog.show();
         };
 
-        Callback<String> onEditPreset = (prefix) -> {
-            Box86_64EditPresetDialog dialog = new Box86_64EditPresetDialog(context, prefix, Box86_64PresetManager.getSpinnerSelectedId(spinners.get(prefix)));
-            dialog.setOnConfirmCallback(() -> updateSpinner.call(prefix));
+        View.OnClickListener onEditPreset = (v) -> {
+            Box64EditPresetDialog dialog = new Box64EditPresetDialog(context, Box64PresetManager.getSpinnerSelectedId(sBox64Preset));
+            dialog.setOnConfirmCallback(updateSpinner);
             dialog.show();
         };
 
-        Callback<String> onDuplicatePreset = (prefix) -> ContentDialog.confirm(context, R.string.do_you_want_to_duplicate_this_preset, () -> {
-            Spinner spinner = spinners.get(prefix);
-            Box86_64PresetManager.duplicatePreset(prefix, context, Box86_64PresetManager.getSpinnerSelectedId(spinner));
-            updateSpinner.call(prefix);
-            spinner.setSelection(spinner.getCount()-1);
+        View.OnClickListener onDuplicatePreset = (v) -> ContentDialog.confirm(context, R.string.do_you_want_to_duplicate_this_preset, () -> {
+            Box64PresetManager.duplicatePreset(context, Box64PresetManager.getSpinnerSelectedId(sBox64Preset));
+            updateSpinner.run();
+            sBox64Preset.setSelection(sBox64Preset.getCount()-1);
         });
 
-        Callback<String> onRemovePreset = (prefix) -> {
-            final String presetId = Box86_64PresetManager.getSpinnerSelectedId(spinners.get(prefix));
-            if (!presetId.startsWith(Box86_64Preset.CUSTOM)) {
+        View.OnClickListener onRemovePreset = (v) -> {
+            final String presetId = Box64PresetManager.getSpinnerSelectedId(sBox64Preset);
+            if (!presetId.startsWith(Box64Preset.CUSTOM)) {
                 AppUtils.showToast(context, R.string.you_cannot_remove_this_preset);
                 return;
             }
             ContentDialog.confirm(context, R.string.do_you_want_to_remove_this_preset, () -> {
-                Box86_64PresetManager.removePreset(prefix, context, presetId);
-                updateSpinner.call(prefix);
+                Box64PresetManager.removePreset(context, presetId);
+                updateSpinner.run();
             });
         };
 
-        updateSpinner.call("box86");
-        updateSpinner.call("box64");
+        updateSpinner.run();
 
-        view.findViewById(R.id.BTAddBox86Preset).setOnClickListener((v) -> onAddPreset.call("box86"));
-        view.findViewById(R.id.BTEditBox86Preset).setOnClickListener((v) -> onEditPreset.call("box86"));
-        view.findViewById(R.id.BTDuplicateBox86Preset).setOnClickListener((v) -> onDuplicatePreset.call("box86"));
-        view.findViewById(R.id.BTRemoveBox86Preset).setOnClickListener((v) -> onRemovePreset.call("box86"));
-
-        view.findViewById(R.id.BTAddBox64Preset).setOnClickListener((v) -> onAddPreset.call("box64"));
-        view.findViewById(R.id.BTEditBox64Preset).setOnClickListener((v) -> onEditPreset.call("box64"));
-        view.findViewById(R.id.BTDuplicateBox64Preset).setOnClickListener((v) -> onDuplicatePreset.call("box64"));
-        view.findViewById(R.id.BTRemoveBox64Preset).setOnClickListener((v) -> onRemovePreset.call("box64"));
+        view.findViewById(R.id.BTAddBox64Preset).setOnClickListener(onAddPreset);
+        view.findViewById(R.id.BTEditBox64Preset).setOnClickListener(onEditPreset);
+        view.findViewById(R.id.BTDuplicateBox64Preset).setOnClickListener(onDuplicatePreset);
+        view.findViewById(R.id.BTRemoveBox64Preset).setOnClickListener(onRemovePreset);
     }
 
     private void loadFEXPresetSpinner(View view, final Spinner sFEXPreset) {
@@ -562,12 +536,10 @@ public class SettingsFragment extends Fragment {
         }
     }
 
-    public static void resetBox86_64Version(AppCompatActivity activity) {
+    public static void resetBox64Version(AppCompatActivity activity) {
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(activity);
         SharedPreferences.Editor editor = preferences.edit();
-        editor.putString("box86_version", DefaultVersion.BOX86);
         editor.putString("box64_version", DefaultVersion.BOX64);
-        editor.remove("current_box86_version");
         editor.remove("current_box64_version");
         editor.apply();
     }

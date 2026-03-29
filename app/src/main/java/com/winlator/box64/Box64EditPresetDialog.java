@@ -1,4 +1,4 @@
-package com.winlator.fex;
+package com.winlator.box64;
 
 import android.content.Context;
 import android.view.LayoutInflater;
@@ -18,23 +18,26 @@ import com.winlator.core.AppUtils;
 import com.winlator.core.ArrayUtils;
 import com.winlator.core.EnvVars;
 import com.winlator.core.FileUtils;
+import com.winlator.core.StringUtils;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-public class FEXEditPresetDialog extends ContentDialog {
+import java.util.Locale;
+
+public class Box64EditPresetDialog extends ContentDialog {
     private final Context context;
-    private final FEXPreset preset;
+    private final Box64Preset preset;
     private final boolean readonly;
     private Runnable onConfirmCallback;
 
-    public FEXEditPresetDialog(@NonNull Context context, String presetId) {
+    public Box64EditPresetDialog(@NonNull Context context, String presetId) {
         super(context, R.layout.box64_edit_preset_dialog);
         this.context = context;
-        preset = presetId != null ? FEXPresetManager.getPreset(context, presetId) : null;
+        preset = presetId != null ? Box64PresetManager.getPreset(context, presetId) : null;
         readonly = preset != null && !preset.isCustom();
-        setTitle("FEX Preset");
+        setTitle(StringUtils.getString(context, "box64_preset"));
         setIcon(R.drawable.icon_env_var);
 
         final EditText etName = findViewById(R.id.ETName);
@@ -43,14 +46,14 @@ public class FEXEditPresetDialog extends ContentDialog {
         if (preset != null) {
             etName.setText(preset.name);
         }
-        else etName.setText(context.getString(R.string.preset)+"-"+FEXPresetManager.getNextPresetId(context));
+        else etName.setText(context.getString(R.string.preset)+"-"+Box64PresetManager.getNextPresetId(context));
         loadEnvVarsList();
 
         super.setOnConfirmCallback(() -> {
             String name = etName.getText().toString().trim();
             if (name.isEmpty()) return;
             name = name.replaceAll("[,\\|]+", "");
-            FEXPresetManager.editPreset(context, preset != null ? preset.id : null, name, getEnvVars());
+            Box64PresetManager.editPreset(context, preset != null ? preset.id : null, name, getEnvVars());
             if (onConfirmCallback != null) onConfirmCallback.run();
         });
     }
@@ -69,16 +72,8 @@ public class FEXEditPresetDialog extends ContentDialog {
 
             Spinner spinner = child.findViewById(R.id.Spinner);
             ToggleButton toggleButton = child.findViewById(R.id.ToggleButton);
-            EditText editText = child.findViewById(R.id.EditText);
-
-            String value;
-            if (toggleButton.getVisibility() == View.VISIBLE) {
-                value = toggleButton.isChecked() ? "1" : "0";
-            } else if (editText.getVisibility() == View.VISIBLE) {
-                value = editText.getText().toString();
-            } else {
-                value = spinner.getSelectedItem().toString();
-            }
+            boolean toggleSwitch = toggleButton.getVisibility() == View.VISIBLE;
+            String value = toggleSwitch ? (toggleButton.isChecked() ? "1" : "0") : spinner.getSelectedItem().toString();
             envVars.put(name, value);
         }
         return envVars;
@@ -88,8 +83,8 @@ public class FEXEditPresetDialog extends ContentDialog {
         try {
             LinearLayout parent = findViewById(R.id.LLContent);
             LayoutInflater inflater = LayoutInflater.from(context);
-            JSONArray data = new JSONArray(FileUtils.readString(context, "fex_env_vars.json"));
-            EnvVars envVars = preset != null ? FEXPresetManager.getEnvVars(context, preset.id) : null;
+            JSONArray data = new JSONArray(FileUtils.readString(context, "box64_env_vars.json"));
+            EnvVars envVars = preset != null ? Box64PresetManager.getEnvVars(context, preset.id) : null;
 
             for (int i = 0; i < data.length(); i++) {
                 JSONObject item = data.getJSONObject(i);
@@ -97,10 +92,15 @@ public class FEXEditPresetDialog extends ContentDialog {
                 View child = inflater.inflate(R.layout.box64_env_var_list_item, parent, false);
                 ((TextView)child.findViewById(R.id.TextView)).setText(name);
 
+                child.findViewById(R.id.BTHelp).setOnClickListener((v) -> {
+                    String suffix = name.replace("BOX64_", "").toLowerCase(Locale.ENGLISH);
+                    String value = StringUtils.getString(context, "box64_env_var_help__"+suffix);
+                    AppUtils.showHelpBox(context, v, value);
+                });
+
                 Spinner spinner = child.findViewById(R.id.Spinner);
                 ToggleButton toggleButton = child.findViewById(R.id.ToggleButton);
-                EditText editText = child.findViewById(R.id.EditText);
-                
+                String[] values = ArrayUtils.toStringArray(item.getJSONArray("values"));
                 String value = envVars != null && envVars.has(name) ? envVars.get(name) : item.getString("defaultValue");
 
                 if (item.optBoolean("toggleSwitch", false)) {
@@ -109,14 +109,7 @@ public class FEXEditPresetDialog extends ContentDialog {
                     toggleButton.setChecked(value.equals("1"));
                     if (readonly) toggleButton.setAlpha(0.5f);
                 }
-                else if (item.optBoolean("editText", false)) {
-                    editText.setVisibility(View.VISIBLE);
-                    editText.setEnabled(!readonly);
-                    editText.setText(value);
-                    if (readonly) editText.setAlpha(0.5f);
-                }
                 else {
-                    String[] values = ArrayUtils.toStringArray(item.getJSONArray("values"));
                     spinner.setVisibility(View.VISIBLE);
                     spinner.setEnabled(!readonly);
                     spinner.setAdapter(new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, values));

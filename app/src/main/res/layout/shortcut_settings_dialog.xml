@@ -298,18 +298,6 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:visibility="gone"
-                        android:text="@string/box86_preset" />
-
-                    <Spinner
-                        style="@style/ComboBox"
-                        android:id="@+id/SBox86Preset"
-                        android:visibility="gone"
-                        android:layout_width="match_parent" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
                         android:text="@string/box64_preset" />
 
                     <Spinner
@@ -320,7 +308,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="@string/box86_64_rc_files" />
+                        android:text="@string/box64_rc_files" />
 
                     <Spinner
                         style="@style/ComboBox"
@@ -331,7 +319,7 @@
                 <TextView
                     style="@style/FieldSetLabel"
                     android:background="#ffffff"
-                    android:text="@string/box86_box64" />
+                    android:text="@string/box64" />
             </FrameLayout>
 
             <FrameLayout
