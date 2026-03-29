@@ -67,7 +67,7 @@ Winlator 是一款 Android 应用程序，可让您借助 Wine 和 Box64 运行 
 - 如果遇到性能问题，请尝试在容器设置 -> 高级选项卡中将 Box64 预设更改为 `Performance`（性能）。
 - 对于使用 .NET Framework 的应用程序，请尝试在开始菜单 -> 系统工具中安装 `Wine Mono`。
 - 如果某些旧游戏无法打开，请尝试在容器设置 -> 环境变量中添加环境变量 `MESA_EXTENSION_MAX_YEAR=2003`。
-- 尝试使用 Winlator 主屏幕上的快捷方式运行游戏，您可以在其中为每个 game 定义单独的设置。
+- 尝试使用 Winlator 主屏幕上的快捷方式运行游戏，您可以在其中为每个游戏定义单独的设置。
 - 为了正确显示低分辨率游戏，请尝试在快捷方式设置中启用 `Force Fullscreen`（强制全屏）选项。
 - 为了提高使用 Unity 引擎的游戏的稳定性，请尝试将 Box64 预设更改为 `Stability`（稳定），或者在快捷方式设置中添加执行参数 `-force-gfx-direct`。
 
