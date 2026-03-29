@@ -94,6 +94,7 @@ public abstract class ProcessHelper {
                 String line;
                 while ((line = reader.readLine()) != null) {
                     writer.write(line + "\n");
+                    writer.flush();
                 }
             }
             catch (IOException e) {}
