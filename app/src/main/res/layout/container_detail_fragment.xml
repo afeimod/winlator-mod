@@ -526,24 +526,12 @@
                 android:visibility="gone">
 
                 <FrameLayout
-                    android:id="@+id/FLBox86Box64"
+                    android:id="@+id/FLBox64"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp">
 
                     <LinearLayout style="@style/FieldSet">
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:visibility="gone"
-                            android:text="@string/box86_preset" />
-
-                        <Spinner
-                            style="@style/ComboBox"
-                            android:id="@+id/SBox86Preset"
-                            android:layout_width="match_parent"
-                            android:visibility="gone" />
-
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
@@ -557,7 +545,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="@string/box86_64_rc_files" />
+                            android:text="@string/box64_rc_files" />
 
                         <Spinner
                             style="@style/ComboBox"
@@ -567,7 +555,7 @@
 
                     <TextView
                         style="@style/FieldSetLabel"
-                        android:text="@string/box86_box64" />
+                        android:text="@string/box64" />
                 </FrameLayout>
 
                 <FrameLayout
@@ -631,15 +619,6 @@
                             android:layout_width="match_parent"
                             android:id="@+id/SStartupSelection"
                             android:entries="@array/startup_selection_entries" />
-
-                        <CheckBox
-                            android:id="@+id/CBWoW64Mode"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="@string/enable_experimental_wow64_mode"
-                            android:checked="true"
-                            android:enabled="false"
-                            android:layout_marginTop="8dp" />
                     </LinearLayout>
 
                     <TextView
@@ -723,19 +702,6 @@
 
                 <com.winlator.widget.CPUListView
                     android:id="@+id/CPUListView"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:gravity="center_horizontal"
-                    android:layout_marginTop="4dp" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/processor_affinity_32_bit_apps"
-                    android:layout_marginTop="8dp" />
-
-                <com.winlator.widget.CPUListView
-                    android:id="@+id/CPUListViewWoW64"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:gravity="center_horizontal"

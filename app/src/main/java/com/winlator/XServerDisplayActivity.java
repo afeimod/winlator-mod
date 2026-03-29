@@ -26,8 +26,8 @@ import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.preference.PreferenceManager;
 
 import com.google.android.material.navigation.NavigationView;
-import com.winlator.box86_64.rc.RCFile;
-import com.winlator.box86_64.rc.RCManager;
+import com.winlator.box64.rc.RCFile;
+import com.winlator.box64.rc.RCManager;
 import com.winlator.container.Container;
 import com.winlator.container.ContainerManager;
 import com.winlator.container.Shortcut;
@@ -74,7 +74,6 @@ import com.winlator.xenvironment.ImageFs;
 import com.winlator.xenvironment.XEnvironment;
 import com.winlator.xenvironment.components.ALSAServerComponent;
 import com.winlator.xenvironment.components.GlibcProgramLauncherComponent;
-import com.winlator.xenvironment.components.GuestProgramLauncherComponent;
 import com.winlator.xenvironment.components.NetworkInfoUpdateComponent;
 import com.winlator.xenvironment.components.PulseAudioComponent;
 import com.winlator.xenvironment.components.SysVSharedMemoryComponent;
@@ -171,7 +170,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
         NavigationView navigationView = findViewById(R.id.NavigationView);
         ProcessHelper.removeAllDebugCallbacks();
-        boolean enableLogs = preferences.getBoolean("enable_wine_debug", false) || preferences.getBoolean("enable_box86_64_logs", false);
+        boolean enableLogs = preferences.getBoolean("enable_wine_debug", false) || preferences.getBoolean("enable_box64_logs", false);
         if (enableLogs) ProcessHelper.addDebugCallback(debugDialog = new DebugDialog(this));
         Menu menu = navigationView.getMenu();
         menu.findItem(R.id.main_menu_logs).setVisible(enableLogs);
@@ -507,22 +506,14 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         String rootPath = imageFs.getRootDir().getPath();
         FileUtils.clear(imageFs.getTmpDir());
 
-        boolean usrGlibc = preferences.getBoolean("use_glibc", true);
-        GlibcProgramLauncherComponent launcherComponent = null;
-        if (usrGlibc) {
-            launcherComponent = new GlibcProgramLauncherComponent(contentsManager, container.getWineVersion());
-            launcherComponent.setFexPreset(container.getFexPreset());
-            launcherComponent.setFexPresetCustom(container.getFexPresetCustom());
-        }
-        
-        GuestProgramLauncherComponent guestProgramLauncherComponent = usrGlibc ? launcherComponent : new GuestProgramLauncherComponent();
+        GlibcProgramLauncherComponent guestProgramLauncherComponent = new GlibcProgramLauncherComponent(contentsManager, container.getWineVersion());
+        guestProgramLauncherComponent.setFexPreset(container.getFexPreset());
+        guestProgramLauncherComponent.setFexPresetCustom(container.getFexPresetCustom());
 
         if (container != null) {
             if (container.getStartupSelection() == Container.STARTUP_SELECTION_AGGRESSIVE) winHandler.killProcess("services.exe");
 
-            boolean wow64Mode = container.isWoW64Mode();
-            String guestExecutable = wineInfo.getExecutable(this, wow64Mode)+" explorer /desktop=shell,"+xServer.screenInfo+" "+getWineStartCommand();
-            guestProgramLauncherComponent.setWoW64Mode(wow64Mode);
+            String guestExecutable = wineInfo.getExecutable(this, true)+" explorer /desktop=shell,"+xServer.screenInfo+" "+getWineStartCommand();
             guestProgramLauncherComponent.setGuestExecutable(guestExecutable);
 
             envVars.putAll(container.getEnvVars());
@@ -532,7 +523,6 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             ArrayList<String> bindingPaths = new ArrayList<>();
             for (String[] drive : container.drivesIterator()) bindingPaths.add(drive[1]);
             guestProgramLauncherComponent.setBindingPaths(bindingPaths.toArray(new String[0]));
-            guestProgramLauncherComponent.setBox86Preset(shortcut != null ? shortcut.getExtra("box86Preset", container.getBox86Preset()) : container.getBox86Preset());
             guestProgramLauncherComponent.setBox64Preset(shortcut != null ? shortcut.getExtra("box64Preset", container.getBox64Preset()) : container.getBox64Preset());
         }
 
@@ -561,7 +551,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
                 Integer.parseInt(shortcut.getExtra("rcfileId", String.valueOf(container.getRCFileId())));
         RCFile rcfile = manager.getRcfile(rcfileId);
         File file = new File(container.getRootDir(), ".box64rc");
-        String str = rcfile == null ? "" : rcfile.generateBox86_64rc();
+        String str = rcfile == null ? "" : rcfile.generateBox64rc();
         FileUtils.writeString(file, str);
         envVars.put("BOX64_RCFILE", file.getAbsolutePath());
 
@@ -838,7 +828,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         final File rootDir = imageFs.getRootDir();
         final File installedWineDir = imageFs.getInstalledWineDir();
         wineInfo = intent.getParcelableExtra("wine_info");
-        envVars.put("WINEARCH", wineInfo.isWin64() ? "win64" : "win32");
+        envVars.put("WINEARCH", "win64");
         imageFs.setWinePath(wineInfo.path);
 
         final File containerPatternDir = new File(installedWineDir, "/preinstall/container-pattern");
@@ -849,8 +839,8 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         linkFile.delete();
         FileUtils.symlink(".."+FileUtils.toRelativePath(rootDir.getPath(), containerPatternDir.getPath()), linkFile.getPath());
 
-        GuestProgramLauncherComponent guestProgramLauncherComponent = environment.getComponent(GuestProgramLauncherComponent.class);
-        guestProgramLauncherComponent.setGuestExecutable(wineInfo.getExecutable(this, false)+" explorer /desktop=shell,"+Container.DEFAULT_SCREEN_SIZE+" winecfg");
+        GlibcProgramLauncherComponent guestProgramLauncherComponent = environment.getComponent(GlibcProgramLauncherComponent.class);
+        guestProgramLauncherComponent.setGuestExecutable(wineInfo.getExecutable(this, true)+" explorer /desktop=shell,"+Container.DEFAULT_SCREEN_SIZE+" winecfg");
 
         preloaderDialog = new PreloaderDialog(this);
         guestProgramLauncherComponent.setTerminationCallback((status) -> Executors.newSingleThreadExecutor().execute(() -> {
@@ -1077,7 +1067,6 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         WineUtils.applySystemTweaks(this, wineInfo);
         container.putExtra("graphicsDriver", null);
         container.putExtra("desktopTheme", null);
-        //SettingsFragment.resetBox86_64Version(this);
     }
 
     private void assignTaskAffinity(Window window) {

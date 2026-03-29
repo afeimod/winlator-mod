@@ -50,19 +50,6 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:visibility="gone"
-                        android:text="@string/box86_version" />
-
-                    <Spinner
-                        style="@style/ComboBox"
-                        android:id="@+id/SBox86Version"
-                        android:layout_width="match_parent"
-                        android:visibility="gone"
-                        android:entries="@array/box86_version_entries" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
                         android:text="@string/box64_version" />
 
                     <Spinner
@@ -70,48 +57,6 @@
                         android:id="@+id/SBox64Version"
                         android:layout_width="match_parent"
                         android:entries="@array/box64_version_entries" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:visibility="gone"
-                        android:text="@string/box86_preset" />
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:visibility="gone"
-                        android:gravity="center_vertical">
-
-                        <Spinner
-                            style="@style/ComboBox"
-                            android:id="@+id/SBox86Preset"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1" />
-
-                        <ImageButton
-                            style="@style/ListMenuButton"
-                            android:id="@+id/BTAddBox86Preset"
-                            android:src="@drawable/icon_add" />
-
-                        <ImageButton
-                            style="@style/ListMenuButton"
-                            android:id="@+id/BTEditBox86Preset"
-                            android:src="@drawable/icon_edit" />
-
-                        <ImageButton
-                            style="@style/ListMenuButton"
-                            android:id="@+id/BTDuplicateBox86Preset"
-                            android:src="@drawable/icon_duplicate" />
-
-                        <ImageButton
-                            style="@style/ListMenuButton"
-                            android:id="@+id/BTRemoveBox86Preset"
-                            android:layout_marginRight="0dp"
-                            android:src="@drawable/icon_remove" />
-                    </LinearLayout>
 
                     <TextView
                         android:layout_width="wrap_content"
@@ -198,7 +143,7 @@
 
                 <TextView
                     style="@style/FieldSetLabel"
-                    android:text="@string/box86_box64" />
+                    android:text="@string/box64" />
             </FrameLayout>
 
             <FrameLayout
@@ -333,10 +278,10 @@
                     <View style="@style/FieldSeparator" />
 
                     <CheckBox
-                        android:id="@+id/CBEnableBox86_64Logs"
+                        android:id="@+id/CBEnableBox64Logs"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="@string/enable_box86_64_logs"
+                        android:text="@string/enable_box64_logs"
                         android:layout_marginTop="8dp" />
 
                     <CheckBox
@@ -415,14 +360,6 @@
                 android:layout_height="wrap_content">
 
                 <LinearLayout style="@style/FieldSet">
-                    <CheckBox
-                        android:id="@+id/CBUseGlibc"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/use_glibc" />
-
-                    <View style="@style/FieldSeparator" />
-
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"

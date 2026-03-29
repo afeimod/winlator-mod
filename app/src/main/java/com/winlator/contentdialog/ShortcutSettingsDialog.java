@@ -14,8 +14,8 @@ import android.widget.Spinner;
 import com.winlator.ContainerDetailFragment;
 import com.winlator.R;
 import com.winlator.ShortcutsFragment;
-import com.winlator.box86_64.Box86_64PresetManager;
-import com.winlator.box86_64.rc.RCManager;
+import com.winlator.box64.Box64PresetManager;
+import com.winlator.box64.rc.RCManager;
 import com.winlator.container.Shortcut;
 import com.winlator.contents.ContentsManager;
 import com.winlator.core.AppUtils;
@@ -125,11 +125,8 @@ public class ShortcutSettingsDialog extends ContentDialog {
         final CheckBox cbForceFullscreen = findViewById(R.id.CBForceFullscreen);
         cbForceFullscreen.setChecked(shortcut.getExtra("forceFullscreen", "0").equals("1"));
 
-        final Spinner sBox86Preset = findViewById(R.id.SBox86Preset);
-        Box86_64PresetManager.loadSpinner("box86", sBox86Preset, shortcut.getExtra("box86Preset", shortcut.container.getBox86Preset()));
-
         final Spinner sBox64Preset = findViewById(R.id.SBox64Preset);
-        Box86_64PresetManager.loadSpinner("box64", sBox64Preset, shortcut.getExtra("box64Preset", shortcut.container.getBox64Preset()));
+        Box64PresetManager.loadSpinner(sBox64Preset, shortcut.getExtra("box64Preset", shortcut.container.getBox64Preset()));
 
         final Spinner sRCFile = findViewById(R.id.SRCFile);
         final int[] rcfileIds = {0};
@@ -199,9 +196,7 @@ public class ShortcutSettingsDialog extends ContentDialog {
                 String envVars = envVarsView.getEnvVars();
                 shortcut.putExtra("envVars", !envVars.isEmpty() ? envVars : null);
 
-                String box86Preset = Box86_64PresetManager.getSpinnerSelectedId(sBox86Preset);
-                String box64Preset = Box86_64PresetManager.getSpinnerSelectedId(sBox64Preset);
-                updateExtra("box86Preset", shortcut.container.getBox86Preset(), box86Preset);
+                String box64Preset = Box64PresetManager.getSpinnerSelectedId(sBox64Preset);
                 updateExtra("box64Preset", shortcut.container.getBox64Preset(), box64Preset);
 
                 updateExtra("rcfileId", String.valueOf(shortcut.container.getRCFileId()), String.valueOf(rcfileIds[0]));

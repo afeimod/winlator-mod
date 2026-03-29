@@ -11,7 +11,6 @@ import android.os.Environment;
 import android.provider.DocumentsContract;
 import android.view.LayoutInflater;
 import android.view.Menu;
-import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
@@ -29,9 +28,9 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
 import androidx.preference.PreferenceManager;
 
-import com.winlator.box86_64.Box86_64Preset;
-import com.winlator.box86_64.Box86_64PresetManager;
-import com.winlator.box86_64.rc.RCManager;
+import com.winlator.box64.Box64Preset;
+import com.winlator.box64.Box64PresetManager;
+import com.winlator.box64.rc.RCManager;
 import com.winlator.container.Container;
 import com.winlator.container.ContainerManager;
 import com.winlator.contentdialog.AddEnvVarDialog;
@@ -141,7 +140,7 @@ public class ContainerDetailFragment extends Fragment {
 
         final ArrayList<WineInfo> wineInfos = WineUtils.getInstalledWineInfos(context);
         final Spinner sWineVersion = view.findViewById(R.id.SWineVersion);
-        final View flBox86Box64 = view.findViewById(R.id.FLBox86Box64);
+        final View flBox64 = view.findViewById(R.id.FLBox64);
         final View flFEX = view.findViewById(R.id.FLFEX);
 
         sWineVersion.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
@@ -150,7 +149,7 @@ public class ContainerDetailFragment extends Fragment {
                 String wineVersionIdentifier = sWineVersion.getSelectedItem().toString();
                 WineInfo wineInfo = WineInfo.fromIdentifier(context, wineVersionIdentifier);
                 boolean isArm64EC = wineInfo.getArch().equals("arm64ec");
-                flBox86Box64.setVisibility(isArm64EC ? View.GONE : View.VISIBLE);
+                flBox64.setVisibility(isArm64EC ? View.GONE : View.VISIBLE);
                 flFEX.setVisibility(isArm64EC ? View.VISIBLE : View.GONE);
             }
 
@@ -226,18 +225,12 @@ public class ContainerDetailFragment extends Fragment {
             popupMenu.show();
         });
 
-        final CheckBox cbWoW64Mode = view.findViewById(R.id.CBWoW64Mode);
-        cbWoW64Mode.setChecked(!isEditMode() || container.isWoW64Mode());
-
         final Spinner sStartupSelection = view.findViewById(R.id.SStartupSelection);
         byte previousStartupSelection = isEditMode() ? container.getStartupSelection() : -1;
         sStartupSelection.setSelection(previousStartupSelection != -1 ? previousStartupSelection : Container.STARTUP_SELECTION_ESSENTIAL);
 
-        final Spinner sBox86Preset = view.findViewById(R.id.SBox86Preset);
-        Box86_64PresetManager.loadSpinner("box86", sBox86Preset, isEditMode() ? container.getBox86Preset() : preferences.getString("box86_preset", Box86_64Preset.COMPATIBILITY));
-
         final Spinner sBox64Preset = view.findViewById(R.id.SBox64Preset);
-        Box86_64PresetManager.loadSpinner("box64", sBox64Preset, isEditMode() ? container.getBox64Preset() : preferences.getString("box64_preset", Box86_64Preset.COMPATIBILITY));
+        Box64PresetManager.loadSpinner(sBox64Preset, isEditMode() ? container.getBox64Preset() : preferences.getString("box64_preset", Box64Preset.COMPATIBILITY));
 
         final Spinner sFEXVersion = view.findViewById(R.id.SFEXVersion);
         updateFEXVersionSpinner(context, contentsManager, sFEXVersion);
@@ -263,10 +256,7 @@ public class ContainerDetailFragment extends Fragment {
         RCManager.loadRCFileSpinner(rcManager, container == null ? 0 : container.getRCFileId(), sRCFile, id -> rcfileIds[0] = id);
 
         final CPUListView cpuListView = view.findViewById(R.id.CPUListView);
-        final CPUListView cpuListViewWoW64 = view.findViewById(R.id.CPUListViewWoW64);
-
         cpuListView.setCheckedCPUList(isEditMode() ? container.getCPUList(true) : Container.getFallbackCPUList());
-        cpuListViewWoW64.setCheckedCPUList(isEditMode() ? container.getCPUListWoW64(true) : Container.getFallbackCPUListWoW64());
 
         final Spinner sPrimaryController = view.findViewById(R.id.SPrimaryController);
         sPrimaryController.setSelection(isEditMode() ? container.getPrimaryController() : 1);
@@ -303,11 +293,8 @@ public class ContainerDetailFragment extends Fragment {
                 String drives = getDrives(view);
                 boolean showFPS = cbShowFPS.isChecked();
                 String cpuList = cpuListView.getCheckedCPUListAsString();
-                String cpuListWoW64 = cpuListViewWoW64.getCheckedCPUListAsString();
-                boolean wow64Mode = cbWoW64Mode.isChecked() /* && cbWoW64Mode.isEnabled() */ ;
                 byte startupSelection = (byte)sStartupSelection.getSelectedItemPosition();
-                String box86Preset = Box86_64PresetManager.getSpinnerSelectedId(sBox86Preset);
-                String box64Preset = Box86_64PresetManager.getSpinnerSelectedId(sBox64Preset);
+                String box64Preset = Box64PresetManager.getSpinnerSelectedId(sBox64Preset);
                 String fexVersion = sFEXVersion.getSelectedItem().toString();
                 int fexPreset = sFEXPreset.getSelectedItemPosition();
                 String fexPresetCustom = FEXPresetManager.getSpinnerSelectedId(sFEXPresetCustom);
@@ -326,7 +313,6 @@ public class ContainerDetailFragment extends Fragment {
                     container.setScreenSize(screenSize);
                     container.setEnvVars(envVars);
                     container.setCPUList(cpuList);
-                    container.setCPUListWoW64(cpuListWoW64);
                     container.setGraphicsDriver(graphicsDriver);
                     container.setDXWrapper(dxwrapper);
                     container.setDXWrapperConfig(dxwrapperConfig);
@@ -335,9 +321,7 @@ public class ContainerDetailFragment extends Fragment {
                     container.setDrives(drives);
                     container.setShowFPS(showFPS);
                     container.setInputType(finalInputType);
-                    container.setWoW64Mode(wow64Mode);
                     container.setStartupSelection(startupSelection);
-                    container.setBox86Preset(box86Preset);
                     container.setBox64Preset(box64Preset);
                     container.setFexVersion(fexVersion);
                     container.setFexPreset(fexPreset);
@@ -358,7 +342,6 @@ public class ContainerDetailFragment extends Fragment {
                     data.put("screenSize", screenSize);
                     data.put("envVars", envVars);
                     data.put("cpuList", cpuList);
-                    data.put("cpuListWoW64", cpuListWoW64);
                     data.put("graphicsDriver", graphicsDriver);
                     data.put("dxwrapper", dxwrapper);
                     data.put("dxwrapperConfig", dxwrapperConfig);
@@ -367,9 +350,7 @@ public class ContainerDetailFragment extends Fragment {
                     data.put("drives", drives);
                     data.put("showFPS", showFPS);
                     data.put("inputType", finalInputType);
-                    data.put("wow64Mode", wow64Mode);
                     data.put("startupSelection", startupSelection);
-                    data.put("box86Preset", box86Preset);
                     data.put("box64Preset", box64Preset);
                     data.put("fexVersion", fexVersion);
                     data.put("fexPreset", fexPreset);
