@@ -17,7 +17,7 @@ public class PreloaderDialog {
     }
 
     private void create() {
-        if (dialog != null) return;
+        if (dialog != null || isActivityDestroyed()) return;
         dialog = new Dialog(activity, android.R.style.Theme_Translucent_NoTitleBar_Fullscreen);
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
         dialog.setCancelable(false);
@@ -31,28 +31,39 @@ public class PreloaderDialog {
         }
     }
 
+    private boolean isActivityDestroyed() {
+        return activity == null || activity.isFinishing() || activity.isDestroyed();
+    }
+
     public synchronized void show(int textResId) {
-        if (isShowing()) return;
+        if (isActivityDestroyed() || isShowing()) return;
         close();
-        if (dialog == null) create();
-        ((TextView)dialog.findViewById(R.id.TextView)).setText(textResId);
-        dialog.show();
+        create();
+        if (dialog != null) {
+            ((TextView)dialog.findViewById(R.id.TextView)).setText(textResId);
+            dialog.show();
+        }
     }
 
     public void showOnUiThread(final int textResId) {
+        if (isActivityDestroyed()) return;
         activity.runOnUiThread(() -> show(textResId));
     }
 
     public synchronized void close() {
         try {
-            if (dialog != null) {
+            if (dialog != null && dialog.isShowing()) {
                 dialog.dismiss();
             }
         }
         catch (Exception e) {}
+        finally {
+            dialog = null;
+        }
     }
 
     public void closeOnUiThread() {
+        if (isActivityDestroyed()) return;
         activity.runOnUiThread(this::close);
     }
 

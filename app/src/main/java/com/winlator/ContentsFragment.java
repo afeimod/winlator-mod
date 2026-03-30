@@ -2,6 +2,7 @@ package com.winlator;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Build;
@@ -21,6 +22,7 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.content.res.AppCompatResources;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -50,39 +52,51 @@ public class ContentsFragment extends Fragment {
     private ContentProfile.ContentType currentContentType = ContentProfile.ContentType.CONTENT_TYPE_WINE;
     private Spinner sContentType;
 
+    private void safeRunOnUiThread(Runnable action) {
+        Activity activity = getActivity();
+        if (activity != null && isAdded() && !activity.isFinishing() && !activity.isDestroyed()) {
+            activity.runOnUiThread(action);
+        }
+    }
+
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setHasOptionsMenu(false);
-        manager = new ContentsManager(getContext());
+        manager = new ContentsManager(requireContext());
         manager.syncContents();
     }
 
     @Override
     public void onDestroy() {
-        FileUtils.clear(getContext().getCacheDir());
+        Context context = getContext();
+        if (context != null) FileUtils.clear(context.getCacheDir());
         super.onDestroy();
     }
 
     @Override
     public void onResume() {
         super.onResume();
-
-        new Thread(() -> {
+        Executors.newSingleThreadExecutor().execute(() -> {
             String json = Downloader.downloadString(ContentsManager.REMOTE_PROFILES_URL);
-            if (json == null)
-                return;
-            getActivity().runOnUiThread(() -> {
-                manager.setRemoteProfiles(json);
-                loadContentList();
-            });
-        }).start();
+            if (json != null) {
+                safeRunOnUiThread(() -> {
+                    manager.setRemoteProfiles(json);
+                    loadContentList();
+                });
+            }
+        });
     }
 
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-        ((AppCompatActivity) getActivity()).getSupportActionBar().setTitle(R.string.contents);
+        Activity activity = getActivity();
+        if (activity instanceof AppCompatActivity) {
+            AppCompatActivity appCompatActivity = (AppCompatActivity) activity;
+            if (appCompatActivity.getSupportActionBar() != null) {
+                appCompatActivity.getSupportActionBar().setTitle(R.string.contents);
+            }
+        }
     }
 
     @Nullable
@@ -100,23 +114,19 @@ public class ContentsFragment extends Fragment {
             }
 
             @Override
-            public void onNothingSelected(AdapterView<?> parent) {
-
-            }
+            public void onNothingSelected(AdapterView<?> parent) {}
         });
 
         emptyText = layout.findViewById(R.id.TVEmptyText);
 
         View btInstallContent = layout.findViewById(R.id.BTInstallContent);
-        btInstallContent.setOnClickListener(v -> {
-            ContentDialog.confirm(getContext(), getString(R.string.do_you_want_to_install_content) + " " + getString(R.string.pls_make_sure_content_trustworthy) + " "
-                    + getString(R.string.content_suffix_is_wcp_packed_xz_zst) + '\n' + getString(R.string.get_more_contents_form_github), () -> {
-                Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
-                intent.addCategory(Intent.CATEGORY_OPENABLE);
-                intent.setType("*/*");
-                getActivity().startActivityFromFragment(this, intent, MainActivity.OPEN_FILE_REQUEST_CODE);
-            });
-        });
+        btInstallContent.setOnClickListener(v -> ContentDialog.confirm(getContext(), getString(R.string.do_you_want_to_install_content) + " " + getString(R.string.pls_make_sure_content_trustworthy) + " "
+                + getString(R.string.content_suffix_is_wcp_packed_xz_zst) + '\n' + getString(R.string.get_more_contents_form_github), () -> {
+            Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+            intent.addCategory(Intent.CATEGORY_OPENABLE);
+            intent.setType("*/*");
+            startActivityForResult(intent, MainActivity.OPEN_FILE_REQUEST_CODE);
+        }));
 
         recyclerView = layout.findViewById(R.id.RecyclerView);
         recyclerView.setLayoutManager(new LinearLayoutManager(recyclerView.getContext()));
@@ -130,19 +140,21 @@ public class ContentsFragment extends Fragment {
         List<String> typeList = new ArrayList<>();
         for (ContentProfile.ContentType type : ContentProfile.ContentType.values())
             typeList.add(type.toString());
-        spinner.setAdapter(new ArrayAdapter<>(getContext(), android.R.layout.simple_spinner_dropdown_item, typeList));
-        spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                currentContentType = ContentProfile.ContentType.values()[position];
-                updateContentsListView();
-            }
+        
+        Context context = getContext();
+        if (context != null) {
+            spinner.setAdapter(new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, typeList));
+            spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+                @Override
+                public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                    currentContentType = ContentProfile.ContentType.values()[position];
+                    updateContentsListView();
+                }
 
-            @Override
-            public void onNothingSelected(AdapterView<?> parent) {
-
-            }
-        });
+                @Override
+                public void onNothingSelected(AdapterView<?> parent) {}
+            });
+        }
     }
 
     private void updateContentsListView() {
@@ -150,13 +162,19 @@ public class ContentsFragment extends Fragment {
         if (profiles.isEmpty()) {
             recyclerView.setVisibility(View.GONE);
             emptyText.setVisibility(View.VISIBLE);
+        } else {
+            recyclerView.setVisibility(View.VISIBLE);
+            emptyText.setVisibility(View.GONE);
         }
     }
 
     @Override
     public void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
-        if (requestCode == MainActivity.OPEN_FILE_REQUEST_CODE && resultCode == Activity.RESULT_OK) {
-            PreloaderDialog preloaderDialog = new PreloaderDialog(getActivity());
+        if (requestCode == MainActivity.OPEN_FILE_REQUEST_CODE && resultCode == Activity.RESULT_OK && data != null) {
+            final Activity activity = getActivity();
+            if (activity == null) return;
+
+            PreloaderDialog preloaderDialog = new PreloaderDialog(activity);
             preloaderDialog.showOnUiThread(R.string.installing_content);
             try {
                 ContentsManager.OnInstallFinishedCallback callback = new ContentsManager.OnInstallFinishedCallback() {
@@ -173,16 +191,17 @@ public class ContentsFragment extends Fragment {
                             case ERROR_UNTRUSTPROFILE -> R.string.content_cannot_be_trusted;
                             default -> R.string.unable_to_install_content;
                         };
-                        requireActivity().runOnUiThread(() -> ContentDialog.alert(getContext(), getString(R.string.install_failed) + ": " + getString(msgId), preloaderDialog::closeOnUiThread));
+                        safeRunOnUiThread(() -> ContentDialog.alert(getContext(), activity.getString(R.string.install_failed) + ": " + activity.getString(msgId), preloaderDialog::closeOnUiThread));
                     }
 
                     @Override
                     public void onSucceed(ContentProfile profile) {
                         if (isExtracting) {
-                            ContentsManager.OnInstallFinishedCallback callback1 = this;
-                            requireActivity().runOnUiThread(() -> {
+                            final ContentsManager.OnInstallFinishedCallback callback1 = this;
+                            safeRunOnUiThread(() -> {
                                 ContentInfoDialog dialog = new ContentInfoDialog(getContext(), profile);
-                                ((TextView) dialog.findViewById(R.id.BTConfirm)).setText(R.string._continue);
+                                TextView confirmBtn = dialog.findViewById(R.id.BTConfirm);
+                                if (confirmBtn != null) confirmBtn.setText(R.string._continue);
                                 dialog.setOnConfirmCallback(() -> {
                                     isExtracting = false;
                                     List<ContentProfile.ContentFile> untrustedFiles = manager.getUnTrustedContentFiles(profile);
@@ -199,7 +218,7 @@ public class ContentsFragment extends Fragment {
 
                         } else {
                             preloaderDialog.closeOnUiThread();
-                            requireActivity().runOnUiThread(() -> {
+                            safeRunOnUiThread(() -> {
                                 ContentDialog.alert(getContext(), R.string.content_installed_success, null);
                                 manager.syncContents();
                                 boolean flashAfter = currentContentType == profile.type;
@@ -210,9 +229,7 @@ public class ContentsFragment extends Fragment {
                         }
                     }
                 };
-                Executors.newSingleThreadExecutor().execute(() -> {
-                    manager.extraContentFile(data.getData(), callback);
-                });
+                Executors.newSingleThreadExecutor().execute(() -> manager.extraContentFile(data.getData(), callback));
             } catch (Exception e) {
                 preloaderDialog.closeOnUiThread();
                 AppUtils.showToast(getContext(), R.string.unable_to_import_profile);
@@ -221,6 +238,7 @@ public class ContentsFragment extends Fragment {
     }
 
     private void loadContentList() {
+        if (!isAdded()) return;
         List<ContentProfile> profiles = manager.getProfiles(currentContentType);
 
         if (profiles.isEmpty()) {
@@ -246,7 +264,6 @@ public class ContentsFragment extends Fragment {
 
             public ViewHolder(@NonNull View view) {
                 super(view);
-
                 ivIcon = view.findViewById(R.id.IVIcon);
                 tvVersionName = view.findViewById(R.id.TVVersionName);
                 tvVersionCode = view.findViewById(R.id.TVVersionCode);
@@ -272,36 +289,38 @@ public class ContentsFragment extends Fragment {
             super.onViewRecycled(holder);
         }
 
-        @SuppressLint("StringFormatInvalid")
+        @SuppressLint({"StringFormatInvalid", "SetTextI18n"})
         @Override
         public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
             final ContentProfile profile = data.get(position);
+            Context context = getContext();
+            if (context == null) return;
 
             int iconId = switch (profile.type) {
                 case CONTENT_TYPE_WINE -> R.drawable.icon_wine;
                 default -> R.drawable.icon_settings;
             };
-            holder.ivIcon.setBackground(getContext().getDrawable(iconId));
+            holder.ivIcon.setBackground(AppCompatResources.getDrawable(context, iconId));
 
-            holder.tvVersionName.setText(getContext().getString(R.string.version) + ": " + profile.verName);
-            holder.tvVersionCode.setText(getContext().getString(R.string.version_code) + ": " + profile.verCode);
+            holder.tvVersionName.setText(context.getString(R.string.version) + ": " + profile.verName);
+            holder.tvVersionCode.setText(context.getString(R.string.version_code) + ": " + profile.verCode);
             holder.ibMenu.setVisibility(profile.remoteUrl == null ? View.VISIBLE : View.GONE);
             holder.ibMenu.setOnClickListener(v -> {
-                PopupMenu selectionMenu = new PopupMenu(getContext(), holder.ibMenu);
+                PopupMenu selectionMenu = new PopupMenu(context, holder.ibMenu);
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
                     selectionMenu.setForceShowIcon(true);
                 selectionMenu.inflate(R.menu.content_popup_menu);
                 selectionMenu.setOnMenuItemClickListener(item -> {
                     int itemId = item.getItemId();
                     if (itemId == R.id.content_info) {
-                        new ContentInfoDialog(getContext(), profile).show();
+                        new ContentInfoDialog(context, profile).show();
                     } else if (itemId == R.id.remove_content) {
-                        ContentDialog.confirm(getContext(), R.string.do_you_want_to_remove_this_content, () -> {
+                        ContentDialog.confirm(context, R.string.do_you_want_to_remove_this_content, () -> {
                             if (profile.type == ContentProfile.ContentType.CONTENT_TYPE_WINE) {
-                                ContainerManager containerManager = new ContainerManager(getContext());
+                                ContainerManager containerManager = new ContainerManager(context);
                                 for (Container container : containerManager.getContainers()) {
                                     if (container.getWineVersion().equals(ContentsManager.getEntryName(profile))) {
-                                        ContentDialog.alert(getContext(), String.format(getString(R.string.unable_to_remove_content_since_container_using), container.getName()), null);
+                                        ContentDialog.alert(context, String.format(getString(R.string.unable_to_remove_content_since_container_using), container.getName()), null);
                                         return;
                                     }
                                 }
@@ -319,20 +338,22 @@ public class ContentsFragment extends Fragment {
                 holder.ibDownload.setVisibility(View.GONE);
                 holder.progressBar.setVisibility(View.VISIBLE);
 
-                Intent intent = new Intent();
-                intent.setData(Uri.parse(profile.remoteUrl));
-                new Thread(() -> {
+                Executors.newSingleThreadExecutor().execute(() -> {
                     long timestamp = System.currentTimeMillis();
-                    File output = new File(getContext().getCacheDir(), "temp_" + timestamp);
+                    File output = new File(context.getCacheDir(), "temp_" + timestamp);
+                    final Intent intent = new Intent();
                     if (Downloader.downloadFile(profile.remoteUrl, output)) {
                         intent.setData(Uri.parse(output.getAbsolutePath()));
+                    } else {
+                        intent.setData(Uri.parse(profile.remoteUrl));
                     }
-                    getActivity().runOnUiThread(() -> {
+                    
+                    safeRunOnUiThread(() -> {
                         holder.progressBar.setVisibility(View.GONE);
                         holder.ibDownload.setVisibility(View.VISIBLE);
                         onActivityResult(MainActivity.OPEN_FILE_REQUEST_CODE, Activity.RESULT_OK, intent);
                     });
-                }).start();
+                });
             });
         }
 
