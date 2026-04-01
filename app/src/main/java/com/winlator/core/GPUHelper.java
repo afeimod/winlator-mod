@@ -120,6 +120,10 @@ public abstract class GPUHelper {
         return glGetRenderer(context).toLowerCase(Locale.ENGLISH).matches(".*adreno[^6]+6[0-9]{2}.*");
     }
 
+    public static boolean isAdreno(Context context) {
+        return glGetRenderer(context).toLowerCase(Locale.ENGLISH).contains("adreno");
+    }
+
     public static int vkMakeVersion(String value) {
         final Pattern pattern = Pattern.compile("([0-9]+)\\.([0-9]+)\\.?([0-9]+)?");
         Matcher matcher = pattern.matcher(value);
