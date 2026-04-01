@@ -86,7 +86,7 @@ public class FrameRating extends FrameLayout implements Runnable {
     }
 
     public void setGPUInfo(String gpuInfo) {
-        ((TextView)gpuPanel.getChildAt(1)).setText(gpuInfo);
+        post(() -> ((TextView)gpuPanel.getChildAt(1)).setText(gpuInfo));
     }
 
     public void reset() {
