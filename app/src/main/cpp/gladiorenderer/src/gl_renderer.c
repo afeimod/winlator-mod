@@ -1285,6 +1285,7 @@ void GLRenderer_readPixels(GLint x, GLint y, GLsizei width, GLsizei height, GLen
             case GL_RED:
             case GL_GREEN:
             case GL_BLUE:
+            case GL_LUMINANCE:
                 for (int i = 0, j = format - GL_RED, k = 0; i < srcDataSize; i += 4, k++) dstData[k] = srcData[i+j];
                 break;
             case GL_RGB:
@@ -1324,11 +1325,11 @@ void GLRenderer_readPixels(GLint x, GLint y, GLsizei width, GLsizei height, GLen
             case GL_RGBA:
                 break;
             default:
-                println("gladio:readPixelData: unimplemented format %x", format);
+                println("gladio:readPixels: unimplemented format %x", format);
                 break;
         }
     }
-    else println("gladio:readPixelData: unimplemented type %x", type);
+    else println("gladio:readPixels: unimplemented type %x", type);
 
     if (convert) free(srcData);
 }
