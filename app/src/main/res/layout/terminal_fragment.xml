@@ -14,42 +14,48 @@
         android:gravity="center_vertical"
         android:background="#2d2d2d">
 
-        <Button
-            android:id="@+id/BTInterrupt"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Ctrl+C"
-            android:textSize="12sp"
-            android:padding="8dp" />
-
-        <Button
-            android:id="@+id/BTExportOutput"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/export_terminal_output"
-            android:textSize="12sp"
-            android:padding="8dp"
-            android:layout_marginStart="4dp" />
-
-        <Button
-            android:id="@+id/BTClear"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/clear"
-            android:textSize="12sp"
-            android:padding="8dp"
-            android:layout_marginStart="4dp" />
-
-        <View
+        <!-- Left button area -->
+        <LinearLayout
             android:layout_width="0dp"
-            android:layout_height="1dp"
-            android:layout_weight="1" />
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
 
+            <Button
+                android:id="@+id/BTInterrupt"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Ctrl+C"
+                android:textSize="12sp"
+                android:padding="8dp" />
+
+            <Button
+                android:id="@+id/BTExportOutput"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/export_terminal_output"
+                android:textSize="12sp"
+                android:padding="8dp"
+                android:layout_marginStart="4dp" />
+
+            <Button
+                android:id="@+id/BTClear"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/clear"
+                android:textSize="12sp"
+                android:padding="8dp"
+                android:layout_marginStart="4dp" />
+        </LinearLayout>
+
+        <!-- Right switch area - always visible -->
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:gravity="center_vertical">
+            android:gravity="center_vertical"
+            android:layout_marginStart="4dp">
 
             <TextView
                 android:layout_width="wrap_content"
