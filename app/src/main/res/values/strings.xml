@@ -345,4 +345,6 @@
     <string name="hud_mode">HUD Mode</string>
     <string name="simple_fps">Simple (FPS)</string>
     <string name="full">Full</string>
+    <string name="ddraw_wrapper" translatable="false">DDraw Wrapper</string>
+    <string name="renderer">Renderer</string>
 </resources>

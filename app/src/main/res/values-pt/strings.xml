@@ -288,4 +288,5 @@
     <string name="hud_mode">Modo HUD</string>
     <string name="simple_fps">Simples (FPS)</string>
     <string name="full">Completo</string>
+    <string name="renderer">Renderizador</string>
 </resources>

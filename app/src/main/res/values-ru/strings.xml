@@ -288,4 +288,5 @@
     <string name="hud_mode">Режим HUD</string>
     <string name="simple_fps">Простой (FPS)</string>
     <string name="full">Полный</string>
+    <string name="renderer">Рендерер</string>
 </resources>
