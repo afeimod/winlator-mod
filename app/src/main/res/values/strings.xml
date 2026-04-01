@@ -366,4 +366,5 @@
     <string name="terminal_output_exported">Terminal output exported to</string>
     <string name="export_failed">Export failed</string>
     <string name="use_termux_x11_instead_of_built_in_xserver">Use Termux-X11 instead of built-in X Server</string>
+    <string name="clear">Clear</string>
 </resources>

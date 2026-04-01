@@ -31,6 +31,15 @@
             android:padding="8dp"
             android:layout_marginStart="4dp" />
 
+        <Button
+            android:id="@+id/BTClear"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/clear"
+            android:textSize="12sp"
+            android:padding="8dp"
+            android:layout_marginStart="4dp" />
+
         <View
             android:layout_width="0dp"
             android:layout_height="1dp"

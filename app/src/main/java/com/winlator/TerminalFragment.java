@@ -49,6 +49,7 @@ public class TerminalFragment extends Fragment {
     private Button btExportOutput;
     private Button btExecuteCommand;
     private Button btInterrupt;
+    private Button btClear;
     private Switch swRealTimeLog;
     private ScrollView svTerminal;
     
@@ -110,6 +111,7 @@ public class TerminalFragment extends Fragment {
         btExportOutput = view.findViewById(R.id.BTExportOutput);
         btExecuteCommand = view.findViewById(R.id.BTExecuteCommand);
         btInterrupt = view.findViewById(R.id.BTInterrupt);
+        btClear = view.findViewById(R.id.BTClear);
         swRealTimeLog = view.findViewById(R.id.SWRealTimeLog);
         svTerminal = view.findViewById(R.id.SVTerminal);
         
@@ -117,6 +119,7 @@ public class TerminalFragment extends Fragment {
         btExecuteCommand.setOnClickListener(v -> executeCommand());
         btExportOutput.setOnClickListener(v -> exportOutput());
         btInterrupt.setOnClickListener(v -> interruptCommand());
+        btClear.setOnClickListener(v -> clearTerminal());
         
         // Set up real-time log switch
         swRealTimeLog.setOnCheckedChangeListener((buttonView, isChecked) -> {
@@ -420,6 +423,14 @@ public class TerminalFragment extends Fragment {
                 }
             }
         });
+    }
+
+    private void clearTerminal() {
+        terminalLines.clear();
+        pendingText.setLength(0);
+        if (tvTerminalOutput != null) {
+            tvTerminalOutput.setText("");
+        }
     }
     
     private void appendToTerminal(String line) {
