@@ -19,6 +19,7 @@ import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.PopupMenu;
+import android.widget.SeekBar;
 import android.widget.Spinner;
 import android.widget.TextView;
 
@@ -408,6 +409,11 @@ public class ContainerDetailFragment extends Fragment {
             Spinner sMouseWarpOverride = view.findViewById(R.id.SMouseWarpOverride);
             registryEditor.setStringValue("Software\\Wine\\DirectInput", "MouseWarpOverride", sMouseWarpOverride.getSelectedItem().toString().toLowerCase(Locale.ENGLISH));
 
+            SeekBar sbFontDPI = view.findViewById(R.id.SBFontDPI);
+            int fontDPI = sbFontDPI.getProgress() + 96;
+            registryEditor.setDwordValue("Software\\Wine\\Fonts", "LogPixels", fontDPI);
+            registryEditor.setDwordValue("Control Panel\\Desktop", "LogPixels", fontDPI);
+
             registryEditor.setStringValue("Software\\Wine\\Direct3D", "shader_backend", "glsl");
             registryEditor.setStringValue("Software\\Wine\\Direct3D", "UseGLSL", "enabled");
         }
@@ -478,6 +484,29 @@ public class ContainerDetailFragment extends Fragment {
             Spinner sMouseWarpOverride = view.findViewById(R.id.SMouseWarpOverride);
             sMouseWarpOverride.setAdapter(new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, mouseWarpOverrideList));
             AppUtils.setSpinnerSelectionFromValue(sMouseWarpOverride, registryEditor.getStringValue("Software\\Wine\\DirectInput", "MouseWarpOverride", "disable"));
+
+            SeekBar sbFontDPI = view.findViewById(R.id.SBFontDPI);
+            TextView tvFontDPIValue = view.findViewById(R.id.TVFontDPIValue);
+            int defaultFontDPI = 96;
+            int fontDPI = registryEditor.getDwordValue("Software\\Wine\\Fonts", "LogPixels", defaultFontDPI);
+            if (fontDPI < 96) fontDPI = 96;
+            if (fontDPI > 480) fontDPI = 480;
+            sbFontDPI.setProgress(fontDPI - 96);
+            tvFontDPIValue.setText(String.valueOf(fontDPI));
+
+            sbFontDPI.setOnSeekBarChangeListener(new android.widget.SeekBar.OnSeekBarChangeListener() {
+                @Override
+                public void onProgressChanged(android.widget.SeekBar seekBar, int progress, boolean fromUser) {
+                    int dpi = progress + 96;
+                    tvFontDPIValue.setText(String.valueOf(dpi));
+                }
+
+                @Override
+                public void onStartTrackingTouch(android.widget.SeekBar seekBar) {}
+
+                @Override
+                public void onStopTrackingTouch(android.widget.SeekBar seekBar) {}
+            });
         }
     }
 

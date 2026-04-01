@@ -68,6 +68,7 @@
     <string name="unable_to_import_profile">无法导入配置文件</string>
     <string name="wine_configuration">Wine 配置</string>
     <string name="registry_keys">注册表项</string>
+    <string name="font_dpi">字体 DPI</string>
     <string name="csmt">CSMT （命令流多线程）</string>
     <string name="gpu_name">GPU 名称</string>
     <string name="offscreen_rendering_mode">离屏渲染模式</string>
