@@ -2,7 +2,7 @@ package com.winlator.core;
 
 public abstract class DefaultVersion {
     public static final String BOX64 = "0.4.1";
-    public static final String TURNIP = "26.1.5";
+    public static final String TURNIP = "26.1.0";
     public static final String ZINK = "22.2.5";
     public static final String VIRGL = "23.1.9";
     public static final String DXVK = "2.3.1";
