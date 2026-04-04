@@ -72,4 +72,21 @@ public abstract class ArrayUtils {
         for (int i = 0; i < array.length; i++) if (value.equals(array[i])) return i;
         return INDEX_NOT_FOUND;
     }
+
+    public static int indexOf(byte[] array, int offset, int length, byte... value) {
+        byte first = value[0];
+        for (int i = offset; i < length; i++) {
+            if (array[i] != first) {
+                while (++i < length && array[i] != first);
+            }
+
+            if (i < length) {
+                int j = i + 1;
+                int end = j + value.length - 1;
+                for (int k = 1; j < end && array[j] == value[k]; j++, k++);
+                if (j == end) return i;
+            }
+        }
+        return INDEX_NOT_FOUND;
+    }
 }

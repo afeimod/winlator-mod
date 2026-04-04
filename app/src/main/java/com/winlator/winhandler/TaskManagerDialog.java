@@ -283,10 +283,6 @@ public class TaskManagerDialog extends ContentDialog implements OnGetProcessInfo
         });
     }
 
-    private static String formatClockSpeed(int clockSpeed) {
-        return clockSpeed >= 1000 ? String.format(Locale.ENGLISH, "%.2f", clockSpeed / 1000.0f)+" GHz" : clockSpeed+" MHz";
-    }
-
     private void updateCPUPanel() {
         short[] clockSpeeds = CPUStatus.getCurrentClockSpeeds();
         float totalClockSpeed = 0;
@@ -301,14 +297,14 @@ public class TaskManagerDialog extends ContentDialog implements OnGetProcessInfo
             maxClockSpeed = Math.max(maxClockSpeed, currentMaxClockSpeed);
             selectedClockSpeed = Math.max(selectedClockSpeed, clockSpeeds[i]);
 
-            popupMenuItems.add("CPU"+i+": "+formatClockSpeed(clockSpeeds[i])+"/"+formatClockSpeed(currentMaxClockSpeed));
+            popupMenuItems.add("CPU"+i+": "+CPUStatus.formatClockSpeed(clockSpeeds[i])+"/"+CPUStatus.formatClockSpeed(currentMaxClockSpeed));
         }
 
         float avgClockSpeed = totalClockSpeed / clockSpeeds.length;
         byte cpuUsagePercent = (byte)((avgClockSpeed / maxClockSpeed) * 100.0f);
 
         cpuPanel.setTitle("CPU ("+cpuUsagePercent+"%)");
-        cpuPanel.setTextAt(0, formatClockSpeed(selectedClockSpeed));
+        cpuPanel.setTextAt(0, CPUStatus.formatClockSpeed(selectedClockSpeed));
         cpuPanel.setTextAt(1, CPUStatus.getTemperature()+"ºC");
         cpuPanel.setPopupMenuItems(popupMenuItems);
     }

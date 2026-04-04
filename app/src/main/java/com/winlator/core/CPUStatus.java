@@ -3,6 +3,7 @@ package com.winlator.core;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.util.Locale;
 
 public abstract class CPUStatus {
     public static short[] getCurrentClockSpeeds() {
@@ -67,5 +68,9 @@ public abstract class CPUStatus {
         }
 
         return 0;
+    }
+
+    public static String formatClockSpeed(int clockSpeed) {
+        return clockSpeed >= 1000 ? String.format(Locale.ENGLISH, "%.2f", clockSpeed / 1000.0f)+" GHz" : clockSpeed+" MHz";
     }
 }
