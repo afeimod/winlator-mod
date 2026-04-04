@@ -36,16 +36,8 @@ public class Win32AppWorkarounds {
         String getValue();
     }
 
-    private interface GraphicsDriverWorkaround extends Workaround {
-        String getValue();
-    }
-
     private interface DXWrapperWorkaround extends Workaround {
         String getValue();
-    }
-
-    private interface DXWrapperConfigWorkaround extends Workaround {
-        void setValue(String dxwrapper, KeyValueSet config);
     }
 
     private interface WinComponentsWorkaround extends Workaround {
@@ -68,12 +60,6 @@ public class Win32AppWorkarounds {
         }
         else if (workaround instanceof DXWrapperWorkaround) {
             activity.setDXWrapper(((DXWrapperWorkaround)workaround).getValue());
-        }
-        else if (workaround instanceof DXWrapperConfigWorkaround) {
-            ((DXWrapperConfigWorkaround)workaround).setValue(activity.getDXWrapper(), activity.getDXWrapperConfig());
-        }
-        else if (workaround instanceof GraphicsDriverWorkaround) {
-            activity.setGraphicsDriver(((GraphicsDriverWorkaround)workaround).getValue());
         }
         else if (workaround instanceof WinComponentsWorkaround) {
             KeyValueSet wincomponents = new KeyValueSet(Container.DEFAULT_WINCOMPONENTS);

@@ -114,12 +114,12 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
     private FrameRating frameRating;
     private Runnable editInputControlsCallback;
     private Shortcut shortcut;
-    private String graphicsDriver = Container.DEFAULT_GRAPHICS_DRIVER;
+    private String[] graphicsDriver = {GraphicsDrivers.DEFAULT_VULKAN_DRIVER, GraphicsDrivers.DEFAULT_OPENGL_DRIVER};
     private String audioDriver = Container.DEFAULT_AUDIO_DRIVER;
     private String dxwrapper = Container.DEFAULT_DXWRAPPER;
     private ScreenInfo screenInfo = new ScreenInfo(Container.DEFAULT_SCREEN_SIZE);
-    private KeyValueSet dxwrapperConfig;
-    private KeyValueSet graphicsDriverConfig;
+    private KeyValueSet[] dxwrapperConfig;
+    private KeyValueSet[] graphicsDriverConfig;
     private KeyValueSet audioDriverConfig;
     private String wincomponents;
     private WineInfo wineInfo;
@@ -193,12 +193,12 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             String shortcutPath = getIntent().getStringExtra("shortcut_path");
             if (shortcutPath != null && !shortcutPath.isEmpty()) shortcut = new Shortcut(container, new File(shortcutPath));
 
-            graphicsDriver = container.getGraphicsDriver();
+            String graphicsDriver = container.getGraphicsDriver();
             audioDriver = container.getAudioDriver();
-            dxwrapper = container.getDXWrapper();
+            String dxwrapper = container.getDXWrapper();
             wincomponents = container.getWinComponents();
-            dxwrapperConfig = new KeyValueSet(container.getDXWrapperConfig());
-            graphicsDriverConfig = new KeyValueSet(container.getGraphicsDriverConfig());
+            String dxwrapperConfig = container.getDXWrapperConfig();
+            String graphicsDriverConfig = container.getGraphicsDriverConfig();
             audioDriverConfig = new KeyValueSet(container.getAudioDriverConfig());
             screenInfo = new ScreenInfo(container.getScreenSize());
 
@@ -209,8 +209,8 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
                 audioDriver = shortcut.getExtra("audioDriver", container.getAudioDriver());
                 dxwrapper = shortcut.getExtra("dxwrapper", container.getDXWrapper());
                 wincomponents = shortcut.getExtra("wincomponents", container.getWinComponents());
-                dxwrapperConfig = new KeyValueSet(shortcut.getExtra("dxwrapperConfig", container.getDXWrapperConfig()));
-                graphicsDriverConfig = new KeyValueSet(shortcut.getExtra("graphicsDriverConfig", container.getGraphicsDriverConfig()));
+                dxwrapperConfig = shortcut.getExtra("dxwrapperConfig", container.getDXWrapperConfig());
+                graphicsDriverConfig = shortcut.getExtra("graphicsDriverConfig", container.getGraphicsDriverConfig());
                 audioDriverConfig = new KeyValueSet(shortcut.getExtra("audioDriverConfig", container.getAudioDriverConfig()));
                 screenInfo = new ScreenInfo(shortcut.getExtra("screenSize", container.getScreenSize()));
 
@@ -226,6 +226,11 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
                 Intent intent = getIntent();
                 if (intent.hasExtra("exec_path")) win32AppWorkarounds.applyStartupWorkarounds(FileUtils.getName(intent.getStringExtra("exec_path")));
             }
+
+            this.graphicsDriver = GraphicsDrivers.parseIdentifiers(graphicsDriver);
+            this.graphicsDriverConfig = GraphicsDrivers.parseConfigs(graphicsDriver, graphicsDriverConfig);
+            this.dxwrapper = DXWrappers.parseIdentifier(dxwrapper);
+            this.dxwrapperConfig = DXWrappers.parseConfigs(dxwrapper, dxwrapperConfig);
 
             winHandler.gamepadHandler.setPreferredInputApi(GamepadHandler.PreferredInputApi.values()[preferredInputApiIdx]);
         }
@@ -442,27 +447,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         }
 
         if (verifyUserRegistry()) containerDataChanged = true;
-
-        String dxwrapper = this.dxwrapper;
-        switch (dxwrapper) {
-            case DXWrappers.DXVK:
-                dxwrapper += "-"+dxwrapperConfig.get("version", DefaultVersion.DXVK(graphicsDriver));
-                break;
-            case DXWrappers.VKD3D:
-                dxwrapper += "-"+dxwrapperConfig.get("version", DefaultVersion.VKD3D);
-                break;
-            case DXWrappers.WINED3D:
-                dxwrapper += "-"+dxwrapperConfig.get("version", DefaultVersion.WINED3D);
-                break;
-        }
-
-        if (!dxwrapper.equals(container.getExtra("dxwrapper"))) {
-            extractDXWrapperFiles();
-            container.putExtra("dxwrapper", dxwrapper);
-            containerDataChanged = true;
-        }
-
-        if (dxwrapper.equals(DXWrappers.CNC_DDRAW)) envVars.put("CNC_DDRAW_CONFIG_FILE", "C:\\ProgramData\\cnc-ddraw\\ddraw.ini");
+        if (extractDXWrapperFiles()) containerDataChanged = true;
 
         if (!wincomponents.equals(container.getExtra("wincomponents"))) {
             extractWinComponentFiles();
@@ -553,13 +538,13 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             environment.addComponent(pulseAudioComponent);
         }
 
-        if (graphicsDriver.equals(GraphicsDrivers.VIRGL)) {
-            environment.addComponent(new VirGLRendererComponent(xServer, UnixSocketConfig.create(rootPath, UnixSocketConfig.VIRGL_SERVER_PATH)));
-        }
-        else if (graphicsDriver.equals(GraphicsDrivers.VORTEK)) {
-            VortekRendererComponent.Options options = VortekRendererComponent.Options.fromKeyValueSet(this, graphicsDriverConfig);
+        if (graphicsDriver[0].equals(GraphicsDrivers.VORTEK)) {
+            VortekRendererComponent.Options options = VortekRendererComponent.Options.fromKeyValueSet(this, graphicsDriverConfig[0]);
             VortekRendererComponent vortekRendererComponent = new VortekRendererComponent(xServer, UnixSocketConfig.create(rootPath, UnixSocketConfig.VORTEK_SERVER_PATH), options);
             environment.addComponent(vortekRendererComponent);
+        }
+        if (graphicsDriver[1].equals(GraphicsDrivers.VIRGL)) {
+            environment.addComponent(new VirGLRendererComponent(xServer, UnixSocketConfig.create(rootPath, UnixSocketConfig.VIRGL_SERVER_PATH)));
         }
 
         guestProgramLauncherComponent.setEnvVars(envVars);
@@ -578,8 +563,10 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
         winHandler.start();
         envVars.clear();
+        graphicsDriver = null;
         dxwrapperConfig = null;
         graphicsDriverConfig = null;
+        audioDriver = null;
         audioDriverConfig = null;
         wincomponents = null;
     }
@@ -727,18 +714,12 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
     private void extractGraphicsDriverFiles() {
         envVars.put("vblank_mode", "0");
 
-        String cacheId = graphicsDriver;
-        switch (graphicsDriver) {
-            case GraphicsDrivers.TURNIP:
-                cacheId += "-"+graphicsDriverConfig.get("version", DefaultVersion.TURNIP)+"-"+DefaultVersion.ZINK;
-                break;
-            case GraphicsDrivers.VORTEK:
-                cacheId += "-"+DefaultVersion.VORTEK+"-"+DefaultVersion.ZINK;
-                break;
-            case GraphicsDrivers.VIRGL:
-                cacheId += "-"+DefaultVersion.VIRGL;
-                break;
+        String cacheId = "";
+        if (graphicsDriver[0].equals(GraphicsDrivers.TURNIP)) {
+            cacheId += graphicsDriver[0]+"-"+graphicsDriverConfig[0].get("version", DefaultVersion.TURNIP);
         }
+        else cacheId += graphicsDriver[0]+"-"+DefaultVersion.valueOf(graphicsDriver[0]);
+        cacheId += "-"+graphicsDriver[1]+"-"+DefaultVersion.valueOf(graphicsDriver[1]);
 
         boolean changed = !cacheId.equals(container.getExtra("graphicsDriver"));
         File rootDir = rootFS.getRootDir();
@@ -757,50 +738,39 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             container.saveData();
         }
 
-        switch (graphicsDriver) {
-            case GraphicsDrivers.TURNIP:
+        if (graphicsDriver[0].equals(GraphicsDrivers.TURNIP)) {
+            envVars.put("MESA_VK_WSI_PRESENT_MODE", "mailbox");
+            TurnipConfigDialog.setEnvVars(this, graphicsDriverConfig[0], envVars);
+
+            if (changed) {
+                String version = graphicsDriverConfig[0].get("version", DefaultVersion.TURNIP);
+                GeneralComponents.extractFile(GeneralComponents.Type.TURNIP, this, version, DefaultVersion.TURNIP);
+            }
+        }
+        else if (graphicsDriver[0].equals(GraphicsDrivers.VORTEK) && (changed || MainActivity.DEBUG_MODE)) {
+            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/vortek-" + DefaultVersion.VORTEK + ".tzst", rootDir);
+        }
+
+        switch (graphicsDriver[1]) {
+            case GraphicsDrivers.ZINK:
                 envVars.put("GALLIUM_DRIVER", "zink");
                 envVars.put("ZINK_CONTEXT_THREADED", "1");
-                envVars.put("MESA_VK_WSI_PRESENT_MODE", "mailbox");
+                if (graphicsDriver[0].equals(GraphicsDrivers.VORTEK)) envVars.put("MESA_GL_VERSION_OVERRIDE", "3.3");
 
-                TurnipConfigDialog.setEnvVars(this, graphicsDriverConfig, envVars);
-
-                if (changed) {
-                    String version = graphicsDriverConfig.get("version", DefaultVersion.TURNIP);
-                    GeneralComponents.extractFile(GeneralComponents.Type.TURNIP, this, version, DefaultVersion.TURNIP);
-                    TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/zink-"+DefaultVersion.ZINK+".tzst", rootDir);
-                }
-                break;
-            case GraphicsDrivers.VORTEK:
-                envVars.put("GALLIUM_DRIVER", "zink");
-                envVars.put("ZINK_CONTEXT_THREADED", "1");
-                envVars.put("MESA_GL_VERSION_OVERRIDE", "3.3");
-                if (dxwrapper.equals(DXWrappers.DXVK)) envVars.put("WINE_D3D_CONFIG", "renderer=gdi");
-
-                if (changed || MainActivity.DEBUG_MODE) {
-                    TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/vortek-"+DefaultVersion.VORTEK+".tzst", rootDir);
-                    TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/zink-"+DefaultVersion.ZINK+".tzst", rootDir);
-                }
+                if (changed) TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/zink-"+DefaultVersion.ZINK+".tzst", rootDir);
                 break;
             case GraphicsDrivers.VIRGL:
                 envVars.put("GALLIUM_DRIVER", "virpipe");
                 envVars.put("VIRGL_NO_READBACK", "true");
                 envVars.put("VIRGL_SERVER_PATH", rootDir+UnixSocketConfig.VIRGL_SERVER_PATH);
-                VirGLConfigDialog.setEnvVars(graphicsDriverConfig, envVars);
+                VirGLConfigDialog.setEnvVars(graphicsDriverConfig[1], envVars);
 
                 if (changed) TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/virgl-"+DefaultVersion.VIRGL+".tzst", rootDir);
                 break;
-        }
+            case GraphicsDrivers.GLADIO:
+                envVars.put("GLADIO_NO_ERROR", "1");
 
-        switch (dxwrapper) {
-            case DXWrappers.DXVK:
-                DXVKConfigDialog.setEnvVars(this, dxwrapperConfig, envVars);
-                break;
-            case DXWrappers.WINED3D:
-                WineD3DConfigDialog.setEnvVars(dxwrapperConfig, envVars);
-                break;
-            case DXWrappers.VKD3D:
-                VKD3DConfigDialog.setEnvVars(dxwrapperConfig, envVars);
+                if (changed || MainActivity.DEBUG_MODE) TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/gladio-"+DefaultVersion.GLADIO+".tzst", rootDir);
                 break;
         }
     }
@@ -828,59 +798,72 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         return inputControlsView;
     }
 
-    private void extractDXWrapperFiles() {
-        final String[] dlls = {"d3d8.dll", "d3d9.dll", "d3d10.dll", "d3d10_1.dll", "d3d10core.dll", "d3d11.dll", "d3d12.dll", "d3d12core.dll", "dxgi.dll", "ddraw.dll", "wined3d.dll"};
+    private boolean extractDXWrapperFiles() {
+        String cacheId = "";
+        if (dxwrapper.equals(DXWrappers.DXVK)) {
+            DXVKConfigDialog.setEnvVars(this, dxwrapperConfig[0], envVars);
+            cacheId += dxwrapper+"-"+dxwrapperConfig[0].get("version", DefaultVersion.DXVK(graphicsDriver[0]));
+        }
+        else if (dxwrapper.equals(DXWrappers.WINED3D)) {
+            WineD3DConfigDialog.setEnvVars(dxwrapperConfig[0], envVars);
+            cacheId += dxwrapper+"-"+dxwrapperConfig[0].get("version", DefaultVersion.WINED3D);
+        }
+
+        String ddrawWrapper = dxwrapperConfig[0].get("ddrawWrapper", DXWrappers.WINED3D);
+        cacheId += "-"+DXWrappers.VKD3D+"-"+dxwrapperConfig[1].get("version", DefaultVersion.VKD3D)+"-"+ddrawWrapper;
+        boolean changed = !cacheId.equals(container.getExtra("dxwrapper"));
+        VKD3DConfigDialog.setEnvVars(dxwrapperConfig[1], envVars);
+
+        if (ddrawWrapper.equals(DXWrappers.CNC_DDRAW)) envVars.put("CNC_DDRAW_CONFIG_FILE", "C:\\ProgramData\\cnc-ddraw\\ddraw.ini");
+
+        if (!changed) return false;
+        container.putExtra("dxwrapper", cacheId);
+
         File rootDir = rootFS.getRootDir();
         File windowsDir = new File(rootDir, RootFS.WINEPREFIX+"/drive_c/windows");
 
-        switch (dxwrapper) {
-            case DXWrappers.WINED3D: {
-                String version = dxwrapperConfig.get("version", DefaultVersion.WINED3D);
-                if (version.equals(WineInfo.MAIN_WINE_VERSION)) {
-                    restoreBuiltinDllFiles(dlls);
-                }
-                else GeneralComponents.extractFile(GeneralComponents.Type.WINED3D, this, version, DefaultVersion.WINED3D);
-                break;
-            }
-            case DXWrappers.CNC_DDRAW: {
+        if (dxwrapper.equals(DXWrappers.WINED3D)) {
+            String version = dxwrapperConfig[0].get("version", DefaultVersion.WINED3D);
+            if (version.equals(WineInfo.MAIN_WINE_VERSION)) {
+                final String[] dlls = {"d3d8.dll", "d3d9.dll", "d3d10.dll", "d3d10_1.dll", "d3d10core.dll", "d3d11.dll", "d3d12.dll", "d3d12core.dll", "dxgi.dll", "ddraw.dll", "wined3d.dll"};
                 restoreBuiltinDllFiles(dlls);
-                final String assetDir = "dxwrapper/cnc-ddraw-"+DefaultVersion.CNC_DDRAW;
-                File configFile = new File(rootDir, RootFS.WINEPREFIX+"/drive_c/ProgramData/cnc-ddraw/ddraw.ini");
-                if (!configFile.isFile()) FileUtils.copy(this, assetDir+"/ddraw.ini", configFile);
-                File shadersDir = new File(rootDir, RootFS.WINEPREFIX+"/drive_c/ProgramData/cnc-ddraw/Shaders");
-                FileUtils.delete(shadersDir);
-                FileUtils.copy(this, assetDir+"/Shaders", shadersDir);
-                TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, assetDir+"/ddraw.tzst", windowsDir);
-                break;
             }
-            case DXWrappers.VKD3D: {
-                TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "dxwrapper/dxvk-"+DefaultVersion.DXVK()+".tzst", windowsDir);
-                GeneralComponents.extractFile(GeneralComponents.Type.VKD3D, this, dxwrapperConfig.get("version"), DefaultVersion.VKD3D);
-                break;
-            }
-            case DXWrappers.DXVK: {
-                restoreBuiltinDllFiles("d3d12.dll", "d3d12core.dll", "ddraw.dll");
-                final boolean[] hasD3D8DllFile = {false};
-                final boolean[] hasD3D10DllFile = {false};
-
-                GeneralComponents.extractFile(GeneralComponents.Type.DXVK, this, dxwrapperConfig.get("version"), DefaultVersion.DXVK(graphicsDriver), (destination, size) -> {
-                    String name = destination.getName();
-                    if (name.equals("d3d10.dll")) {
-                        hasD3D10DllFile[0] = true;
-                    }
-                    else if (name.equals("d3d8.dll")) {
-                        hasD3D8DllFile[0] = true;
-                    }
-                    return destination;
-                });
-
-                if (!hasD3D8DllFile[0]) {
-                    TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "dxwrapper/d8vk-"+DefaultVersion.D8VK+".tzst", windowsDir);
-                }
-                if (!hasD3D10DllFile[0]) restoreBuiltinDllFiles("d3d10.dll", "d3d10_1.dll");
-                break;
-            }
+            else GeneralComponents.extractFile(GeneralComponents.Type.WINED3D, this, version, DefaultVersion.WINED3D);
         }
+        else if (dxwrapper.equals(DXWrappers.DXVK)) {
+            final boolean[] hasD3D8DllFile = {false};
+            final boolean[] hasD3D10DllFile = {false};
+
+            GeneralComponents.extractFile(GeneralComponents.Type.DXVK, this, dxwrapperConfig[0].get("version"), DefaultVersion.DXVK(graphicsDriver[0]), (destination, size) -> {
+                String name = destination.getName();
+                if (name.equals("d3d10.dll")) {
+                    hasD3D10DllFile[0] = true;
+                }
+                else if (name.equals("d3d8.dll")) {
+                    hasD3D8DllFile[0] = true;
+                }
+                return destination;
+            });
+
+            if (!hasD3D8DllFile[0]) {
+                TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "dxwrapper/d8vk-"+DefaultVersion.D8VK+".tzst", windowsDir);
+            }
+            if (!hasD3D10DllFile[0]) restoreBuiltinDllFiles("d3d10.dll", "d3d10_1.dll");
+        }
+
+        GeneralComponents.extractFile(GeneralComponents.Type.VKD3D, this, dxwrapperConfig[1].get("version"), DefaultVersion.VKD3D);
+
+        if (ddrawWrapper.equals(DXWrappers.CNC_DDRAW)) {
+            final String assetDir = "dxwrapper/cnc-ddraw-"+DefaultVersion.CNC_DDRAW;
+            File configFile = new File(rootDir, RootFS.WINEPREFIX+"/drive_c/ProgramData/cnc-ddraw/ddraw.ini");
+            if (!configFile.isFile()) FileUtils.copy(this, assetDir+"/ddraw.ini", configFile);
+            File shadersDir = new File(rootDir, RootFS.WINEPREFIX+"/drive_c/ProgramData/cnc-ddraw/Shaders");
+            FileUtils.delete(shadersDir);
+            FileUtils.copy(this, assetDir+"/Shaders", shadersDir);
+            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, assetDir+"/ddraw.tzst", windowsDir);
+        }
+        else restoreBuiltinDllFiles("ddraw.dll");
+        return true;
     }
 
     private void extractWinComponentFiles() {
@@ -1017,32 +1000,12 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         return overrideEnvVars;
     }
 
-    public String getGraphicsDriver() {
-        return graphicsDriver;
-    }
-
-    public void setGraphicsDriver(String graphicsDriver) {
-        this.graphicsDriver = graphicsDriver;
-    }
-
-    public String getAudioDriver() {
-        return audioDriver;
-    }
-
-    public void setAudioDriver(String audioDriver) {
-        this.audioDriver = audioDriver;
-    }
-
     public String getDXWrapper() {
         return dxwrapper;
     }
 
     public void setDXWrapper(String dxwrapper) {
         this.dxwrapper = dxwrapper;
-    }
-
-    public KeyValueSet getDXWrapperConfig() {
-        return dxwrapperConfig;
     }
 
     public ScreenInfo getScreenInfo() {

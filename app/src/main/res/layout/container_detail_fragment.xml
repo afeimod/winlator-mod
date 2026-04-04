@@ -125,24 +125,11 @@
                 android:text="@string/graphics_driver" />
 
             <LinearLayout
+                android:id="@+id/LLGraphicsDriver"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
-                android:gravity="center_vertical">
-
-                <Spinner
-                    style="@style/ComboBox"
-                    android:layout_width="0dp"
-                    android:layout_weight="1"
-                    android:id="@+id/SGraphicsDriver"
-                    android:entries="@array/graphics_driver_entries" />
-
-                <ImageButton
-                    style="@style/ListMenuButton"
-                    android:id="@+id/BTGraphicsDriverConfig"
-                    android:src="@drawable/icon_display_settings"
-                    android:visibility="gone" />
-            </LinearLayout>
+                android:gravity="center_vertical" />
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -160,24 +147,11 @@
             </LinearLayout>
 
             <LinearLayout
+                android:id="@+id/LLDXWrapper"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
-                android:gravity="center_vertical">
-
-                <Spinner
-                    style="@style/ComboBox"
-                    android:layout_width="0dp"
-                    android:layout_weight="1"
-                    android:id="@+id/SDXWrapper"
-                    android:entries="@array/dxwrapper_entries" />
-
-                <ImageButton
-                    style="@style/ListMenuButton"
-                    android:id="@+id/BTDXWrapperConfig"
-                    android:src="@drawable/icon_display_settings"
-                    android:visibility="gone" />
-            </LinearLayout>
+                android:gravity="center_vertical" />
 
             <TextView
                 android:layout_width="wrap_content"

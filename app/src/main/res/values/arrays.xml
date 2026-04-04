@@ -16,11 +16,6 @@
         <item>1600x900 (16:9)</item>
         <item>1920x1080 (16:9)</item>
     </string-array>
-    <string-array name="graphics_driver_entries">
-        <item>Turnip (Adreno)</item>
-        <item>Vortek (Universal)</item>
-        <item>VirGL (Universal)</item>
-    </string-array>
     <string-array name="audio_driver_entries">
         <item>ALSA</item>
         <item>PulseAudio</item>
@@ -29,12 +24,6 @@
         <item>Keyboard</item>
         <item>Mouse</item>
         <item>Gamepad</item>
-    </string-array>
-    <string-array name="dxwrapper_entries">
-        <item>WineD3D</item>
-        <item>DXVK</item>
-        <item>VKD3D</item>
-        <item>CNC DDraw</item>
     </string-array>
     <string-array name="max_device_memory_entries">
         <item>@string/zero_no_limit</item>
@@ -71,6 +60,15 @@
         <item>30</item>
         <item>60</item>
         <item>120</item>
+    </string-array>
+    <string-array name="ddraw_wrapper_entries">
+        <item>WineD3D</item>
+        <item>CNC DDraw</item>
+    </string-array>
+    <string-array name="wined3d_renderer_entries">
+        <item>GDI</item>
+        <item>GL</item>
+        <item>Vulkan</item>
     </string-array>
     <string-array name="wincomponent_entries">
         <item>@string/builtin_wine</item>

@@ -5,6 +5,7 @@ import android.view.View;
 import android.widget.Spinner;
 
 import com.winlator.R;
+import com.winlator.container.DXWrappers;
 import com.winlator.core.AppUtils;
 import com.winlator.core.DefaultVersion;
 import com.winlator.core.EnvVars;
@@ -28,10 +29,12 @@ public class DXVKConfigDialog extends ContentDialog {
         final Spinner sFramerate = findViewById(R.id.SFramerate);
         final Spinner sMaxDeviceMemory = findViewById(R.id.SMaxDeviceMemory);
         final Spinner sCustomDevice = findViewById(R.id.SCustomDevice);
+        final Spinner sDDrawWrapper = findViewById(R.id.SDDrawWrapper);
 
         KeyValueSet config = new KeyValueSet(anchor.getTag());
         AppUtils.setSpinnerSelectionFromIdentifier(sFramerate, config.get("framerate", "0"));
         AppUtils.setSpinnerSelectionFromMemorySize(sMaxDeviceMemory, config.get("maxDeviceMemory", "0"));
+        AppUtils.setSpinnerSelectionFromIdentifier(sDDrawWrapper, config.get("ddrawWrapper", DXWrappers.WINED3D));
 
         String version = config.get("version");
         String defaultVersion = DefaultVersion.DXVK(graphicsDriver);
@@ -54,6 +57,9 @@ public class DXVKConfigDialog extends ContentDialog {
             newConfig.put("version", StringUtils.parseNumber(sVersion.getSelectedItem()));
             newConfig.put("framerate", StringUtils.parseNumber(sFramerate.getSelectedItem()));
             newConfig.put("maxDeviceMemory", StringUtils.parseMemorySize(sMaxDeviceMemory.getSelectedItem()));
+
+            String ddrawWrapper = StringUtils.parseIdentifier(sDDrawWrapper.getSelectedItem());
+            if (!ddrawWrapper.equals(DXWrappers.WINED3D)) newConfig.put("ddrawWrapper", ddrawWrapper);
 
             GPUCardAdapter.GPUCard gpuCard = (GPUCardAdapter.GPUCard)sCustomDevice.getSelectedItem();
             if (gpuCard.deviceId > 0) {

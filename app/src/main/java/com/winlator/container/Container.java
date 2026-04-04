@@ -19,7 +19,6 @@ import java.util.Iterator;
 public class Container {
     public static final String DEFAULT_ENV_VARS = "ZINK_DESCRIPTORS=lazy ZINK_DEBUG=compact MESA_SHADER_CACHE_DISABLE=false MESA_SHADER_CACHE_MAX_SIZE=512MB mesa_glthread=true WINEESYNC=1 TU_DEBUG=noconform";
     public static final String DEFAULT_SCREEN_SIZE = "1280x720";
-    public static final String DEFAULT_GRAPHICS_DRIVER = GraphicsDrivers.VORTEK;
     public static final String DEFAULT_AUDIO_DRIVER = AudioDrivers.ALSA;
     public static final String DEFAULT_DXWRAPPER = DXWrappers.DXVK;
     public static final String DEFAULT_WINCOMPONENTS = "direct3d=1,directsound=1,directmusic=1,directshow=0,directplay=0,xaudio=1,vcrun2005=0,vcrun2010=1,wmdecoder=1";
@@ -33,7 +32,7 @@ public class Container {
     private String name;
     private String screenSize = DEFAULT_SCREEN_SIZE;
     private String envVars = DEFAULT_ENV_VARS;
-    private String graphicsDriver = DEFAULT_GRAPHICS_DRIVER;
+    private String graphicsDriver = GraphicsDrivers.DEFAULT_VULKAN_DRIVER+","+ GraphicsDrivers.DEFAULT_OPENGL_DRIVER;
     private String dxwrapper = DEFAULT_DXWRAPPER;
     private String dxwrapperConfig = "";
     private String graphicsDriverConfig = "";

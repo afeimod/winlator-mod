@@ -16,7 +16,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
-import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.PopupMenu;
@@ -35,22 +34,18 @@ import com.winlator.box64.Box64Preset;
 import com.winlator.box64.Box64PresetManager;
 import com.winlator.container.Container;
 import com.winlator.container.ContainerManager;
-import com.winlator.container.DXWrappers;
 import com.winlator.container.Drive;
 import com.winlator.container.GraphicsDrivers;
 import com.winlator.contentdialog.AddEnvVarDialog;
 import com.winlator.contentdialog.AudioDriverConfigDialog;
 import com.winlator.contentdialog.ContentDialog;
-import com.winlator.contentdialog.DXVKConfigDialog;
-import com.winlator.contentdialog.TurnipConfigDialog;
-import com.winlator.contentdialog.VKD3DConfigDialog;
-import com.winlator.contentdialog.VirGLConfigDialog;
 import com.winlator.contentdialog.VortekConfigDialog;
-import com.winlator.contentdialog.WineD3DConfigDialog;
 import com.winlator.core.AppUtils;
 import com.winlator.core.Callback;
+import com.winlator.container.DXWrapperPicker;
 import com.winlator.core.EnvVars;
 import com.winlator.core.FileUtils;
+import com.winlator.container.GraphicsDriverPicker;
 import com.winlator.core.KeyValueSet;
 import com.winlator.core.PreloaderDialog;
 import com.winlator.core.StringUtils;
@@ -141,19 +136,13 @@ public class ContainerDetailFragment extends Fragment {
 
         loadScreenSizeSpinner(view, isEditMode() ? container.getScreenSize() : Container.DEFAULT_SCREEN_SIZE);
 
-        final Spinner sGraphicsDriver = view.findViewById(R.id.SGraphicsDriver);
-        final Spinner sDXWrapper = view.findViewById(R.id.SDXWrapper);
-        final View vDXWrapperConfig = view.findViewById(R.id.BTDXWrapperConfig);
-
-        final View vGraphicsDriverConfig = view.findViewById(R.id.BTGraphicsDriverConfig);
         final String oldGraphicsDriverConfig = isEditMode() ? container.getGraphicsDriverConfig() : "";
-        vGraphicsDriverConfig.setTag(isEditMode() ? container.getGraphicsDriverConfig() : "");
+        String selectedGraphicsDriver = isEditMode() ? container.getGraphicsDriver() : GraphicsDrivers.getDefaultDriver(context);
+        GraphicsDriverPicker graphicsDriverPicker = new GraphicsDriverPicker(view.findViewById(R.id.LLGraphicsDriver), selectedGraphicsDriver, oldGraphicsDriverConfig);
 
-        setupDXWrapperSpinner(sGraphicsDriver, sDXWrapper, vDXWrapperConfig);
-        String selectedGraphicsDriver = isEditMode() ? container.getGraphicsDriver() : Container.DEFAULT_GRAPHICS_DRIVER;
+        String oldDXWrapperConfig = isEditMode() ? container.getDXWrapperConfig() : "";
         String selectedDXWrapper = isEditMode() ? container.getDXWrapper() : Container.DEFAULT_DXWRAPPER;
-        loadGraphicsDriverSpinner(sGraphicsDriver, sDXWrapper, vGraphicsDriverConfig, selectedGraphicsDriver, selectedDXWrapper);
-        vDXWrapperConfig.setTag(isEditMode() ? container.getDXWrapperConfig() : "");
+        DXWrapperPicker dxwrapperPicker = new DXWrapperPicker(view.findViewById(R.id.LLDXWrapper), graphicsDriverPicker, selectedDXWrapper, oldDXWrapperConfig);
 
         view.findViewById(R.id.BTHelpDXWrapper).setOnClickListener((v) -> AppUtils.showHelpBox(context, v, R.string.dxwrapper_help_content));
 
@@ -168,8 +157,8 @@ public class ContainerDetailFragment extends Fragment {
         sHUDMode.setSelection(isEditMode() ? container.getHUDMode() : FrameRating.Mode.DISABLED.ordinal());
 
         final Spinner sStartupSelection = view.findViewById(R.id.SStartupSelection);
-        byte previousStartupSelection = isEditMode() ? container.getStartupSelection() : -1;
-        sStartupSelection.setSelection(previousStartupSelection != -1 ? previousStartupSelection : Container.STARTUP_SELECTION_ESSENTIAL);
+        byte oldStartupSelection = isEditMode() ? container.getStartupSelection() : -1;
+        sStartupSelection.setSelection(oldStartupSelection != -1 ? oldStartupSelection : Container.STARTUP_SELECTION_ESSENTIAL);
 
         final Spinner sWinVersion = view.findViewById(R.id.SWinVersion);
         sWinVersion.setTag((byte)-1);
@@ -197,10 +186,10 @@ public class ContainerDetailFragment extends Fragment {
                 String name = etName.getText().toString();
                 String screenSize = getScreenSize(view);
                 String envVars = envVarsView.getEnvVars();
-                String graphicsDriver = StringUtils.parseIdentifier(sGraphicsDriver.getSelectedItem());
-                String dxwrapper = StringUtils.parseIdentifier(sDXWrapper.getSelectedItem());
-                String dxwrapperConfig = vDXWrapperConfig.getTag().toString();
-                String graphicsDriverConfig = vGraphicsDriverConfig.getTag().toString();
+                String graphicsDriver = graphicsDriverPicker.getGraphicsDriver();
+                String dxwrapper = dxwrapperPicker.getDXWrapper();
+                String dxwrapperConfig = dxwrapperPicker.getDXWrapperConfig();
+                String graphicsDriverConfig = graphicsDriverPicker.getGraphicsDriverConfig();
                 String audioDriverConfig = vAudioDriverConfig.getTag().toString();
                 String audioDriver = StringUtils.parseIdentifier(sAudioDriver.getSelectedItem());
                 String wincomponents = getWinComponents(view);
@@ -410,93 +399,6 @@ public class ContainerDetailFragment extends Fragment {
             ((EditText)view.findViewById(R.id.ETScreenWidth)).setText(screenSize[0]);
             ((EditText)view.findViewById(R.id.ETScreenHeight)).setText(screenSize[1]);
         }
-    }
-
-    public static void loadGraphicsDriverSpinner(final Spinner sGraphicsDriver, final Spinner sDXWrapper, final View vGraphicsDriverConfig, String selectedGraphicsDriver, String selectedDXWrapper) {
-        final Context context = sGraphicsDriver.getContext();
-        final String[] dxwrapperEntries = context.getResources().getStringArray(R.array.dxwrapper_entries);
-
-        Runnable update = () -> {
-            String graphicsDriver = StringUtils.parseIdentifier(sGraphicsDriver.getSelectedItem());
-            boolean addAll = !graphicsDriver.equals(GraphicsDrivers.VIRGL);
-
-            ArrayList<String> items = new ArrayList<>();
-            for (String value : dxwrapperEntries) {
-                if (addAll || (!value.equalsIgnoreCase(DXWrappers.DXVK) && !value.equalsIgnoreCase(DXWrappers.VKD3D))) items.add(value);
-            }
-            sDXWrapper.setAdapter(new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, items.toArray(new String[0])));
-            AppUtils.setSpinnerSelectionFromIdentifier(sDXWrapper, selectedDXWrapper);
-        };
-
-        sGraphicsDriver.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                final String graphicsDriver = StringUtils.parseIdentifier(sGraphicsDriver.getSelectedItem());
-                vGraphicsDriverConfig.setOnClickListener((v) -> showGraphicsDriverConfigDialog(graphicsDriver, vGraphicsDriverConfig));
-                vGraphicsDriverConfig.setVisibility(View.VISIBLE);
-                update.run();
-            }
-
-            @Override
-            public void onNothingSelected(AdapterView<?> parent) {}
-        });
-
-        AppUtils.setSpinnerSelectionFromIdentifier(sGraphicsDriver, selectedGraphicsDriver);
-        update.run();
-    }
-
-    private static void showGraphicsDriverConfigDialog(String graphicsDriver, View vGraphicsDriverConfig) {
-        switch (graphicsDriver) {
-            case GraphicsDrivers.TURNIP:
-                (new TurnipConfigDialog(vGraphicsDriverConfig)).show();
-                break;
-            case GraphicsDrivers.VORTEK:
-                (new VortekConfigDialog(vGraphicsDriverConfig)).show();
-                break;
-            case GraphicsDrivers.VIRGL:
-                (new VirGLConfigDialog(vGraphicsDriverConfig)).show();
-                break;
-        }
-    }
-
-    private static void showDXWrapperConfigDialog(String dxwrapper, String graphicsDriver, View vDXWrapperConfig) {
-        switch (dxwrapper) {
-            case DXWrappers.DXVK:
-                (new DXVKConfigDialog(graphicsDriver, vDXWrapperConfig)).show();
-                break;
-            case DXWrappers.VKD3D:
-                (new VKD3DConfigDialog(vDXWrapperConfig)).show();
-                break;
-            case DXWrappers.WINED3D:
-                (new WineD3DConfigDialog(vDXWrapperConfig)).show();
-                break;
-        }
-    }
-
-    public static void setupDXWrapperSpinner(final Spinner sGraphicsDriver, final Spinner sDXWrapper, final View vDXWrapperConfig) {
-        final String[] oldGraphicsDriver = {null};
-        final String[] oldDXWrapper = {null};
-        sDXWrapper.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                String dxwrapper = StringUtils.parseIdentifier(sDXWrapper.getSelectedItem());
-                if (dxwrapper.equals(DXWrappers.DXVK) || dxwrapper.equals(DXWrappers.VKD3D) || dxwrapper.equals(DXWrappers.WINED3D)) {
-                    String graphicsDriver = StringUtils.parseIdentifier(sGraphicsDriver.getSelectedItem());
-
-                    if ((oldGraphicsDriver[0] != null && !oldGraphicsDriver[0].equals(graphicsDriver)) ||
-                        (oldDXWrapper[0] != null && !oldDXWrapper[0].equals(dxwrapper))) vDXWrapperConfig.setTag("");
-                    oldGraphicsDriver[0] = graphicsDriver;
-                    oldDXWrapper[0] = dxwrapper;
-
-                    vDXWrapperConfig.setOnClickListener((v) -> showDXWrapperConfigDialog(dxwrapper, graphicsDriver, vDXWrapperConfig));
-                    vDXWrapperConfig.setVisibility(View.VISIBLE);
-                }
-                else vDXWrapperConfig.setVisibility(View.GONE);
-            }
-
-            @Override
-            public void onNothingSelected(AdapterView<?> parent) {}
-        });
     }
 
     public static String getWinComponents(View view) {

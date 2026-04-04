@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="0dp"
+    android:layout_height="match_parent"
+    android:layout_weight="1"
+    android:orientation="horizontal"
+    android:layout_marginRight="8dp"
+    android:layout_marginTop="2dp"
+    android:layout_marginBottom="2dp"
+    android:gravity="center_vertical">
+
+    <LinearLayout
+        android:id="@+id/LLDisplayBox"
+        android:layout_width="0dp"
+        android:layout_height="36dp"
+        android:layout_weight="1"
+        android:paddingLeft="16dp"
+        android:paddingRight="16dp"
+        android:layout_marginRight="2dp"
+        android:orientation="vertical"
+        android:gravity="center_vertical"
+        android:background="@drawable/tagged_selection_box">
+
+        <TextView
+            android:id="@+id/TVLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="12dp"
+            android:textColor="?attr/colorSecondaryText"
+            android:textStyle="bold"
+            android:includeFontPadding="false" />
+
+        <TextView
+            android:id="@+id/TVName"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="16dp"
+            android:textColor="?attr/colorPrimaryText"
+            android:includeFontPadding="false" />
+    </LinearLayout>
+
+    <ImageView
+        style="@style/RightSideButton"
+        android:id="@+id/BTSettings"
+        android:background="@drawable/tagged_selection_box_button"
+        android:src="@drawable/icon_display_settings" />
+</LinearLayout>

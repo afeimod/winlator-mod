@@ -16,7 +16,9 @@ import com.winlator.box64.Box64PresetManager;
 import com.winlator.container.GraphicsDrivers;
 import com.winlator.container.Shortcut;
 import com.winlator.core.AppUtils;
+import com.winlator.container.DXWrapperPicker;
 import com.winlator.core.EnvVars;
+import com.winlator.container.GraphicsDriverPicker;
 import com.winlator.core.StringUtils;
 import com.winlator.inputcontrols.ControlsProfile;
 import com.winlator.inputcontrols.InputControlsManager;
@@ -55,28 +57,22 @@ public class ShortcutSettingsDialog extends ContentDialog {
 
         ContainerDetailFragment.loadScreenSizeSpinner(getContentView(), shortcut.getExtra("screenSize", shortcut.container.getScreenSize()));
 
-        final Spinner sGraphicsDriver = findViewById(R.id.SGraphicsDriver);
-        final Spinner sDXWrapper = findViewById(R.id.SDXWrapper);
-        final View vDXWrapperConfig = findViewById(R.id.BTDXWrapperConfig);
-
-        final View vGraphicsDriverConfig = findViewById(R.id.BTGraphicsDriverConfig);
         final String oldGraphicsDriverConfig = shortcut.getExtra("graphicsDriverConfig", shortcut.container.getGraphicsDriverConfig());
-        vGraphicsDriverConfig.setTag(oldGraphicsDriverConfig);
-
-        final View vAudioDriverConfig = findViewById(R.id.BTAudioDriverConfig);
-        vAudioDriverConfig.setTag(shortcut.getExtra("audioDriverConfig", shortcut.container.getAudioDriverConfig()));
-        vAudioDriverConfig.setOnClickListener((v) -> (new AudioDriverConfigDialog(v)).show());
-
-        ContainerDetailFragment.setupDXWrapperSpinner(sGraphicsDriver, sDXWrapper, vDXWrapperConfig);
         String selectedGraphicsDriver = shortcut.getExtra("graphicsDriver", shortcut.container.getGraphicsDriver());
+        GraphicsDriverPicker graphicsDriverPicker = new GraphicsDriverPicker(findViewById(R.id.LLGraphicsDriver), selectedGraphicsDriver, oldGraphicsDriverConfig);
+
+        String oldDXWrapperConfig = shortcut.getExtra("dxwrapperConfig", shortcut.container.getDXWrapperConfig());
         String selectedDXWrapper = shortcut.getExtra("dxwrapper", shortcut.container.getDXWrapper());
-        ContainerDetailFragment.loadGraphicsDriverSpinner(sGraphicsDriver, sDXWrapper, vGraphicsDriverConfig, selectedGraphicsDriver, selectedDXWrapper);
-        vDXWrapperConfig.setTag(shortcut.getExtra("dxwrapperConfig", shortcut.container.getDXWrapperConfig()));
+        DXWrapperPicker dxwrapperPicker = new DXWrapperPicker(findViewById(R.id.LLDXWrapper), graphicsDriverPicker, selectedDXWrapper, oldDXWrapperConfig);
 
         findViewById(R.id.BTHelpDXWrapper).setOnClickListener((v) -> AppUtils.showHelpBox(context, v, R.string.dxwrapper_help_content));
 
         final Spinner sAudioDriver = findViewById(R.id.SAudioDriver);
         AppUtils.setSpinnerSelectionFromIdentifier(sAudioDriver, shortcut.getExtra("audioDriver", shortcut.container.getAudioDriver()));
+
+        final View vAudioDriverConfig = findViewById(R.id.BTAudioDriverConfig);
+        vAudioDriverConfig.setTag(shortcut.getExtra("audioDriverConfig", shortcut.container.getAudioDriverConfig()));
+        vAudioDriverConfig.setOnClickListener((v) -> (new AudioDriverConfigDialog(v)).show());
 
         final CheckBox cbForceFullscreen = findViewById(R.id.CBForceFullscreen);
         cbForceFullscreen.setChecked(shortcut.getExtra("forceFullscreen", "0").equals("1"));
@@ -116,10 +112,10 @@ public class ShortcutSettingsDialog extends ContentDialog {
                 renameShortcut(name);
             }
             else {
-                String graphicsDriver = StringUtils.parseIdentifier(sGraphicsDriver.getSelectedItem());
-                String dxwrapper = StringUtils.parseIdentifier(sDXWrapper.getSelectedItem());
-                String dxwrapperConfig = vDXWrapperConfig.getTag().toString();
-                String graphicsDriverConfig = vGraphicsDriverConfig.getTag().toString();
+                String graphicsDriver = graphicsDriverPicker.getGraphicsDriver();
+                String dxwrapper = dxwrapperPicker.getDXWrapper();
+                String dxwrapperConfig = dxwrapperPicker.getDXWrapperConfig();
+                String graphicsDriverConfig = graphicsDriverPicker.getGraphicsDriverConfig();
                 String audioDriverConfig = vAudioDriverConfig.getTag().toString();
                 String audioDriver = StringUtils.parseIdentifier(sAudioDriver.getSelectedItem());
                 String screenSize = ContainerDetailFragment.getScreenSize(getContentView());
