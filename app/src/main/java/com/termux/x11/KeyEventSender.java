@@ -38,7 +38,7 @@ class KeyEventSender {
     boolean sendKeyEvent(KeyEvent e, LorieView lorieView) {
         int keyCode = e.getKeyCode();
         // 返回键要显示菜单
-        if (keyCode == KeyEvent.KEYCODE_BACK) {
+        if (keyCode == KeyEvent.KEYCODE_BACK || keyCode == KeyEvent.KEYCODE_VOLUME_UP || keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) {
             return false;
         }
         boolean pressed = e.getAction() == KeyEvent.ACTION_DOWN;
@@ -56,10 +56,15 @@ class KeyEventSender {
         // correspond to what user sees on the screen, while physical keyboard
         // acts as if it is connected to the remote host.
         if (e.getAction() == ACTION_MULTIPLE) {
-            if (e.getCharacters() != null)
-                lorieView.sendTextEvent(e.getCharacters().getBytes(UTF_8));
-            else if (e.getUnicodeChar() != 0)
-                lorieView.sendTextEvent(String.valueOf((char) e.getUnicodeChar()).getBytes(UTF_8));
+            String characters = e.getCharacters() != null ? e.getCharacters() : String.valueOf((char) e.getUnicodeChar());
+            if (characters != null) {
+                for (int i = 0; i < characters.codePointCount(0, characters.length()); i++) {
+                    int keySym = characters.codePointAt(characters.offsetByCodePoints(0, i));
+                    if (keySym > 0xff) keySym = keySym | 0x1000000;
+                    lorieView.sendTextEvent(String.valueOf((char) keySym).getBytes(UTF_8));
+                    sleep();
+                }
+            }
             return true;
         }
 
@@ -128,5 +133,13 @@ class KeyEventSender {
 
         // We try to send all other key codes to the host directly.
         return lorieView.sendKeyEvent(scancode, keyCode, pressed);
+    }
+
+    private static void sleep() {
+        try {
+            Thread.sleep(50);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 }
