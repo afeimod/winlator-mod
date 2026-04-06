@@ -368,4 +368,5 @@
     <string name="export_failed">Export failed</string>
     <string name="use_termux_x11_instead_of_built_in_xserver">Use Termux-X11 instead of built-in X Server</string>
     <string name="clear">Clear</string>
+    <string name="enable_touchpad_mouse_clicks">Enable touchpad mouse clicks</string>
 </resources>

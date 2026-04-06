@@ -313,4 +313,5 @@
     <string name="export_failed">导出失败</string>
     <string name="use_termux_x11_instead_of_built_in_xserver">使用 Termux-X11 代替内置 X Server</string>
     <string name="clear">清屏</string>
+    <string name="enable_touchpad_mouse_clicks">启用触摸板鼠标点击</string>
 </resources>

@@ -1,14 +1,11 @@
 package com.winlator.xserverbridge;
 
-import android.util.Log;
-
 import com.termux.x11.LorieView;
 import com.winlator.winhandler.MouseEventFlags;
 import com.winlator.winhandler.WinHandler;
 import com.winlator.xserver.Pointer;
 import com.winlator.xserver.XServer;
 
-// tx11 没有获取当前指针状态的方法，所以还是要借助原 xserver 的 pointer 保存状态，用于读取
 public class TX11XServerBridge implements IXServerBridge {
     private final LorieView lorieView;
     private final XServer xServer;
@@ -56,33 +53,48 @@ public class TX11XServerBridge implements IXServerBridge {
 
     @Override
     public void injectPointerMoveDelta(int dx, int dy) {
-        // TODO 不知道这么写有没有问题
         if (xServer.isRelativeMouseMovement()) {
+            // 游戏模式：直接走 Windows 相对移动，彻底解决划屏“方形框”束缚
             xServer.getWinHandler().mouseEvent(MouseEventFlags.MOVE, dx, dy, 0);
         } else {
+            // 桌面模式：直接走 TX11 相对移动，保证鼠标移动丝滑、不乱动
             lorieView.sendMouseEvent(dx, dy, 0, false, true);
+            // 同步内部坐标仅用于 UI 参考
+            xServer.injectPointerMoveDelta(dx, dy);
         }
     }
 
     @Override
     public void injectPointerButtonPress(int btnCode) {
-        xServer.injectPointerButtonPress(pointerBtnCode2Enum(btnCode));
-        // 滚轮
+        Pointer.Button button = pointerBtnCode2Enum(btnCode);
+        xServer.injectPointerButtonPress(button);
+
         if (btnCode == 4 || btnCode == 5) {
             lorieView.sendMouseEvent(0, btnCode == 4 ? -60 : 60, 4, false, true);
         } else {
-            lorieView.sendMouseEvent(0, 0, btnCode, true, xServer.isRelativeMouseMovement());
+            if (xServer.isRelativeMouseMovement()) {
+                // 游戏模式：按键直接走 Windows 侧，防止 TX11 坐标同步导致的“鬼畜”跳变
+                int flags = MouseEventFlags.getFlagFor(button, true);
+                if (flags != 0) xServer.getWinHandler().mouseEvent(flags, 0, 0, 0);
+            } else {
+                // 桌面模式：走 TX11 侧，坐标为 (0,0) 配合 relative=true 表示“在当前位置点击”
+                lorieView.sendMouseEvent(0, 0, btnCode, true, true);
+            }
         }
     }
 
     @Override
     public void injectPointerButtonRelease(int btnCode) {
-        xServer.injectPointerButtonRelease(pointerBtnCode2Enum(btnCode));
-        // 滚轮
-        if (btnCode == 4 || btnCode == 5) {
-            return;
+        Pointer.Button button = pointerBtnCode2Enum(btnCode);
+        xServer.injectPointerButtonRelease(button);
+        if (btnCode == 4 || btnCode == 5) return;
+
+        if (xServer.isRelativeMouseMovement()) {
+            int flags = MouseEventFlags.getFlagFor(button, false);
+            if (flags != 0) xServer.getWinHandler().mouseEvent(flags, 0, 0, 0);
+        } else {
+            lorieView.sendMouseEvent(0, 0, btnCode, false, true);
         }
-        lorieView.sendMouseEvent(0, 0, btnCode, false, xServer.isRelativeMouseMovement());
     }
 
     @Override

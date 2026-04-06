@@ -673,6 +673,9 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         final CheckBox cbSimTouchScreen = dialog.findViewById(R.id.CBSimulateTouchScreen);
         cbSimTouchScreen.setChecked(touchpadView.isSimTouchScreen());
 
+        final CheckBox cbPointerButtonClicks = dialog.findViewById(R.id.CBPointerButtonClicks);
+        cbPointerButtonClicks.setChecked(touchpadView.isPointerButtonClicksEnabled());
+
         final CheckBox cbShowTouchscreenControls = dialog.findViewById(R.id.CBShowTouchscreenControls);
         cbShowTouchscreenControls.setChecked(inputControlsView.isShowTouchscreenControls());
 
@@ -701,6 +704,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             xServer.setRelativeMouseMovement(cbRelativeMouseMovement.isChecked());
             inputControlsView.setShowTouchscreenControls(cbShowTouchscreenControls.isChecked());
             touchpadView.setSimTouchScreen(cbSimTouchScreen.isChecked());
+            touchpadView.setPointerButtonClicksEnabled(cbPointerButtonClicks.isChecked());
             updateProfile.run();
         });
 

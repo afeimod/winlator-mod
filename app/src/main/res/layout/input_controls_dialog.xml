@@ -49,5 +49,11 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/simulate_touch_screen" />
+
+        <CheckBox
+            android:id="@+id/CBPointerButtonClicks"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/enable_touchpad_mouse_clicks" />
     </LinearLayout>
 </HorizontalScrollView>

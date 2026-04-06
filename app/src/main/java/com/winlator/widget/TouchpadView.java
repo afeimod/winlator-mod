@@ -45,6 +45,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
     private boolean simTouchScreen;          
     private boolean swapMouseButtons;
     private boolean touchscreenMouseDisabled;
+    private boolean pointerButtonClicksEnabled = true;
 
     private float scrollAccumY;
     private boolean scrolling;
@@ -312,83 +313,85 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
     }
 
     private void handleFingerUp(Finger finger) {
-        switch (numFingers) {
-            case 1:
-                if (simTouchScreen) {
-                    if (finger.isTap()) {
-                        xServer.injectPointerMove(lastTouchedPosX, lastTouchedPosY);
-                        postDelayed(() -> {
+        if (pointerButtonClicksEnabled) {
+            switch (numFingers) {
+                case 1:
+                    if (simTouchScreen) {
+                        if (finger.isTap()) {
+                            xServer.injectPointerMove(lastTouchedPosX, lastTouchedPosY);
+                            postDelayed(() -> {
+                                if (swapMouseButtons) {
+                                    pressPointerButtonRight(finger);
+                                    releasePointerButtonRight(finger);
+                                } else {
+                                    pressPointerButtonLeft(finger);
+                                    releasePointerButtonLeft(finger);
+                                }
+                            }, MOVE_TO_CLICK_DELAY_MS);
+                        }
+                        if (finger.isLongPress()) {
+                            xServer.injectPointerMove(lastTouchedPosX, lastTouchedPosY);
+                            postDelayed(() -> {
+                                if (!swapMouseButtons) {
+                                    pressPointerButtonRight(finger);
+                                    releasePointerButtonRight(finger);
+                                } else {
+                                    pressPointerButtonLeft(finger);
+                                    releasePointerButtonLeft(finger);
+                                }
+                            }, MOVE_TO_CLICK_DELAY_MS);
+                        }
+                        if (isShortDrag) {
+                            xServer.injectPointerMove(initialPointerX, initialPointerY);
+                            isShortDrag = false;
+                        }
+                        if (isLongDrag) {
+                            isLongDrag = false;
                             if (swapMouseButtons) {
-                                pressPointerButtonRight(finger);
                                 releasePointerButtonRight(finger);
                             } else {
-                                pressPointerButtonLeft(finger);
                                 releasePointerButtonLeft(finger);
                             }
-                        }, MOVE_TO_CLICK_DELAY_MS);
-                    }
-                    if (finger.isLongPress()) {
-                        xServer.injectPointerMove(lastTouchedPosX, lastTouchedPosY);
-                        postDelayed(() -> {
-                            if (!swapMouseButtons) {
-                                pressPointerButtonRight(finger);
-                                releasePointerButtonRight(finger);
-                            } else {
-                                pressPointerButtonLeft(finger);
-                                releasePointerButtonLeft(finger);
-                            }
-                        }, MOVE_TO_CLICK_DELAY_MS);
-                    }
-                    if (isShortDrag) {
-                        xServer.injectPointerMove(initialPointerX, initialPointerY);
-                        isShortDrag = false;
-                    }
-                    if (isLongDrag) {
-                        isLongDrag = false;
+                        }
+                    } else if (finger.isTap()) {
                         if (swapMouseButtons) {
-                            releasePointerButtonRight(finger);
+                            pressPointerButtonRight(finger);
                         } else {
-                            releasePointerButtonLeft(finger);
+                            pressPointerButtonLeft(finger);
                         }
                     }
-                } else if (finger.isTap()) {
-                    if (swapMouseButtons) {
-                        pressPointerButtonRight(finger);
-                    } else {
-                        pressPointerButtonLeft(finger);
-                    }
-                }
-                break;
-            case 2:
-                Finger secondFinger = findSecondFinger(finger);
-                if (secondFinger != null && finger.isTap()) {
-                    if (swapMouseButtons && !simTouchScreen) {
-                        pressPointerButtonLeft(finger);
-                    } else {
-                        pressPointerButtonRight(finger);
-                    }
-                }
-                break;
-            case 3:
-                if (threeFingersTapCallback != null) {
-                    for (Finger f : fingers) {
-                        if (f != null && !f.isTap()) {
-                            return;
+                    break;
+                case 2:
+                    Finger secondFinger = findSecondFinger(finger);
+                    if (secondFinger != null && finger.isTap()) {
+                        if (swapMouseButtons && !simTouchScreen) {
+                            pressPointerButtonLeft(finger);
+                        } else {
+                            pressPointerButtonRight(finger);
                         }
                     }
-                    threeFingersTapCallback.run();
-                }
-                break;
-            case 4:
-                if (fourFingersTapCallback != null) {
-                    for (Finger f : fingers) {
-                        if (f != null && !f.isTap()) {
-                            return;
+                    break;
+                case 3:
+                    if (threeFingersTapCallback != null) {
+                        for (Finger f : fingers) {
+                            if (f != null && !f.isTap()) {
+                                return;
+                            }
                         }
+                        threeFingersTapCallback.run();
                     }
-                    fourFingersTapCallback.run();
-                }
-                break;
+                    break;
+                case 4:
+                    if (fourFingersTapCallback != null) {
+                        for (Finger f : fingers) {
+                            if (f != null && !f.isTap()) {
+                                return;
+                            }
+                        }
+                        fourFingersTapCallback.run();
+                    }
+                    break;
+            }
         }
         releasePointerButtonLeft(finger);
         releasePointerButtonRight(finger);
@@ -416,8 +419,10 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
             } else if (!simTouchScreen && currDistance >= 350.0f
                     && !xServer.isPointerButtonPressed(Pointer.Button.BUTTON_LEFT.code())
                     && secondFinger.getTravelDistance() < MAX_TAP_TRAVEL_DISTANCE) {
-                pressPointerButtonLeft(finger);
-                skipPointerMove = true;
+                if (pointerButtonClicksEnabled) {
+                    pressPointerButtonLeft(finger);
+                    skipPointerMove = true;
+                }
             }
         }
         if (!scrolling && numFingers <= 2 && !skipPointerMove) {
@@ -432,7 +437,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
                 else if (touchDuration >= LONG_DRAG_MIN_TIME && !isShortDrag) {
                     xServer.injectPointerMove(finger.getX(), finger.getY());
                     if (finger.getTravelDistance() > MAX_TAP_TRAVEL_DISTANCE) {
-                        if (!isLongDrag) {
+                        if (!isLongDrag && pointerButtonClicksEnabled) {
                             isLongDrag = true;
                             if (swapMouseButtons) {
                                 pressPointerButtonRight(finger);
@@ -617,6 +622,14 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
 
     public boolean isSimTouchScreen() {
         return simTouchScreen;
+    }
+
+    public boolean isPointerButtonClicksEnabled() {
+        return pointerButtonClicksEnabled;
+    }
+
+    public void setPointerButtonClicksEnabled(boolean enabled) {
+        this.pointerButtonClicksEnabled = enabled;
     }
 
     public void setThreeFingersTapCallback(Runnable threeFingersTapCallback) {
