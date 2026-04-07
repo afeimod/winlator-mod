@@ -12,7 +12,7 @@ public abstract class DefaultVersion {
     public static final String VIRGL = "23.1.9";
     public static final String GLADIO = "1.0";
     public static final String D8VK = "1.0";
-    public static final String VKD3D = "2.13";
+    public static final String VKD3D = "2.14.1";
     public static final String WINED3D = WineInfo.MAIN_WINE_VERSION;
     public static final String CNC_DDRAW = "6.6";
     public static final String SOUNDFONT = "SONiVOX-EAS-GM-Wavetable";
