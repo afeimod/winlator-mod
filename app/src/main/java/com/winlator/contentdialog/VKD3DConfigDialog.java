@@ -10,7 +10,6 @@ import com.winlator.core.DefaultVersion;
 import com.winlator.core.EnvVars;
 import com.winlator.core.GeneralComponents;
 import com.winlator.core.KeyValueSet;
-import com.winlator.core.StringUtils;
 import com.winlator.xenvironment.RootFS;
 
 public class VKD3DConfigDialog extends ContentDialog {
@@ -33,7 +32,7 @@ public class VKD3DConfigDialog extends ContentDialog {
 
         setOnConfirmCallback(() -> {
             KeyValueSet newConfig = new KeyValueSet();
-            newConfig.put("version", StringUtils.parseNumber(sVersion.getSelectedItem()));
+            newConfig.put("version", sVersion.getSelectedItem().toString());
             newConfig.put("featureLevel", sFeatureLevel.getSelectedItem().toString());
             anchor.setTag(newConfig.toString());
         });

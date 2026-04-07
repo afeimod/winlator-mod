@@ -54,7 +54,7 @@ public class DXVKConfigDialog extends ContentDialog {
 
         setOnConfirmCallback(() -> {
             KeyValueSet newConfig = new KeyValueSet();
-            newConfig.put("version", StringUtils.parseNumber(sVersion.getSelectedItem()));
+            newConfig.put("version", sVersion.getSelectedItem().toString());
             newConfig.put("framerate", StringUtils.parseNumber(sFramerate.getSelectedItem()));
             newConfig.put("maxDeviceMemory", StringUtils.parseMemorySize(sMaxDeviceMemory.getSelectedItem()));
 
@@ -71,6 +71,7 @@ public class DXVKConfigDialog extends ContentDialog {
     }
 
     public static void setEnvVars(Context context, KeyValueSet config, EnvVars envVars) {
+        if (config.get("version").contains("async")) envVars.put("DXVK_ASYNC", "1");
         envVars.put("DXVK_STATE_CACHE_PATH", RootFS.getDosUserCachePath());
         envVars.put("DXVK_LOG_LEVEL", "none");
 

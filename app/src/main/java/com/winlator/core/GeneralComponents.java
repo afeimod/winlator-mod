@@ -3,8 +3,10 @@ package com.winlator.core;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import android.os.Build;
 import android.view.View;
 import android.widget.ArrayAdapter;
+import android.widget.PopupMenu;
 import android.widget.Spinner;
 
 import com.winlator.MainActivity;
@@ -12,6 +14,7 @@ import com.winlator.R;
 import com.winlator.contentdialog.ContentDialog;
 import com.winlator.xenvironment.RootFS;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -21,9 +24,8 @@ import java.util.Arrays;
 import java.util.Locale;
 
 public abstract class GeneralComponents {
+    public enum InstallMode {DOWNLOAD, FILE, BOTH}
     private static final String INSTALLABLE_COMPONENTS_URL = "https://raw.githubusercontent.com/brunodev85/winlator/main/installable_components/%s";
-    private static final byte INSTALL_MODE_DOWNLOAD = 1<<0;
-    private static final byte INSTALL_MODE_FILE = 1<<1;
 
     public enum Type {
         BOX64, TURNIP, DXVK, VKD3D, WINED3D, SOUNDFONT, ADRENOTOOLS_DRIVER;
@@ -98,12 +100,15 @@ public abstract class GeneralComponents {
             }
         }
 
-        private int getInstallModes() {
-            int installMode = 0;
+        private InstallMode getInstallMode() {
+            InstallMode installMode;
             if (this == Type.SOUNDFONT || this == ADRENOTOOLS_DRIVER) {
-                installMode |= INSTALL_MODE_FILE;
+                installMode = InstallMode.FILE;
             }
-            else installMode |= INSTALL_MODE_DOWNLOAD;
+            else if (this == Type.WINED3D || this == Type.DXVK || this == Type.VKD3D) {
+                installMode = InstallMode.BOTH;
+            }
+            else installMode = InstallMode.DOWNLOAD;
             return installMode;
         }
 
@@ -235,6 +240,38 @@ public abstract class GeneralComponents {
         });
     }
 
+    private static void installFromPackagedFile(Context context, TarCompressorUtils.Type compressedType, final Type type, File originFile, String identifier, JSONArray filesJSONArray) throws JSONException {
+        File componentDir = getComponentDir(type, context);
+        File tempDir = new File(componentDir, type.lowerName()+"-"+identifier);
+        if (tempDir.isDirectory()) FileUtils.delete(tempDir);
+        tempDir.mkdirs();
+
+        for (int i = 0; i < filesJSONArray.length(); i++) {
+            JSONObject fileJSONObject = filesJSONArray.getJSONObject(i);
+            String target = fileJSONObject.getString("target");
+            File file = null;
+
+            if (target.contains("system32")) {
+                file = new File(tempDir, "system32/"+FileUtils.getName(target));
+            }
+            else if (target.contains("syswow64")) {
+                file = new File(tempDir, "syswow64/"+FileUtils.getName(target));
+            }
+
+            if (file != null) {
+                File parent = file.getParentFile();
+                parent.mkdirs();
+                final String source = fileJSONObject.getString("source");
+                TarCompressorUtils.extract(compressedType, originFile, tempDir, (destination, size) -> destination.getPath().endsWith(source) ? destination : null);
+            }
+        }
+
+        String filename = type.lowerName()+"-"+identifier+".tzst";
+        File destination = new File(componentDir, filename);
+        TarCompressorUtils.compress(TarCompressorUtils.Type.ZSTD, new File(tempDir, "/."), destination, MainActivity.CONTAINER_PATTERN_COMPRESSION_LEVEL);
+        FileUtils.delete(tempDir);
+    }
+
     private static void openFileForInstall(final MainActivity activity, final Type type, final Spinner spinner, final String defaultItem) {
         activity.setOpenFileCallback((uri) -> {
             String path = FileUtils.getFilePathFromUri(uri);
@@ -242,23 +279,42 @@ public abstract class GeneralComponents {
 
             try {
                 File source = new File(path);
-                if (path.endsWith(".sf2")) {
-                    String filename = FileUtils.getName(path);
-                    File destination = new File(getComponentDir(type, activity), filename);
-                    if (destination.isFile()) FileUtils.delete(destination);
-                    if (FileUtils.copy(source, destination)) {
-                        loadSpinner(type, spinner, parseDisplayText(type, filename), defaultItem);
-                    }
-                }
-                else if (path.endsWith(".zip")) {
-                    byte[] manifestData = ZipUtils.read(source, "*.json");
-                    if (manifestData != null) {
-                        JSONObject manifestJSONObject = new JSONObject(new String(manifestData));
-                        String filename = manifestJSONObject.optString("name", manifestJSONObject.optString("libraryName", ""));
+                switch (type) {
+                    case SOUNDFONT: {
+                        String filename = FileUtils.getName(path);
                         File destination = new File(getComponentDir(type, activity), filename);
-                        if (destination.isDirectory()) FileUtils.delete(destination);
-                        destination.mkdirs();
-                        if (ZipUtils.extract(source, destination)) loadSpinner(type, spinner, filename, defaultItem);
+                        if (destination.isFile()) FileUtils.delete(destination);
+                        if (FileUtils.copy(source, destination)) loadSpinner(type, spinner, parseDisplayText(type, filename), defaultItem);
+                        break;
+                    }
+                    case ADRENOTOOLS_DRIVER: {
+                        byte[] manifestData = ZipUtils.read(source, "*.json");
+                        if (manifestData != null) {
+                            JSONObject manifestJSONObject = new JSONObject(new String(manifestData));
+                            String filename = manifestJSONObject.optString("name", manifestJSONObject.optString("libraryName", ""));
+                            File destination = new File(getComponentDir(type, activity), filename);
+                            if (destination.isDirectory()) FileUtils.delete(destination);
+                            destination.mkdirs();
+                            if (ZipUtils.extract(source, destination)) loadSpinner(type, spinner, filename, defaultItem);
+                        }
+                        break;
+                    }
+                    default: {
+                        TarCompressorUtils.Type compressedType = TarCompressorUtils.Type.ZSTD;
+                        byte[] manifestData = TarCompressorUtils.read(compressedType, source, "*.json");
+                        if (manifestData == null) manifestData = TarCompressorUtils.read(compressedType = TarCompressorUtils.Type.XZ, source, "*.json");
+                        if (manifestData != null) {
+                            JSONObject manifestJSONObject = new JSONObject(new String(manifestData));
+                            String contentType = manifestJSONObject.optString("type", "").toUpperCase(Locale.ENGLISH);
+                            String identifier = StringUtils.parseIdentifier(manifestJSONObject.optString("versionName", ""));
+                            JSONArray filesJSONArray = manifestJSONObject.optJSONArray("files");
+
+                            if (contentType.equals(type.name()) && !identifier.isEmpty() && filesJSONArray != null) {
+                                installFromPackagedFile(activity, compressedType, type, source, identifier, filesJSONArray);
+                                loadSpinner(type, spinner, identifier, defaultItem);
+                            }
+                        }
+                        break;
                     }
                 }
             }
@@ -299,12 +355,30 @@ public abstract class GeneralComponents {
     public static void initViews(final Type type, View toolbox, final Spinner spinner, final String selectedItem, final String defaultItem) {
         final Context context = spinner.getContext();
         toolbox.findViewWithTag("install").setOnClickListener((v) -> {
-            int installModes = type.getInstallModes();
-            if ((installModes & INSTALL_MODE_DOWNLOAD) != 0) {
-                showDownloadableListDialog(type, spinner, defaultItem);
-            }
-            else if ((installModes & INSTALL_MODE_FILE) != 0) {
-                openFileForInstall((MainActivity)context, type, spinner, defaultItem);
+            InstallMode installMode = type.getInstallMode();
+            switch (installMode) {
+                case DOWNLOAD:
+                    showDownloadableListDialog(type, spinner, defaultItem);
+                    break;
+                case FILE:
+                    openFileForInstall((MainActivity)context, type, spinner, defaultItem);
+                    break;
+                case BOTH:
+                    PopupMenu popupMenu = new PopupMenu(context, v);
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) popupMenu.setForceShowIcon(true);
+                    popupMenu.inflate(R.menu.open_file_popup_menu);
+                    popupMenu.setOnMenuItemClickListener((menuItem) -> {
+                        int itemId = menuItem.getItemId();
+                        if (itemId == R.id.menu_item_open_file) {
+                            openFileForInstall((MainActivity)context, type, spinner, defaultItem);
+                        }
+                        else if (itemId == R.id.menu_item_download_file) {
+                            showDownloadableListDialog(type, spinner, defaultItem);
+                        }
+                        return true;
+                    });
+                    popupMenu.show();
+                    break;
             }
         });
 

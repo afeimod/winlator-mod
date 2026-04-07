@@ -147,7 +147,7 @@ public abstract class ZipUtils {
             while (entries.hasMoreElements()) {
                 ZipArchiveEntry entry = entries.nextElement();
                 String entryName = entry.getName();
-                boolean match =  pathIsSuffix ? entryName.endsWith(localPath) : (pathIsPrefix ? entryName.startsWith(localPath) : entryName.equals(localPath));
+                boolean match = pathIsSuffix ? entryName.endsWith(localPath) : (pathIsPrefix ? entryName.startsWith(localPath) : entryName.equals(localPath));
 
                 if (match && !entry.isDirectory() && !entry.isUnixSymlink()) {
                     try (InputStream inStream = zipFile.getInputStream(entry);

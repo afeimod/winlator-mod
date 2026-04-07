@@ -61,7 +61,7 @@ public class WineD3DConfigDialog extends ContentDialog {
 
         setOnConfirmCallback(() -> {
             KeyValueSet newConfig = new KeyValueSet();
-            newConfig.put("version", StringUtils.parseNumber(sVersion.getSelectedItem()));
+            newConfig.put("version", sVersion.getSelectedItem().toString());
             newConfig.put("csmt", cbCSMT.isChecked() ? "3" : "0");
 
             String ddrawWrapper = StringUtils.parseIdentifier(sDDrawWrapper.getSelectedItem());
