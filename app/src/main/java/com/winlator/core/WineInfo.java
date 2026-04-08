@@ -17,7 +17,7 @@ import java.util.regex.Pattern;
 
 public class WineInfo implements Parcelable {
     public static final WineInfo WINE_X86_64 = new WineInfo("9.16", null, "x86_64", "/opt/x86_64-wine");
-    public static final WineInfo WINE_ARM64EC = new WineInfo("11.4", null, "arm64ec", "/opt/arm64ec-wine");
+    public static final WineInfo WINE_ARM64EC = new WineInfo("10.14", null, "arm64ec", "/opt/arm64ec-wine");
     public static final WineInfo MAIN_WINE_VERSION = WINE_X86_64;
     private static final Pattern pattern = Pattern.compile("^wine\\-([0-9\\.]+)\\-?(?:(.+)\\-)?(x86_64|arm64ec)$", Pattern.CASE_INSENSITIVE);
     public final String version;
@@ -69,7 +69,7 @@ public class WineInfo implements Parcelable {
 
     public String identifier() {
         if (this == WINE_X86_64) return "Wine-9.16-x86_64";
-        if (this == WINE_ARM64EC) return "Wine-11.4-arm64ec";
+        if (this == WINE_ARM64EC) return "Wine-10.14-arm64ec";
         return "wine-"+fullVersion()+"-"+arch;
     }
 
