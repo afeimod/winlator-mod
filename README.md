@@ -87,6 +87,7 @@ Winlator 是一款 Android 应用程序，可让您借助 Wine 和 Box64 运行 
 - CNC DDraw（[github.com/FunkyFr3sh/cnc-ddraw](https://github.com/FunkyFr3sh/cnc-ddraw)）
 - Hangover ([github.com/AndreRH/hangover](https://github.com/AndreRH/hangover))
 - FEX ([github.com/FEX-Emu/FEX](https://github.com/FEX-Emu/FEX))
+- Termux-X11 ([github.com/termux/termux-x11](https://github.com/termux/termux-x11))
 
 非常感谢 [ptitSeb](https://github.com/ptitSeb)（Box64）、[Danylo](https://blogs.igalia.com/dpiliaiev/tags/mesa/)（Turnip）、[alexvorxx](https://github.com/alexvorxx)（Mods/提示）以及其他贡献者。<br>
 感谢所有相信这个项目的人。
