@@ -50,17 +50,6 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="@string/box64_version" />
-
-                    <Spinner
-                        style="@style/ComboBox"
-                        android:id="@+id/SBox64Version"
-                        android:layout_width="match_parent"
-                        android:entries="@array/box64_version_entries" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
                         android:text="@string/box64_preset" />
 
                     <LinearLayout
@@ -97,9 +86,18 @@
                             android:layout_marginRight="0dp"
                             android:src="@drawable/icon_remove" />
                     </LinearLayout>
+                </LinearLayout>
 
-                    <View style="@style/FieldSeparator" />
+                <TextView
+                    style="@style/FieldSetLabel"
+                    android:text="@string/box64" />
+            </FrameLayout>
 
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <LinearLayout style="@style/FieldSet">
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
@@ -143,7 +141,7 @@
 
                 <TextView
                     style="@style/FieldSetLabel"
-                    android:text="@string/box64" />
+                    android:text="@string/fex" />
             </FrameLayout>
 
             <FrameLayout

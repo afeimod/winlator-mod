@@ -106,17 +106,6 @@ public class SettingsFragment extends Fragment {
         final Context context = getContext();
         preferences = PreferenceManager.getDefaultSharedPreferences(context);
 
-        final Spinner sBox64Version = view.findViewById(R.id.SBox64Version);
-        String box64Version = preferences.getString("box64_version", DefaultVersion.BOX64);
-
-        ContentsManager contentsManager = new ContentsManager(context);
-        contentsManager.syncContents();
-        loadBox64VersionSpinner(context, contentsManager, sBox64Version);
-
-        if (!AppUtils.setSpinnerSelectionFromIdentifier(sBox64Version, box64Version)) {
-            AppUtils.setSpinnerSelectionFromIdentifier(sBox64Version, DefaultVersion.BOX64);
-        }
-
         final Spinner sBox64Preset = view.findViewById(R.id.SBox64Preset);
         loadBox64PresetSpinner(view, sBox64Preset);
 
@@ -241,7 +230,6 @@ public class SettingsFragment extends Fragment {
 
         view.findViewById(R.id.BTConfirm).setOnClickListener((v) -> {
             SharedPreferences.Editor editor = preferences.edit();
-            editor.putString("box64_version", StringUtils.parseIdentifier(sBox64Version.getSelectedItem()));
             editor.putString("box64_preset", Box64PresetManager.getSpinnerSelectedId(sBox64Preset));
             editor.putString("fex_preset", FEXPresetManager.getSpinnerSelectedId(sFEXPreset));
             editor.putBoolean("haptics", cbHaptics.isChecked());

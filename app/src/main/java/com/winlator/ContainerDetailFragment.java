@@ -41,6 +41,7 @@ import com.winlator.contents.ContentProfile;
 import com.winlator.contents.ContentsManager;
 import com.winlator.core.AppUtils;
 import com.winlator.core.Callback;
+import com.winlator.core.DefaultVersion;
 import com.winlator.core.EnvVars;
 import com.winlator.core.FileUtils;
 import com.winlator.core.KeyValueSet;
@@ -230,6 +231,13 @@ public class ContainerDetailFragment extends Fragment {
         byte previousStartupSelection = isEditMode() ? container.getStartupSelection() : -1;
         sStartupSelection.setSelection(previousStartupSelection != -1 ? previousStartupSelection : Container.STARTUP_SELECTION_ESSENTIAL);
 
+        final Spinner sBox64Version = view.findViewById(R.id.SBox64Version);
+        SettingsFragment.loadBox64VersionSpinner(context, contentsManager, sBox64Version);
+        String currentBox64Version = preferences.getString("box64_version", DefaultVersion.BOX64);
+        if (!AppUtils.setSpinnerSelectionFromIdentifier(sBox64Version, currentBox64Version)) {
+            AppUtils.setSpinnerSelectionFromIdentifier(sBox64Version, DefaultVersion.BOX64);
+        }
+
         final Spinner sBox64Preset = view.findViewById(R.id.SBox64Preset);
         Box64PresetManager.loadSpinner(sBox64Preset, isEditMode() ? container.getBox64Preset() : preferences.getString("box64_preset", Box64Preset.COMPATIBILITY));
 
@@ -303,6 +311,9 @@ public class ContainerDetailFragment extends Fragment {
                 int rcfileId = rcfileIds[0];
                 int primaryController = sPrimaryController.getSelectedItemPosition();
                 String controllerMapping = getControllerMapping(view);
+
+                String box64Version = StringUtils.parseIdentifier(sBox64Version.getSelectedItem());
+                preferences.edit().putString("box64_version", box64Version).apply();
 
                 int finalInputType = 0;
                 finalInputType |= cbEnableXInput.isChecked() ? WinHandler.FLAG_INPUT_TYPE_XINPUT : 0;
