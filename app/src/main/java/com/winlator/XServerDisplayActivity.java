@@ -263,7 +263,9 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
                     winStarted[0] = true;
                 }
 
-                if (window.id == frameRatingWindowId) frameRating.update();
+                if (frameRating != null) {
+                    frameRating.update();
+                }
             }
 
             @Override
@@ -608,7 +610,6 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
         if (container != null && container.isShowFPS()) {
             frameRating = new FrameRating(this);
-            frameRating.setVisibility(View.GONE);
             rootView.addView(frameRating);
         }
 
@@ -1089,14 +1090,6 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
     private void changeFrameRatingVisibility(Window window, Property property) {
         if (frameRating == null) return;
-        if (property != null) {
-            if (frameRatingWindowId == -1 && window.attributes.isMapped() && property.nameAsString().equals("_MESA_DRV")) {
-                frameRatingWindowId = window.id;
-            }
-        }
-        else if (window.id == frameRatingWindowId) {
-            frameRatingWindowId = -1;
-            runOnUiThread(() -> frameRating.setVisibility(View.GONE));
-        }
+        runOnUiThread(() -> frameRating.setVisibility(View.VISIBLE));
     }
 }

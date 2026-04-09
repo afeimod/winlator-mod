@@ -78,7 +78,7 @@ Winlator 是一款 Android 应用程序，可让您借助 Wine 和 Box64 运行 
 # 致谢与第三方应用
 - Ubuntu 根文件系统（[Focal Fossa](https://releases.ubuntu.com/focal)）
 - Wine（[winehq.org](https://www.winehq.org/)）
-- Box64 作者：[ptitseb](https://github.com/ptitSeb)
+- Box64 作者：([ptitseb](https://github.com/ptitSeb))
 - PRoot（[proot-me.github.io](https://proot-me.github.io)）
 - Mesa（Turnip/Zink/VirGL）（[mesa3d.org](https://www.mesa3d.org)）
 - DXVK（[github.com/doitsujin/dxvk](https://github.com/doitsujin/dxvk)）
