@@ -1,6 +1,7 @@
 package com.winlator.core;
 
 import android.content.Context;
+import android.content.res.AssetFileDescriptor;
 import android.net.Uri;
 
 import org.apache.commons.compress.archivers.ArchiveInputStream;
@@ -23,9 +24,62 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public abstract class TarCompressorUtils {
     public enum Type {XZ, ZSTD}
+
+    public interface OnProgressListener {
+        void onProgress(int progress);
+    }
+
+    private static class ProgressInputStream extends InputStream {
+        private final InputStream inputStream;
+        private final long totalSize;
+        private long bytesRead = 0;
+        private final OnProgressListener listener;
+        private int lastProgress = -1;
+        private final AtomicBoolean isCancelled;
+
+        public ProgressInputStream(InputStream inputStream, long totalSize, OnProgressListener listener, AtomicBoolean isCancelled) {
+            this.inputStream = inputStream;
+            this.totalSize = totalSize;
+            this.listener = listener;
+            this.isCancelled = isCancelled;
+        }
+
+        @Override
+        public int read() throws IOException {
+            if (isCancelled != null && isCancelled.get()) throw new IOException("Cancelled");
+            int byteRead = inputStream.read();
+            if (byteRead != -1) updateProgress(1);
+            return byteRead;
+        }
+
+        @Override
+        public int read(byte[] b, int off, int len) throws IOException {
+            if (isCancelled != null && isCancelled.get()) throw new IOException("Cancelled");
+            int bytesReadNow = inputStream.read(b, off, len);
+            if (bytesReadNow != -1) updateProgress(bytesReadNow);
+            return bytesReadNow;
+        }
+
+        private void updateProgress(int count) {
+            bytesRead += count;
+            if (totalSize > 0 && listener != null) {
+                int progress = (int) (bytesRead * 100 / totalSize);
+                if (progress != lastProgress) {
+                    lastProgress = progress;
+                    listener.onProgress(progress);
+                }
+            }
+        }
+
+        @Override
+        public void close() throws IOException {
+            inputStream.close();
+        }
+    }
 
     private static void addFile(ArchiveOutputStream tar, File file, String entryName) {
         try {
@@ -108,19 +162,41 @@ public abstract class TarCompressorUtils {
     }
 
     public static boolean extract(Type type, Context context, Uri source, File destination) {
-        return extract(type, context, source, destination, null);
+        return extract(type, context, source, destination, null, null);
     }
 
     public static boolean extract(Type type, Context context, Uri source, File destination, OnExtractFileListener onExtractFileListener) {
+        return extract(type, context, source, destination, onExtractFileListener, null);
+    }
+
+    public static boolean extract(Type type, Context context, Uri source, File destination, OnExtractFileListener onExtractFileListener, OnProgressListener onProgressListener) {
+        return extract(type, context, source, destination, onExtractFileListener, onProgressListener, null);
+    }
+
+    public static boolean extract(Type type, Context context, Uri source, File destination, OnExtractFileListener onExtractFileListener, OnProgressListener onProgressListener, AtomicBoolean isCancelled) {
         if (source == null) return false;
         try {
+            InputStream is;
+            long totalSize = -1;
             if (source.toString().startsWith("/")) {
-                return extract(type, new FileInputStream(source.toString()), destination, onExtractFileListener);
+                File file = new File(source.toString());
+                is = new FileInputStream(file);
+                totalSize = file.length();
             } else {
-                return extract(type, context.getContentResolver().openInputStream(source), destination, onExtractFileListener);
+                is = context.getContentResolver().openInputStream(source);
+                try (AssetFileDescriptor afd = context.getContentResolver().openAssetFileDescriptor(source, "r")) {
+                    if (afd != null) totalSize = afd.getLength();
+                } catch (Exception ignored) {}
             }
+
+            if (is == null) return false;
+            if (onProgressListener != null && totalSize > 0) {
+                is = new ProgressInputStream(is, totalSize, onProgressListener, isCancelled);
+            }
+
+            return extract(type, is, destination, onExtractFileListener);
         }
-        catch (FileNotFoundException e) {
+        catch (IOException e) {
             return false;
         }
     }
@@ -139,7 +215,7 @@ public abstract class TarCompressorUtils {
         }
     }
 
-    private static boolean extract(Type type, InputStream source, File destination, OnExtractFileListener onExtractFileListener) {
+    public static boolean extract(Type type, InputStream source, File destination, OnExtractFileListener onExtractFileListener) {
         if (source == null) return false;
         try (InputStream inStream = getCompressorInputStream(type, source);
              ArchiveInputStream tar = new TarArchiveInputStream(inStream)) {

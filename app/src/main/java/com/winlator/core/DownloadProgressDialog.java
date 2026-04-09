@@ -35,7 +35,7 @@ public class DownloadProgressDialog {
     }
 
     public void show() {
-        show(null);
+        show(0, null);
     }
 
     public void show(int textResId) {
@@ -47,25 +47,52 @@ public class DownloadProgressDialog {
     }
 
     public void show(int textResId, final Runnable onCancelCallback) {
-        if (isShowing()) return;
-        close();
-        if (dialog == null) create();
+        activity.runOnUiThread(() -> {
+            if (isShowing()) {
+                if (textResId > 0) setText(textResId);
+                setCancelCallback(onCancelCallback);
+                return;
+            }
+            close();
+            if (dialog == null) create();
 
-        if (textResId > 0) ((TextView)dialog.findViewById(R.id.TextView)).setText(textResId);
+            if (textResId > 0) ((TextView)dialog.findViewById(R.id.TextView)).setText(textResId);
 
-        setProgress(0);
-        if (onCancelCallback != null) {
-            dialog.findViewById(R.id.BTCancel).setOnClickListener((v) -> onCancelCallback.run());
-            dialog.findViewById(R.id.LLBottomBar).setVisibility(View.VISIBLE);
-        }
-        dialog.show();
+            setProgress(0);
+            setCancelCallback(onCancelCallback);
+            dialog.show();
+        });
+    }
+
+    public void setText(int textResId) {
+        activity.runOnUiThread(() -> {
+            if (dialog != null && textResId > 0) {
+                ((TextView)dialog.findViewById(R.id.TextView)).setText(textResId);
+            }
+        });
+    }
+
+    public void setCancelCallback(Runnable onCancelCallback) {
+        activity.runOnUiThread(() -> {
+            if (dialog == null) return;
+            View cancelBtn = dialog.findViewById(R.id.BTCancel);
+            View bottomBar = dialog.findViewById(R.id.LLBottomBar);
+            if (onCancelCallback != null) {
+                cancelBtn.setOnClickListener((v) -> onCancelCallback.run());
+                bottomBar.setVisibility(View.VISIBLE);
+            } else {
+                bottomBar.setVisibility(View.GONE);
+            }
+        });
     }
 
     public void setProgress(int progress) {
-        if (dialog == null) return;
-        progress = Mathf.clamp(progress, 0, 100);
-        ((CircularProgressIndicator)dialog.findViewById(R.id.CircularProgressIndicator)).setProgress(progress);
-        ((TextView)dialog.findViewById(R.id.TVProgress)).setText(progress+"%");
+        activity.runOnUiThread(() -> {
+            if (dialog == null) return;
+            int p = Mathf.clamp(progress, 0, 100);
+            ((CircularProgressIndicator)dialog.findViewById(R.id.CircularProgressIndicator)).setProgress(p);
+            ((TextView)dialog.findViewById(R.id.TVProgress)).setText(p+"%");
+        });
     }
 
     public void close() {

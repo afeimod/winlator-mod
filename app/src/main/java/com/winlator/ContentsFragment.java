@@ -37,13 +37,14 @@ import com.winlator.contents.ContentProfile;
 import com.winlator.contents.ContentsManager;
 import com.winlator.contents.Downloader;
 import com.winlator.core.AppUtils;
+import com.winlator.core.DownloadProgressDialog;
 import com.winlator.core.FileUtils;
-import com.winlator.core.PreloaderDialog;
 
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ContentsFragment extends Fragment {
     private RecyclerView recyclerView;
@@ -174,8 +175,8 @@ public class ContentsFragment extends Fragment {
             final Activity activity = getActivity();
             if (activity == null) return;
 
-            PreloaderDialog preloaderDialog = new PreloaderDialog(activity);
-            preloaderDialog.showOnUiThread(R.string.installing_content);
+            DownloadProgressDialog progressDialog = new DownloadProgressDialog(activity);
+            progressDialog.show(R.string.installing_content);
             try {
                 ContentsManager.OnInstallFinishedCallback callback = new ContentsManager.OnInstallFinishedCallback() {
                     private boolean isExtracting = true;
@@ -191,7 +192,7 @@ public class ContentsFragment extends Fragment {
                             case ERROR_UNTRUSTPROFILE -> R.string.content_cannot_be_trusted;
                             default -> R.string.unable_to_install_content;
                         };
-                        safeRunOnUiThread(() -> ContentDialog.alert(getContext(), activity.getString(R.string.install_failed) + ": " + activity.getString(msgId), preloaderDialog::closeOnUiThread));
+                        safeRunOnUiThread(() -> ContentDialog.alert(getContext(), activity.getString(R.string.install_failed) + ": " + activity.getString(msgId), progressDialog::closeOnUiThread));
                     }
 
                     @Override
@@ -207,17 +208,17 @@ public class ContentsFragment extends Fragment {
                                     List<ContentProfile.ContentFile> untrustedFiles = manager.getUnTrustedContentFiles(profile);
                                     if (!untrustedFiles.isEmpty()) {
                                         ContentUntrustedDialog untrustedDialog = new ContentUntrustedDialog(getContext(), untrustedFiles);
-                                        untrustedDialog.setOnCancelCallback(preloaderDialog::closeOnUiThread);
+                                        untrustedDialog.setOnCancelCallback(progressDialog::closeOnUiThread);
                                         untrustedDialog.setOnConfirmCallback(() -> manager.finishInstallContent(profile, callback1));
                                         untrustedDialog.show();
                                     } else manager.finishInstallContent(profile, callback1);
                                 });
-                                dialog.setOnCancelCallback(preloaderDialog::closeOnUiThread);
+                                dialog.setOnCancelCallback(progressDialog::closeOnUiThread);
                                 dialog.show();
                             });
 
                         } else {
-                            preloaderDialog.closeOnUiThread();
+                            progressDialog.closeOnUiThread();
                             safeRunOnUiThread(() -> {
                                 ContentDialog.alert(getContext(), R.string.content_installed_success, null);
                                 manager.syncContents();
@@ -229,9 +230,9 @@ public class ContentsFragment extends Fragment {
                         }
                     }
                 };
-                Executors.newSingleThreadExecutor().execute(() -> manager.extraContentFile(data.getData(), callback));
+                Executors.newSingleThreadExecutor().execute(() -> manager.extraContentFile(data.getData(), callback, progressDialog::setProgress));
             } catch (Exception e) {
-                preloaderDialog.closeOnUiThread();
+                progressDialog.closeOnUiThread();
                 AppUtils.showToast(getContext(), R.string.unable_to_import_profile);
             }
         }
@@ -335,24 +336,35 @@ public class ContentsFragment extends Fragment {
             });
             holder.ibDownload.setVisibility((profile.remoteUrl != null) && (holder.progressBar.getVisibility() == View.GONE) ? View.VISIBLE : View.GONE);
             holder.ibDownload.setOnClickListener(v -> {
-                holder.ibDownload.setVisibility(View.GONE);
-                holder.progressBar.setVisibility(View.VISIBLE);
+                final Activity activity = getActivity();
+                if (activity == null) return;
+
+                DownloadProgressDialog progressDialog = new DownloadProgressDialog(activity);
+                AtomicBoolean isCancelled = new AtomicBoolean(false);
+                progressDialog.show(R.string.downloading_file, () -> {
+                    isCancelled.set(true);
+                    progressDialog.close();
+                });
 
                 Executors.newSingleThreadExecutor().execute(() -> {
                     long timestamp = System.currentTimeMillis();
                     File output = new File(context.getCacheDir(), "temp_" + timestamp);
-                    final Intent intent = new Intent();
-                    if (Downloader.downloadFile(profile.remoteUrl, output)) {
-                        intent.setData(Uri.parse(output.getAbsolutePath()));
-                    } else {
-                        intent.setData(Uri.parse(profile.remoteUrl));
-                    }
                     
-                    safeRunOnUiThread(() -> {
-                        holder.progressBar.setVisibility(View.GONE);
-                        holder.ibDownload.setVisibility(View.VISIBLE);
-                        onActivityResult(MainActivity.OPEN_FILE_REQUEST_CODE, Activity.RESULT_OK, intent);
-                    });
+                    if (Downloader.downloadFile(profile.remoteUrl, output, progressDialog::setProgress, isCancelled)) {
+                        safeRunOnUiThread(() -> {
+                            progressDialog.close();
+                            final Intent intent = new Intent();
+                            intent.setData(Uri.parse(output.getAbsolutePath()));
+                            onActivityResult(MainActivity.OPEN_FILE_REQUEST_CODE, Activity.RESULT_OK, intent);
+                        });
+                    } else {
+                        if (!isCancelled.get()) {
+                            safeRunOnUiThread(() -> {
+                                progressDialog.close();
+                                ContentDialog.alert(context, R.string.unable_to_download_file, null);
+                            });
+                        }
+                    }
                 });
             });
         }

@@ -31,7 +31,7 @@
     </string-array>
     <string-array name="dxwrapper_entries">
         <item>WineD3D</item>
-        <item>DXVK</item>
+        <item>DXVK &amp; VKD3D</item>
         <item>CNC DDraw</item>
     </string-array>
     <string-array name="dxvk_version_entries">

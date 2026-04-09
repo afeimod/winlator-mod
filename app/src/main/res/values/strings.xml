@@ -300,7 +300,7 @@
     <string name="reinstall_imagefs">Reinstall Imagefs</string>
     <string name="do_you_want_to_reinstall_imagefs">Do you want to reinstall imagefs? This operation will restore system files, your containers won\'t be changed.</string>
     <string name="unable_to_remove_content_since_container_using">Unable to remove this content, because a container is currently using this Wine.</string>
-    <string name="get_more_contents_form_github">You can access https://github.com/moze30/winlator-glibc/releases to get more contents.</string>
+    <string name="get_more_contents_form_github">You can access https://github.com/moze30/winlator-wcp/releases to get more contents.</string>
     <string name="midi_sound_font">MIDI SoundFont</string>
     <string name="sound">Sound</string>
     <string name="do_you_want_to_remove_this_sound_font">Do you want to remove this soundfont?</string>

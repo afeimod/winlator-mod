@@ -19,6 +19,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ContentsManager {
     public static final String PROFILE_NAME = "profile.json";
@@ -44,7 +45,8 @@ public class ContentsManager {
         ERROR_MISSINGFILES,
         ERROR_EXIST,
         ERROR_UNTRUSTPROFILE,
-        ERROR_UNKNOWN
+        ERROR_UNKNOWN,
+        ERROR_CANCELLED
     }
 
     public enum ContentDirName {
@@ -148,16 +150,30 @@ public class ContentsManager {
     }
 
     public void extraContentFile(Uri uri, OnInstallFinishedCallback callback) {
+        extraContentFile(uri, callback, null, null);
+    }
+
+    public void extraContentFile(Uri uri, OnInstallFinishedCallback callback, TarCompressorUtils.OnProgressListener progressListener) {
+        extraContentFile(uri, callback, progressListener, null);
+    }
+
+    public void extraContentFile(Uri uri, OnInstallFinishedCallback callback, TarCompressorUtils.OnProgressListener progressListener, AtomicBoolean isCancelled) {
         cleanTmpDir(context);
 
         File file = getTmpDir(context);
 
         boolean ret;
-        ret = TarCompressorUtils.extract(TarCompressorUtils.Type.XZ, context, uri, file);
-        if (!ret)
-            ret = TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context, uri, file);
+        ret = TarCompressorUtils.extract(TarCompressorUtils.Type.XZ, context, uri, file, null, progressListener, isCancelled);
+        if (!ret && (isCancelled == null || !isCancelled.get()))
+            ret = TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context, uri, file, null, progressListener, isCancelled);
+
         if (!ret) {
-            callback.onFailed(InstallFailedReason.ERROR_BADTAR, null);
+            if (isCancelled != null && isCancelled.get()) {
+                cleanTmpDir(context);
+                callback.onFailed(InstallFailedReason.ERROR_CANCELLED, null);
+            } else {
+                callback.onFailed(InstallFailedReason.ERROR_BADTAR, null);
+            }
             return;
         }
 
