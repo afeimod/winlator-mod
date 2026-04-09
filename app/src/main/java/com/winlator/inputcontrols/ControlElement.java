@@ -422,45 +422,48 @@ public class ControlElement {
                 float offsetY = snappingSize * 3 * scale;
                 float start = snappingSize * scale;
                 Path path = inputControlsView.getPath();
-                path.reset();
 
-                path.moveTo(cx, cy - start);
-                path.lineTo(cx - offsetX, cy - offsetY);
-                path.lineTo(cx - offsetX, boundingBox.top);
-                path.lineTo(cx + offsetX, boundingBox.top);
-                path.lineTo(cx + offsetX, cy - offsetY);
-                path.close();
+                for (int i = 0; i < 4; i++) {
+                    path.reset();
+                    if (i == 0) {
+                        path.moveTo(cx, cy - start);
+                        path.lineTo(cx - offsetX, cy - offsetY);
+                        path.lineTo(cx - offsetX, boundingBox.top);
+                        path.lineTo(cx + offsetX, boundingBox.top);
+                        path.lineTo(cx + offsetX, cy - offsetY);
+                    }
+                    else if (i == 1) {
+                        path.moveTo(cx + start, cy);
+                        path.lineTo(cx + offsetY, cy - offsetX);
+                        path.lineTo(boundingBox.right, cy - offsetX);
+                        path.lineTo(boundingBox.right, cy + offsetX);
+                        path.lineTo(cx + offsetY, cy + offsetX);
+                    }
+                    else if (i == 2) {
+                        path.moveTo(cx, cy + start);
+                        path.lineTo(cx - offsetX, cy + offsetY);
+                        path.lineTo(cx - offsetX, boundingBox.bottom);
+                        path.lineTo(cx + offsetX, boundingBox.bottom);
+                        path.lineTo(cx + offsetX, cy + offsetY);
+                    }
+                    else if (i == 3) {
+                        path.moveTo(cx - start, cy);
+                        path.lineTo(cx - offsetY, cy - offsetX);
+                        path.lineTo(boundingBox.left, cy - offsetX);
+                        path.lineTo(boundingBox.left, cy + offsetX);
+                        path.lineTo(cx - offsetY, cy + offsetX);
+                    }
+                    path.close();
 
-                path.moveTo(cx - start, cy);
-                path.lineTo(cx - offsetY, cy - offsetX);
-                path.lineTo(boundingBox.left, cy - offsetX);
-                path.lineTo(boundingBox.left, cy + offsetX);
-                path.lineTo(cx - offsetY, cy + offsetX);
-                path.close();
-
-                path.moveTo(cx, cy + start);
-                path.lineTo(cx - offsetX, cy + offsetY);
-                path.lineTo(cx - offsetX, boundingBox.bottom);
-                path.lineTo(cx + offsetX, boundingBox.bottom);
-                path.lineTo(cx + offsetX, cy + offsetY);
-                path.close();
-
-                path.moveTo(cx + start, cy);
-                path.lineTo(cx + offsetY, cy - offsetX);
-                path.lineTo(boundingBox.right, cy - offsetX);
-                path.lineTo(boundingBox.right, cy + offsetX);
-                path.lineTo(cx + offsetY, cy + offsetX);
-                path.close();
-
-                if (pressed) {
-                    paint.setStyle(Paint.Style.FILL);
-                    paint.setColor(ColorUtils.setAlphaComponent(selected ? secondaryColor : primaryColor, 100));
+                    if (states[i]) {
+                        paint.setStyle(Paint.Style.FILL);
+                        paint.setColor(ColorUtils.setAlphaComponent(selected ? secondaryColor : primaryColor, 100));
+                        canvas.drawPath(path, paint);
+                        paint.setStyle(Paint.Style.STROKE);
+                        paint.setColor(selected ? secondaryColor : primaryColor);
+                    }
                     canvas.drawPath(path, paint);
-                    paint.setStyle(Paint.Style.STROKE);
-                    paint.setColor(selected ? secondaryColor : primaryColor);
                 }
-
-                canvas.drawPath(path, paint);
                 break;
             }
             case RANGE_BUTTON: {
