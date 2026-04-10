@@ -26,6 +26,9 @@ public class Drawable extends XResource {
 
     public Drawable(int id, int width, int height, Visual visual) {
         super(id);
+        // 确保宽高至少为1，并处理可能的负值（将其视为无符号短整型或限制在合理范围内）
+        width = Mathf.clamp(width & 0xFFFF, 1, 4096);
+        height = Mathf.clamp(height & 0xFFFF, 1, 4096);
         this.width = (short)width;
         this.height = (short)height;
         this.visual = visual;

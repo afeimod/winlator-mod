@@ -240,10 +240,10 @@ public class WindowManager extends XResourceManager {
                     y = (short)inputStream.readInt();
                     break;
                 case Window.FLAG_WIDTH:
-                    width = (short)inputStream.readInt();
+                    width = (short)Math.max(1, inputStream.readInt());
                     break;
                 case Window.FLAG_HEIGHT:
-                    height = (short)inputStream.readInt();
+                    height = (short)Math.max(1, inputStream.readInt());
                     break;
                 case Window.FLAG_BORDER_WIDTH:
                     borderWidth = (short)inputStream.readInt();
