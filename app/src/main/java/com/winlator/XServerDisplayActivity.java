@@ -1092,4 +1092,8 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         if (frameRating == null) return;
         runOnUiThread(() -> frameRating.setVisibility(View.VISIBLE));
     }
+
+    protected FrameRating getFrameRating() {
+        return frameRating;
+    }
 }

@@ -6,6 +6,7 @@ import android.os.IBinder;
 import android.os.ParcelFileDescriptor;
 import android.os.RemoteException;
 import android.util.Log;
+import android.view.Choreographer;
 import android.view.Display;
 import android.view.Gravity;
 import android.view.KeyEvent;
@@ -19,6 +20,7 @@ import androidx.annotation.NonNull;
 
 import com.winlator.R;
 import com.winlator.XServerDisplayActivity;
+import com.winlator.widget.FrameRating;
 import com.winlator.widget.XServerView;
 import com.winlator.xenvironment.EnvironmentComponent;
 import com.winlator.xserverbridge.IXServerBridge;
@@ -30,6 +32,7 @@ public class MainActivity extends XServerDisplayActivity {
     private static MainActivity instance = null;
     private LorieView lorieView = null;
     protected ICmdEntryInterface service = null;
+    private Choreographer.FrameCallback frameCallback;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -57,6 +60,33 @@ public class MainActivity extends XServerDisplayActivity {
         rootView.addView(lorieView, 0, lp);
         // 桌面分辨率
         lorieView.p.set(xServer.screenInfo.width, xServer.screenInfo.height);
+
+        setupFrameRatingUpdater();
+    }
+
+    private void setupFrameRatingUpdater() {
+        frameCallback = new Choreographer.FrameCallback() {
+            @Override
+            public void doFrame(long frameTimeNanos) {
+                FrameRating frameRating = getFrameRating();
+                if (frameRating != null && lorieView != null && lorieView.getVisibility() == View.VISIBLE) {
+                    frameRating.update();
+                }
+                Choreographer.getInstance().postFrameCallback(this);
+            }
+        };
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        if (frameCallback != null) Choreographer.getInstance().postFrameCallback(frameCallback);
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        if (frameCallback != null) Choreographer.getInstance().removeFrameCallback(frameCallback);
     }
 
     /**
