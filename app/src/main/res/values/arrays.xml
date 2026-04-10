@@ -17,6 +17,7 @@
     </string-array>
     <string-array name="graphics_driver_entries">
         <item>Turnip-26.1.0</item>
+        <item>Turnip-25.3.0</item>
         <item>Turnip-24.1.0</item>
         <item>VirGL-23.1.9</item>
     </string-array>

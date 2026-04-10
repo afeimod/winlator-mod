@@ -778,7 +778,8 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
                 if (profile != null) {
                     contentsManager.applyContent(profile);
                 } else {
-                    TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/turnip-" + DefaultVersion.TURNIP + ".tzst", rootDir);
+                    String version = graphicsDriver.contains("-") ? graphicsDriver.split("-")[1] : DefaultVersion.TURNIP;
+                    TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/turnip-" + version + ".tzst", rootDir);
                     TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/zink-" + DefaultVersion.ZINK + ".tzst", rootDir);
                 }
             }
@@ -794,8 +795,10 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
                 ContentProfile profile = contentsManager.getProfileByEntryName(graphicsDriver);
                 if (profile != null)
                     contentsManager.applyContent(profile);
-                else
-                    TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/virgl-" + DefaultVersion.VIRGL + ".tzst", rootDir);
+                else {
+                    String version = graphicsDriver.contains("-") ? graphicsDriver.split("-")[1] : DefaultVersion.VIRGL;
+                    TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/virgl-" + version + ".tzst", rootDir);
+                }
             }
         }
     }
