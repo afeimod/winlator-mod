@@ -294,6 +294,7 @@ public class ContainerDetailFragment extends Fragment {
                 String envVars = envVarsView.getEnvVars();
                 String graphicsDriver = StringUtils.parseIdentifier(sGraphicsDriver.getSelectedItem());
                 String dxwrapper = StringUtils.parseIdentifier(sDXWrapper.getSelectedItem());
+                if (dxwrapper.equals("dxvk-&-vkd3d")) dxwrapper = "dxvk";
                 String dxwrapperConfig = vDXWrapperConfig.getTag().toString();
                 String audioDriver = StringUtils.parseIdentifier(sAudioDriver.getSelectedItem());
                 String midiSoundFont = sMIDISoundFont.getSelectedItemPosition() == 0 ? "" : sMIDISoundFont.getSelectedItem().toString();
@@ -603,11 +604,11 @@ public class ContainerDetailFragment extends Fragment {
 
             ArrayList<String> items = new ArrayList<>();
             for (String value : dxwrapperEntries)
-                if (addAll || (!value.equals("DXVK") && !value.equals("VKD3D")))
+                if (addAll || (!value.equals("DXVK & VKD3D") && !value.equals("CNC DDraw")))
                     items.add(value);
 
             sDXWrapper.setAdapter(new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, items.toArray(new String[0])));
-            AppUtils.setSpinnerSelectionFromIdentifier(sDXWrapper, selectedDXWrapper);
+            AppUtils.setSpinnerSelectionFromIdentifier(sDXWrapper, selectedDXWrapper.equals("dxvk") ? "dxvk-&-vkd3d" : selectedDXWrapper);
         };
 
         sGraphicsDriver.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
@@ -629,7 +630,7 @@ public class ContainerDetailFragment extends Fragment {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
                 String dxwrapper = StringUtils.parseIdentifier(sDXWrapper.getSelectedItem());
-                if (dxwrapper.equals("dxvk")) {
+                if (dxwrapper.equals("dxvk-&-vkd3d")) {
                     vDXWrapperConfig.setOnClickListener((v) -> (new DXVKConfigDialog(vDXWrapperConfig)).show());
                     vDXWrapperConfig.setVisibility(View.VISIBLE);
                 }
