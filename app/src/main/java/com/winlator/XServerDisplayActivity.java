@@ -543,7 +543,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             environment.addComponent(new PulseAudioComponent(UnixSocketConfig.createSocket(rootPath, UnixSocketConfig.PULSE_SERVER_PATH)));
         }
 
-        if (graphicsDriver.startsWith("virgl")) {
+        if (graphicsDriver.toLowerCase().contains("virgl")) {
             environment.addComponent(new VirGLRendererComponent(xServer, UnixSocketConfig.createSocket(rootPath, UnixSocketConfig.VIRGL_SERVER_PATH)));
         }
 
@@ -750,7 +750,9 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             container.saveData();
         }
 
-        if (graphicsDriver.startsWith("turnip")) {
+        String driverLower = graphicsDriver.toLowerCase();
+
+        if (driverLower.contains("turnip")) {
             if (dxwrapper.equals("dxvk"))
                 DXVKConfigDialog.setEnvVars(this, dxwrapperConfig, envVars);
 
@@ -784,7 +786,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
                 }
             }
         }
-        else if (graphicsDriver.startsWith("virgl")) {
+        else if (driverLower.contains("virgl")) {
             envVars.put("GALLIUM_DRIVER", "virpipe");
             envVars.put("VIRGL_NO_READBACK", "true");
             envVars.put("VIRGL_SERVER_PATH", rootDir + UnixSocketConfig.VIRGL_SERVER_PATH);
