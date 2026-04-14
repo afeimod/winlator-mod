@@ -60,6 +60,9 @@ BOX64_ENV=WINEDLLOVERRIDES=ddraw,d3d8=b
 [MotoRacer.exe]
 BOX64_ENV1=WINEDLLOVERRIDES=winmm=n,b
 
+[Chrono Trigger.exe]
+BOX64_ENV1=WINEDLLOVERRIDES=winegstreamer=d
+
 #.NET Framework installers
 [*dotnetfx35*]
 BOX64_EXIT=1
