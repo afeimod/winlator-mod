@@ -49,10 +49,5 @@ public class TurnipConfigDialog extends ContentDialog {
         if (!maxDeviceMemory.equals("0")) envVars.put("TU_OVERRIDE_HEAP_SIZE", maxDeviceMemory);
         if (config.getBoolean("useHWBuf", true)) envVars.put("MESA_VK_WSI_USE_HWBUF", "1");
         if (config.getBoolean("forceWaitForFences")) envVars.put("MESA_VK_WSI_FORCE_WAIT_FOR_FENCES", "1");
-
-        String tuDebug = envVars.get("TU_DEBUG");
-        if (!GPUHelper.isAdreno6xx(context) && !tuDebug.contains("sysmem")) {
-            envVars.put("TU_DEBUG", (!tuDebug.isEmpty() ? tuDebug + "," : "") + "sysmem");
-        }
     }
 }
