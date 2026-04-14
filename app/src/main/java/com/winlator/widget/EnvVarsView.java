@@ -31,15 +31,17 @@ public class EnvVarsView extends FrameLayout {
         {"ZINK_DEBUG", "SELECT_MULTIPLE", "nir", "spirv", "tgsi", "validation", "sync", "compact", "noreorder"},
         {"ZINK_CONTEXT_THREADED", "CHECKBOX", "0", "1"},
         {"WINEESYNC", "CHECKBOX", "0", "1"},
+        {"WINEDLLOVERRIDES", "TEXT"},
         {"TU_DEBUG", "SELECT_MULTIPLE", "startup", "nir", "nobin", "sysmem", "gmem", "forcebin", "layout", "noubwc", "nomultipos", "nolrz", "nolrzfc", "perf", "perfc", "flushall", "syncdraw", "push_consts_per_stage", "rast_order", "unaligned_store", "log_skip_gmem_ops", "dynamic", "bos", "3d_load", "fdm", "noconform", "rd"},
         {"DXVK_HUD", "SELECT_MULTIPLE", "devinfo", "fps", "frametimes", "submissions", "drawcalls", "pipelines", "descriptors", "memory", "gpuload", "version", "api", "cs", "compiler", "samplers"},
         {"DXVK_LOG_LEVEL", "SELECT", "none", "error", "warn", "info", "debug"},
+        {"DXVK_ASYNC", "CHECKBOX", "0", "1"},
         {"GALLIUM_HUD", "TEXT"},
         {"MESA_SHADER_CACHE_DISABLE", "CHECKBOX", "false", "true"},
         {"mesa_glthread", "CHECKBOX", "false", "true"},
         {"MESA_EXTENSION_MAX_YEAR", "NUMBER"},
         {"MESA_GL_VERSION_OVERRIDE", "TEXT"},
-        {"PULSE_LATENCY_MSEC", "NUMBER"}
+        {"PULSE_LATENCY_MSEC", "NUMBER"},
     };
     private final LinearLayout container;
     private final TextView emptyTextView;
