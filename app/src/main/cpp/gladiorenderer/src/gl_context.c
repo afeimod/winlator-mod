@@ -182,6 +182,7 @@ static void* requestHandlerThread(void* param) {
                     eglMakeCurrent(eglGetDisplay(EGL_DEFAULT_DISPLAY), EGL_NO_SURFACE, EGL_NO_SURFACE, glxContext->eglContext);
                     context->glxContext = glxContext;
                     currentRenderer = &glxContext->renderer;
+                    GLRenderer_resetFrameCount(currentRenderer);
                 }
 
                 setCurrentRenderWindow(context, windowId);
@@ -190,6 +191,7 @@ static void* requestHandlerThread(void* param) {
             }
             case REQUEST_CODE_SWAP_DISPLAY_BUFFERS: {
                 int drawableId = ArrayBuffer_getInt(&context->inputBuffer);
+                currentRenderer->frameCount++;
                 swapDisplayBuffers(context, drawableId);
                 gl_send(context->clientRing, REQUEST_CODE_SWAP_DISPLAY_BUFFERS, NULL, 0);
                 break;

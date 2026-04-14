@@ -683,6 +683,7 @@ void GLRenderer_destroy(GLRenderer* renderer) {
     glDeleteBuffers(ARRAY_SIZE(renderer->bufferIds), renderer->bufferIds);
 
     GLVertexArrayObject_delete(&renderer->clientState, 0);
+    GLRenderer_resetFrameCount(renderer);
 
     if (renderer->circleTexture > 0) {
         glDeleteTextures(1, &renderer->circleTexture);
@@ -797,7 +798,7 @@ int GLRenderer_getParamsv(GLRenderer* renderer, GLenum pname, GLenum type, void*
         case GL_MAJOR_VERSION:
         case GL_MINOR_VERSION:
             if (params) {
-                int version[0];
+                int version[2];
                 sscanf(GL_STRING_VERSION, "%d.%d", &version[0], &version[1]);
                 *(GLint*)params = version[pname - GL_MAJOR_VERSION];
             }
@@ -1187,7 +1188,7 @@ void* GLRenderer_getTexImage(GLRenderer* renderer, GLenum target, GLint level, G
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, target, texture->id, 0);
 
     void* pixels = malloc(*imageSize);
-    GLRenderer_readPixels(0, 0, texture->width, texture->height, format, type, pixels);
+    GLRenderer_readPixels(renderer, 0, 0, texture->width, texture->height, format, type, pixels);
 
     glBindFramebuffer(GL_FRAMEBUFFER, renderer->clientState.framebuffer[indexOfGLTarget(GL_FRAMEBUFFER)]);
     glDeleteFramebuffers(1, &framebuffer);
@@ -1256,14 +1257,49 @@ void GLRenderer_disableUnusedVertexAttributes(GLRenderer* renderer) {
     }
 }
 
-void GLRenderer_readPixels(GLint x, GLint y, GLsizei width, GLsizei height, GLenum format, GLenum type, void* pixels) {
+static void freePixelReadCache(GLRenderer* renderer) {
+    if (renderer->pixelReadCache) {
+        if (renderer->pixelReadCache->data) free(renderer->pixelReadCache->data);
+        renderer->pixelReadCache = NULL;
+    }
+}
+
+void GLRenderer_resetFrameCount(GLRenderer* renderer) {
+    freePixelReadCache(renderer);
+    renderer->frameCount = 0;
+}
+
+void GLRenderer_readPixels(GLRenderer* renderer, GLint x, GLint y, GLsizei width, GLsizei height, GLenum format, GLenum type, void* pixels) {
+    int srcDataSize = width * height * 4;
+    GLuint framebuffer = renderer->clientState.framebuffer[indexOfGLTarget(GL_READ_FRAMEBUFFER)];
+    PixelReadCache* pixelReadCache = renderer->pixelReadCache;
+    if (pixelReadCache && x == 0 && y == 0 &&
+                          pixelReadCache->dataSize == srcDataSize &&
+                          pixelReadCache->framebuffer == framebuffer &&
+                         (renderer->frameCount-pixelReadCache->frameIndex) <= PIXEL_READ_CACHE_SKIP_FRAMES) {
+        memcpy(pixels, pixelReadCache->data, srcDataSize);
+        return;
+    }
+
     GLBuffer* pixelPackBuffer = GLBuffer_getBound(GL_PIXEL_PACK_BUFFER);
     bool convert = format != GL_RGBA && format != GL_BGRA;
     if (pixelPackBuffer && convert) glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
 
-    int srcDataSize;
-    char* srcData = convert ? malloc(srcDataSize = (width * height * 4)) : pixels;
+    char* srcData = convert ? malloc(srcDataSize) : pixels;
     glReadPixels(x, y, width, height, GL_RGBA, GL_UNSIGNED_BYTE, srcData);
+
+    if (x == 0 && y == 0 && width <= 256 && height <= 256 && !convert) {
+        if (!pixelReadCache) renderer->pixelReadCache = pixelReadCache = calloc(1, sizeof(PixelReadCache));
+        if (srcDataSize != pixelReadCache->dataSize) {
+            MEMFREE(pixelReadCache->data);
+            pixelReadCache->data = malloc(srcDataSize);
+            pixelReadCache->dataSize = srcDataSize;
+        }
+        pixelReadCache->framebuffer = framebuffer;
+        pixelReadCache->frameIndex = renderer->frameCount;
+        memcpy(pixelReadCache->data, srcData, srcDataSize);
+    }
+    else freePixelReadCache(renderer);
 
     if (pixelPackBuffer) {
         if (!convert) {

@@ -70,6 +70,13 @@ typedef struct TexEnv {
     GLint operandRGBA[4];
 } TexEnv;
 
+typedef struct PixelReadCache {
+    GLuint framebuffer;
+    int dataSize;
+    void* data;
+    GLuint frameIndex;
+} PixelReadCache;
+
 typedef struct GLState {
     bool lighting;
     GLenum polygonMode;
@@ -145,6 +152,9 @@ typedef struct GLRenderer {
 
     GLQuery* activeQuery;
     uint64_t queriesStartTime;
+    uint32_t frameCount;
+
+    PixelReadCache* pixelReadCache;
 } GLRenderer;
 
 extern void GLRenderer_initOnEGLContext(GLRenderer* renderer);
@@ -178,7 +188,8 @@ extern void GLRenderer_setDrawBuffer(GLRenderer* renderer, GLenum drawBuffer);
 extern void GLRenderer_enableVertexAttribute(GLRenderer* renderer, int location);
 extern void GLRenderer_disableVertexAttribute(GLRenderer* renderer, int location);
 extern void GLRenderer_disableUnusedVertexAttributes(GLRenderer* renderer);
-extern void GLRenderer_readPixels(GLint x, GLint y, GLsizei width, GLsizei height, GLenum format, GLenum type, void* pixels);
+extern void GLRenderer_resetFrameCount(GLRenderer* renderer);
+extern void GLRenderer_readPixels(GLRenderer* renderer, GLint x, GLint y, GLsizei width, GLsizei height, GLenum format, GLenum type, void* pixels);
 
 extern thread_local GLRenderer* currentRenderer;
 
