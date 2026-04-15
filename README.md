@@ -4,8 +4,8 @@
 
 # Winlator
 
-Winlator is an Android application that lets you to run Windows (x86_64) applications with Wine and Box86/Box64.
-This repository stores the latest updates for the Winlator app source.
+Winlator is an Android application that lets you to run Windows (x86_64) applications with Wine and Box86/Box64.<br>
+This repository stores the latest updates for the Winlator app source.<br>
 For more information and releases, please visit the main repository: https://github.com/brunodev85/winlator
 
 # Credits and Third-party apps
@@ -18,5 +18,5 @@ For more information and releases, please visit the main repository: https://git
 - VKD3D ([gitlab.winehq.org/wine/vkd3d](https://gitlab.winehq.org/wine/vkd3d))
 - CNC DDraw ([github.com/FunkyFr3sh/cnc-ddraw](https://github.com/FunkyFr3sh/cnc-ddraw))
 
-Special thanks to all the developers involved in these projects.
+Special thanks to all the developers involved in these projects.<br>
 Thank you to all the people who believe in this project.
