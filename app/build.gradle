@@ -26,6 +26,11 @@ android {
         checkReleaseBuilds false
     }
 
+    packagingOptions {
+        pickFirst '**/libFLAC.so'
+        pickFirst '**/libc++_shared.so'
+    }
+
     ndkVersion '24.0.8215888'
 
     externalNativeBuild {
