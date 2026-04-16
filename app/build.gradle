@@ -29,6 +29,18 @@ android {
     packagingOptions {
         pickFirst '**/libFLAC.so'
         pickFirst '**/libc++_shared.so'
+        pickFirst '**/libfluidsynth-assetloader.so'
+        pickFirst '**/libfluidsynth.so'
+        pickFirst '**/liboboe.so'
+        pickFirst '**/libogg.so'
+        pickFirst '**/libopus.so'
+        pickFirst '**/libvorbis.so'
+        pickFirst '**/libvorbisenc.so'
+        pickFirst '**/libvorbisfile.so'
+        pickFirst '**/libsndfile.so'
+        pickFirst '**/libpcre.so'
+        pickFirst '**/libpcreposix.so'
+        pickFirst '**/libltdl.so'
     }
 
     ndkVersion '24.0.8215888'
