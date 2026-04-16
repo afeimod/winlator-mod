@@ -1,9 +1,7 @@
 cmake_minimum_required(VERSION 3.31.5)
 
-# 设置预编译库的路径
 set(JNILIBS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../jniLibs/arm64-v8a)
 
-# 统一管理所有预编译的IMPORTED库，防止CMake尝试从源代码编译它们
 add_library(libc++_shared SHARED IMPORTED)
 set_target_properties(libc++_shared PROPERTIES IMPORTED_LOCATION ${JNILIBS_DIR}/libc++_shared.so)
 
@@ -60,24 +58,6 @@ set_target_properties(libvorbisenc PROPERTIES IMPORTED_LOCATION ${JNILIBS_DIR}/l
 
 add_library(libvorbisfile SHARED IMPORTED)
 set_target_properties(libvorbisfile PROPERTIES IMPORTED_LOCATION ${JNILIBS_DIR}/libvorbisfile.so)
-
-add_library(libltdl SHARED IMPORTED)
-set_target_properties(libltdl PROPERTIES IMPORTED_LOCATION ${JNILIBS_DIR}/libltdl.so)
-
-add_library(libpulse SHARED IMPORTED)
-set_target_properties(libpulse PROPERTIES IMPORTED_LOCATION ${JNILIBS_DIR}/libpulse.so)
-
-add_library(libpulseaudio SHARED IMPORTED)
-set_target_properties(libpulseaudio PROPERTIES IMPORTED_LOCATION ${JNILIBS_DIR}/libpulseaudio.so)
-
-add_library(libpulsecommon-13.0 SHARED IMPORTED)
-set_target_properties(libpulsecommon-13.0 PROPERTIES IMPORTED_LOCATION ${JNILIBS_DIR}/libpulsecommon-13.0.so)
-
-add_library(libpulsecore-13.0 SHARED IMPORTED)
-set_target_properties(libpulsecore-13.0 PROPERTIES IMPORTED_LOCATION ${JNILIBS_DIR}/libpulsecore-13.0.so)
-
-add_library(libinstpatch SHARED IMPORTED)
-set_target_properties(libinstpatch PROPERTIES IMPORTED_LOCATION ${JNILIBS_DIR}/libinstpatch-1.0.so)
 
 add_subdirectory(winlator)
 add_subdirectory(vortekrenderer)

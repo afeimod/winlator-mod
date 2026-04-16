@@ -26,33 +26,6 @@ android {
         checkReleaseBuilds false
     }
 
-    packagingOptions {
-        pickFirst '**/libFLAC.so'
-        pickFirst '**/libc++_shared.so'
-        pickFirst '**/libfluidsynth-assetloader.so'
-        pickFirst '**/libfluidsynth.so'
-        pickFirst '**/liboboe.so'
-        pickFirst '**/libogg.so'
-        pickFirst '**/libopus.so'
-        pickFirst '**/libvorbis.so'
-        pickFirst '**/libvorbisenc.so'
-        pickFirst '**/libvorbisfile.so'
-        pickFirst '**/libsndfile.so'
-        pickFirst '**/libpcre.so'
-        pickFirst '**/libpcreposix.so'
-        pickFirst '**/libltdl.so'
-        pickFirst '**/libgio-2.0.so'
-        pickFirst '**/libglib-2.0.so'
-        pickFirst '**/libgmodule-2.0.so'
-        pickFirst '**/libgobject-2.0.so'
-        pickFirst '**/libgthread-2.0.so'
-        pickFirst '**/libinstpatch-1.0.so'
-        pickFirst '**/libpulse.so'
-        pickFirst '**/libpulseaudio.so'
-        pickFirst '**/libpulsecommon-13.0.so'
-        pickFirst '**/libpulsecore-13.0.so'
-    }
-
     ndkVersion '24.0.8215888'
 
     externalNativeBuild {
@@ -60,6 +33,34 @@ android {
             version '3.31.5'
             path 'src/main/cpp/CMakeLists.txt'
         }
+    }
+
+    packagingOptions {
+        pickFirst '**/libFLAC.so'
+        pickFirst '**/libc++_shared.so'
+        pickFirst '**/libfluidsynth-assetloader.so'
+        pickFirst '**/libfluidsynth.so'
+        pickFirst '**/liboboe.so'
+        pickFirst '**/libgio-2.0.so'
+        pickFirst '**/libglib-2.0.so'
+        pickFirst '**/libgmodule-2.0.so'
+        pickFirst '**/libgobject-2.0.so'
+        pickFirst '**/libgthread-2.0.so'
+        pickFirst '**/libinstpatch-1.0.so'
+        pickFirst '**/libogg.so'
+        pickFirst '**/libopus.so'
+        pickFirst '**/libpcre.so'
+        pickFirst '**/libpcreposix.so'
+        pickFirst '**/libsndfile.so'
+        pickFirst '**/libvorbis.so'
+        pickFirst '**/libvorbisenc.so'
+        pickFirst '**/libvorbisfile.so'
+        pickFirst '**/libwinlator.so'
+        pickFirst '**/libvirglrenderer.so'
+        pickFirst '**/libvortekrenderer.so'
+        pickFirst '**/libgladiorenderer.so'
+        pickFirst '**/libadrenotools.so'
+        pickFirst '**/liblinkernsbypass.so'
     }
 }
 

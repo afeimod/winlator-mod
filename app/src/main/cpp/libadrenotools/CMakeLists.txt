@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.14)
+cmake_minimum_required(VERSION 3.31.5)
 
 if(NOT ${CMAKE_ANDROID_ARCH_ABI} STREQUAL arm64-v8a)
 	message(FATAL_ERROR "Unsupported target architecture: ${CMAKE_ANDROID_ARCH_ABI}. Please make an issue on the repo!")
